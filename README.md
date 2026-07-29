@@ -6,11 +6,45 @@ policy as a running system — 567 SEBI equity schemes put through the seven har
 gates, scored on all 21 parameters with category-adjusted weights, classified,
 constructed into a whitelist, and monitored against the event triggers.
 
+## Running it
+
+The app is **self-contained**: `data/*.json` is committed, so it needs neither the
+source workbook nor the whitelist PDF nor a live API call at boot. Clone and run.
+
+```bash
+git clone -b claude/mutual-fund-dashboard-f4ew40 \
+    https://github.com/prathyushjain02/nse-backend.git
+cd nse-backend
+pip install -r requirements.txt
+python -m flask --app server run --port 5000     # → http://127.0.0.1:5000
 ```
+
+That is the whole setup. The universe evaluates on the first request — 567 funds
+in about 0.6 seconds, ~50 MB resident — and is cached for the process lifetime.
+
+**Deploying.** `render.yaml` and `Procfile` are included, so any of these works
+without further configuration:
+
+| Host | What to do |
+|---|---|
+| Render | New → Blueprint → point at the repo. The free plan is sufficient. |
+| Railway / Heroku / Fly | Detects the `Procfile` automatically. |
+| Anything else | `gunicorn server:app --bind 0.0.0.0:$PORT --workers 2` |
+
+`/health` is wired as the health-check path. The dashboard is served at `/`, and
+the pre-existing yfinance equity endpoints are untouched at `/api/equity/...`.
+
+**Refreshing the data** is a local step, not a server one — rebuild and commit:
+
+```bash
+pip install -r etl/requirements.txt
 python etl/build_dataset.py --workbook <Avendus_Automation.xlsx> \
                             --whitelist-pdf <Mutual_Fund_Whitelist.pdf>
-python -m flask --app server run     # dashboard at /
+git commit -am "Refresh dataset"
 ```
+
+Arguments are independent: omit `--workbook` to refresh only the API metrics and
+leave the holdings as they are.
 
 ## What it does
 
