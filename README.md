@@ -24,6 +24,62 @@ python -m flask --app server run     # dashboard at /
 | Guardrails | §10 | Portfolio tested for AMC/scheme caps, core floor, satellite and tactical caps |
 | Monitoring | §11 | Automatable triggers (T3–T7) run across the universe as an exception log |
 
+## Rate a fund
+
+Pick any of the 567 in-scope schemes and the framework runs it end to end, then
+writes it up. The remark (`mf/narrative.py`) is assembled from the evaluated
+record — nothing is generalised from the fund's name, its AMC's reputation or the
+category's fashion. If a sentence appears, a number in the record supports it and
+the number is quoted alongside.
+
+The page answers, in order: the verdict and what to do about it; what the fund
+does well and what gives pause, each tagged to the parameter that evidenced it;
+where it stacks as a percentile within its own category on seven metrics; its
+pillar scores against the category median; the gate results; **what the framework
+has not seen**, with the exact share of the score resting on convention; what
+would move the score, with the points available on each parameter; the triggers
+firing; what it actually holds; and every parameter in full.
+
+The remark says uncomfortable things when the data supports them. A fund with
+excellent downside capture and weak upside capture is told it will trail in
+rallies and that the client should hear so before buying, not after. A fund that
+scores 83 and fails the vintage gate is told the score is irrelevant this cycle.
+
+## Holdings — what they are used for
+
+The 34,035 security-level positions are not a display feature; they are scoring
+inputs. Four of the five Pillar C parameters and one hard gate are computed from
+them:
+
+| Use | Where |
+|---|---|
+| **C1** mandate fidelity | Headroom over the SEBI cap minimums, from the disclosed allocation — 562 funds |
+| **C2** concentration | Top-10, largest position, top-3 sector weights against category norms; inverted for Focused — 563 funds |
+| **C3** liquidity | Small-cap share of the equity sleeve weighted by AUM — 556 funds |
+| **C4** active share | Book structure: holding count against top-10 concentration — 563 funds |
+| **G7** concentration sanity | Top-10 ≤60% and single stock ≤10%; **77 funds are rejected on this gate** |
+| **G5** mandate compliance | Fallback cap split when the attribute sheet has no mid/small breakdown |
+
+Beyond scoring they drive the overlap analytics: pairwise overlap as Σ min(weight)
+over shared names, the substitution check against a fund's top-scoring peers, and
+portfolio look-through to stock, sector and market-cap level. That is what turns
+§10's "beyond roughly ten schemes, overlap makes the portfolio an expensive index
+fund" from a maxim into a number you can see before the allocation is made.
+
+Cash, TREPS and receivables are excluded from the equity sleeve throughout, so
+concentration and overlap are computed on the invested book rather than diluted
+by cash.
+
+## Our approach
+
+A written page (`fw.APPROACH`) covering how funds are evaluated and why: the three
+questions kept separate, rolling over point-to-point, the downside asymmetry, why
+gates beat scores, why comparison is category-relative, why data gaps are
+disclosed rather than filled, why the whitelist is constructed, why bands beat
+percentile ranks, and how the framework audits itself. Each section names the
+mechanism that enforces it, plus a section on what the framework deliberately does
+*not* do — allocation, theme validation, forecasting.
+
 ## Architecture
 
 ```
@@ -33,6 +89,8 @@ mf/framework.py        The policy encoded as data — every weight, band, gate a
                        workbook's Weights tab.
 mf/scoring.py          The three-stage engine: gates, 21 parameters, composite,
                        risk cap, classification, triggers.
+mf/narrative.py        Writes the analyst remark for a single fund, entirely from
+                       its evaluated record.
 mf/datastore.py        Loads and evaluates once; whitelist construction, holdings
                        overlap, look-through, IPS guardrail checks.
 mf/api.py              Flask blueprint under /api/mf.
@@ -86,7 +144,7 @@ the one thing a selection framework must not do.
 | `GET /api/mf/meta` | Universe counts, category coverage, build metadata |
 | `GET /api/mf/framework` | The whole encoded policy |
 | `GET /api/mf/funds` | Scored universe; filters for category, classification, gates, AUM, downside capture, search |
-| `GET /api/mf/fund/<key>` | Full scorecard: gates, 21 parameters with notes and weights, peers. `?overlay=±5` re-runs Stage 3 with an IC overlay |
+| `GET /api/mf/fund/<key>` | Full scorecard plus the written remark, pillar comparison against category medians, and overlap with top peers. `?overlay=±5` re-runs Stage 3 with an IC overlay |
 | `GET /api/mf/category/<name>` | Category dossier: mandate, weights and rationale, peer dispersion, league table |
 | `GET /api/mf/whitelist` | Constructed whitelist, AMC concentration, construction notes, reconciliation against the house list |
 | `GET /api/mf/holdings/<key>` | Security-level book with derived statistics |

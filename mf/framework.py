@@ -681,6 +681,227 @@ PRINCIPLES = [
              "set of superstitions."},
 ]
 
+# The reasoning behind the machinery, written out for the Approach page. Each
+# section states a position, the failure mode it exists to prevent, and where in
+# the framework it is actually enforced — so the page is an explanation of the
+# working system rather than a mission statement sitting beside it.
+APPROACH = [
+    {
+        "id": "question",
+        "title": "We separate three questions that are usually asked as one",
+        "lede": "Most fund debates go wrong because eligibility, quality and "
+                "suitability get argued simultaneously.",
+        "body": [
+            "A committee that asks 'is this a good fund?' will end up debating a "
+            "star performer's three-year return when the real issue is that its "
+            "manager left last month. The framework refuses to let those questions "
+            "merge. Stage 1 asks only whether a fund can be considered at all — "
+            "seven pass/fail gates, no scores involved. Stage 2 asks how good it is "
+            "against its own category peers. Stage 3 asks what to do with it for a "
+            "client.",
+            "Keeping them apart is what makes the answer explainable. When a fund is "
+            "rejected you can say which gate and why; when it is ranked you can "
+            "decompose the score to the parameter; when it is recommended you can "
+            "point to the classification band and the client's IPS separately.",
+        ],
+        "enforced": "Stages 1–3 run in that order. A gate failure short-circuits the "
+                    "classification regardless of composite.",
+    },
+    {
+        "id": "rolling",
+        "title": "Rolling returns, never point-to-point",
+        "lede": "A single strong quarter at either end can reorder an entire "
+                "category league table.",
+        "body": [
+            "Point-to-point returns are hostage to their start and end dates. Pick a "
+            "different Tuesday and the ranking changes. That is not a measurement of "
+            "skill; it is a measurement of when you happened to look.",
+            "All return evaluation uses rolling windows — 3-year and 5-year CAGRs "
+            "rolled daily over the trailing 7–10 years — against the benchmark Total "
+            "Return Index and the category. The question this answers is the only one "
+            "that matters to a client who may invest on any given day: what would "
+            "this fund have done for me across all entry points, not just the one "
+            "that flatters it.",
+        ],
+        "enforced": "A1 scores the median rolling CAGR against the benchmark TRI. A2 "
+                    "scores the consistency of that record rather than its level.",
+    },
+    {
+        "id": "downside",
+        "title": "Losses matter more than gains",
+        "lede": "For UHNI portfolios the dominant destroyers of outcomes are "
+                "permanent capital impairment and behavioural abandonment.",
+        "body": [
+            "The framework weights downside behaviour at or above upside capture "
+            "everywhere, and the risk pillar rises to 32% in Small Cap. The reason is "
+            "client behaviour, not statistics. A fund that falls 60% and recovers has "
+            "still cost the client who redeemed at the bottom — and that client is "
+            "not a hypothetical.",
+            "One parameter is given power over the whole scorecard. A fund whose "
+            "downside capture exceeds 115% is capped at Hold no matter how high its "
+            "composite. That cap is computed arithmetically rather than left to "
+            "committee memory, because the single most predictable committee failure "
+            "is forgiving bad downside behaviour in a fund whose headline number is "
+            "attractive.",
+        ],
+        "enforced": "B1 carries 28% of the risk pillar and triggers the automatic "
+                    "classification cap. B2–B5 cover drawdown, volatility, Sortino "
+                    "and beta stability.",
+    },
+    {
+        "id": "process",
+        "title": "Process over outcome",
+        "lede": "A five-year number tells you what happened; the process tells you "
+                "whether it can happen again.",
+        "body": [
+            "Past performance is a screen, not a forecast. Between 70% and 76% of "
+            "every fund's score is determined by how it earns its returns, what it "
+            "costs and who runs it — not by the returns themselves. The Fund House & "
+            "Manager and Portfolio & Style pillars together carry 32–40% because "
+            "process quality, capacity discipline, team depth and mandate fidelity "
+            "are the best forward-looking indicators available.",
+            "This is a deliberate hedge against the industry's most reliable error, "
+            "which is buying last cycle's winner at the moment its cycle ends.",
+        ],
+        "enforced": "Pillar A never exceeds 30% of the composite in any category.",
+    },
+    {
+        "id": "category",
+        "title": "Every comparison is category-relative",
+        "lede": "A small-cap fund is never compared with a large-cap fund on any "
+                "metric.",
+        "body": [
+            "Each category is a separate peer set with its own benchmark, its own "
+            "risk expectations and its own pillar weights. Comparing across "
+            "categories confuses an allocation decision — which belongs to the "
+            "client's IPS — with a selection decision, which belongs here.",
+            "The weights themselves move by category, because the same 'performance' "
+            "number means different things in different places. In Large Cap, alpha "
+            "dispersion is thin since TRI benchmarking, so cost rises to 18% and "
+            "active share decides outcomes: a large-cap fund charging 1% needs "
+            "exceptional evidence against an index fund at a tenth of the price. In "
+            "Small Cap, cost falls to 6% because no small-cap fund is ever selected "
+            "or rejected on TER, while risk rises to 32%.",
+            "Category medians are computed over gate-passing funds only, so a flood "
+            "of young launches cannot drag the peer standard down and make everything "
+            "else look better than it is.",
+        ],
+        "enforced": "An 11 × 5 weight matrix, and every percentile in this dashboard "
+                    "computed within category over eligible funds.",
+    },
+    {
+        "id": "gates",
+        "title": "Gates and triggers beat scores",
+        "lede": "A fund can score 85 and still be rejected.",
+        "body": [
+            "The seven gates are eligibility tests, not quality measures. Vintage, "
+            "AUM floor, manager tenure, regulatory record, mandate compliance, "
+            "structure and concentration sanity. Failing any one removes a fund for "
+            "the cycle regardless of its composite — and in the current universe "
+            "several funds scoring above 80 are rejected on the five-year vintage "
+            "gate alone. That is the gate working as designed. Three-year numbers "
+            "earned in a bull market are close to noise; a fund should have been "
+            "tested by at least one cycle it did not enjoy.",
+            "The same asymmetry runs the other way after admission. Event triggers "
+            "act between review cycles and override scores: a manager exit freezes "
+            "fresh flows within fifteen days, a mandate breach means immediate Watch, "
+            "a governance event means immediate suspension. The framework does not "
+            "wait for the quarter when the facts change.",
+        ],
+        "enforced": "Stage 1 gates, and eight event triggers monitored continuously.",
+    },
+    {
+        "id": "evidence",
+        "title": "A data gap is disclosed, never filled",
+        "lede": "Where a parameter has no data it scores 3 and is flagged. An "
+                "analyst never guesses.",
+        "body": [
+            "This is the convention that keeps the framework honest, and this "
+            "dashboard follows it literally. Every parameter reports whether its "
+            "score was measured from data, derived from the disclosed portfolio, or "
+            "assigned by convention — and every fund carries an evidence figure: the "
+            "share of its total weight resting on measured evidence.",
+            "Two gates are reported as unassessable rather than passed. Manager "
+            "tenure and regulatory record cannot be tested from the wired sources, "
+            "and silently passing a gate you have not tested would misstate the "
+            "eligible universe — which is the one thing a selection framework must "
+            "never do. Those stay with Research, visibly, on every scorecard.",
+            "Where a metric stands in for another, the substitution is stated on the "
+            "parameter itself rather than in a footnote. A2 uses the information "
+            "ratio because a true rolling-window hit rate needs a NAV pipeline; C3 "
+            "uses the small-cap share of the book because days-to-liquidate needs "
+            "security-level volume data.",
+        ],
+        "enforced": "§6.2. Every score on this dashboard is tagged measured, "
+                    "holdings-derived or conventional.",
+    },
+    {
+        "id": "construct",
+        "title": "The whitelist is constructed, not accumulated",
+        "lede": "Classification produces candidates. It does not produce a list.",
+        "body": [
+            "Two to four funds per category — fewer concentrates advisor risk in a "
+            "single manager, more dilutes conviction and stretches monitoring "
+            "quality. No more than two funds from one AMC in a category, and no AMC "
+            "above roughly a quarter of the whole list. Within a category, prefer "
+            "complementary styles: one GARP and one value large-cap fund serve a "
+            "client better than two momentum twins.",
+            "Decisions are made to cost something. A newly admitted Core fund waits a "
+            "full quarter before entering model portfolios, because one great quarter "
+            "is not a promotion case. A fund that leaves cannot return for four "
+            "quarters, and only through the full admission process — otherwise "
+            "removals get reversed casually and the list becomes a record of recent "
+            "performance rather than a set of decisions.",
+            "Removal stops fresh flows immediately, but client exits are sequenced "
+            "for tax, exit loads and redeployment. A 'no fresh flows' state can "
+            "legitimately persist for quarters. Client outcomes beat framework "
+            "tidiness.",
+        ],
+        "enforced": "Depth guidance and the per-AMC caps are applied when the "
+                    "whitelist is built; cooling-in and lockout are minuted.",
+    },
+    {
+        "id": "bands",
+        "title": "Bands, not percentile ranks",
+        "lede": "Percentile ranking is elegant and silently fragile.",
+        "body": [
+            "Both designs were built and compared. With a thin peer set — Dividend "
+            "Yield has eleven funds — percentile ranks become coarse and volatile, "
+            "and a fund's score changes depending on which peers the analyst happened "
+            "to enter that quarter. Bands are stable, auditable, source-agnostic, and "
+            "they force the firm to write down in advance what 'good' means for every "
+            "parameter.",
+            "The compromise is the Quant Helper: raw metrics convert to suggested band "
+            "scores by formula, so the quantitative pillars are disciplined by data "
+            "while remaining overridable with written rationale.",
+        ],
+        "enforced": "1–5 bands for all 21 parameters, with the Quant Helper "
+                    "conversion for the seven automatable ones.",
+    },
+    {
+        "id": "audit",
+        "title": "The framework audits itself",
+        "lede": "A selection framework that never audits itself calcifies into a set "
+                "of superstitions.",
+        "body": [
+            "Once a year the back-test asks two questions of the previous three years "
+            "of decisions: did funds the framework exit-listed actually underperform "
+            "after removal, and did admissions outperform after addition? Persistent "
+            "misses in either direction are treated as evidence against the weight "
+            "matrix or the bands, and the amendment is debated with the back-test on "
+            "the table.",
+            "Discretion exists but is bounded. The Investment Committee may apply a "
+            "documented overlay of up to ±5 points for forward-looking information "
+            "the model cannot see — an impending manager change, a capacity "
+            "commitment, deterioration observed in AMC meetings. It requires written "
+            "rationale, expires after two quarters, and cannot lift a fund by more "
+            "than one band. Unbounded discretion is how frameworks die.",
+        ],
+        "enforced": "±5 overlay cap enforced arithmetically; expiry and rationale "
+                    "enforced by minute.",
+    },
+]
+
 METHODOLOGY_CONVENTIONS = [
     "All return metrics on direct-plan growth NAVs.",
     "Risk metrics from monthly returns over a 36-month window unless stated.",

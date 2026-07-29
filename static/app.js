@@ -64,9 +64,10 @@ function show(view) {
   $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
   location.hash = view;
   const fn = {
-    overview: renderOverview, whitelist: renderWhitelist, screener: renderScreener,
-    categories: renderCategories, holdings: renderHoldings, portfolio: renderPortfolio,
-    monitoring: renderMonitoring, framework: renderFramework,
+    overview: renderOverview, fund: renderFundLens, whitelist: renderWhitelist,
+    screener: renderScreener, categories: renderCategories, holdings: renderHoldings,
+    portfolio: renderPortfolio, monitoring: renderMonitoring,
+    approach: renderApproach, framework: renderFramework,
   }[view];
   if (fn) fn().catch(err => {
     $('#view-' + view).innerHTML = `<div class="card"><div class="empty">Could not load: ${esc(err.message)}</div></div>`;
@@ -135,7 +136,10 @@ function renderScorecard(d) {
           ${f.onHouseWhitelist ? '<span class="chip">On the house whitelist</span>' : ''}
         </div>
       </div>
-      <button class="icon-btn close" onclick="closeDrawer()">Close ✕</button>
+      <div class="close" style="display:flex;gap:7px;flex:none">
+        <button class="icon-btn" id="dr-lens">Full analysis →</button>
+        <button class="icon-btn" onclick="closeDrawer()">✕</button>
+      </div>
     </header>
     <div class="body">
       <div class="callout ${cls.tone}">
@@ -253,6 +257,17 @@ function renderScorecard(d) {
     refLabel: 'Benchmark TRI',
     onClick: (p) => { if (p.key && !p.highlight) openFund(p.key); },
   });
+
+  $('#dr-lens').onclick = async () => {
+    closeDrawer();
+    show('fund');
+    // renderFundLens builds the picker on first entry; wait for it, then load.
+    setTimeout(() => {
+      const input = $('#lens-q');
+      if (input) input.value = f.name;
+      loadLens(f.key);
+    }, 80);
+  };
 
   $('#pf-add').onclick = () => {
     const w = parseFloat($('#pf-weight').value);
@@ -494,6 +509,417 @@ async function renderOverview() {
     tr.onclick = () => { show('categories'); setTimeout(() => selectCategory(tr.dataset.cat), 60); };
   });
   S.rendered.overview = true;
+}
+
+/* --------------------------------------------------------------- fund lens */
+/* Pick one fund; see where it stacks against the framework and the quant data,
+   and read the framework's remark on it. */
+
+let lensKey = null;
+
+async function renderFundLens() {
+  const host = $('#view-fund');
+  if (!S.rendered.fundLens) {
+    if (!S.funds) S.funds = await api('/funds?limit=0');
+    host.innerHTML = `
+      <div class="filters" style="position:relative">
+        <div class="field" style="position:relative">
+          <label for="lens-q">Pick a mutual fund</label>
+          <input id="lens-q" type="search" autocomplete="off" placeholder="Start typing a scheme or AMC name…">
+          <div class="suggest" id="lens-suggest" style="display:none;top:100%;left:0"></div>
+        </div>
+        <div class="field"><label for="lens-cat">Filter by category</label>
+          <select id="lens-cat"><option value="all">All categories</option>
+            ${S.fw.categoryOrder.map(c => `<option>${esc(c)}</option>`).join('')}</select></div>
+        <div class="field"><label for="lens-overlay">IC overlay (± points)</label>
+          <input id="lens-overlay" type="number" min="-5" max="5" step="0.5" value="0" style="min-width:100px"></div>
+      </div>
+      <div id="lens-body"><div class="empty">
+        Pick any of the ${S.funds.funds.length} in-scope schemes above. The framework
+        will run it through the seven gates, score all 21 parameters against its own
+        category peers, and write up where it stands.</div></div>`;
+
+    const input = $('#lens-q'), box = $('#lens-suggest');
+    let cursor = -1, matches = [];
+
+    const search = () => {
+      const q = input.value.trim().toLowerCase();
+      const cat = $('#lens-cat').value;
+      matches = S.funds.funds.filter(f =>
+        (cat === 'all' || f.category === cat) &&
+        (!q || f.name.toLowerCase().includes(q) || (f.amc || '').toLowerCase().includes(q))
+      ).slice(0, 40);
+      cursor = -1;
+      box.innerHTML = matches.length
+        ? matches.map((f, i) => `<div data-i="${i}">${esc(f.name)}
+            <small>${esc(f.amc || '—')} · ${esc(f.category)} · score ${n1(f.score, 1)} · ${esc(f.classification.label)}</small></div>`).join('')
+        : '<div class="muted">No scheme matches.</div>';
+      box.style.display = 'block';
+      $$('#lens-suggest div[data-i]').forEach(el => {
+        el.onmousedown = (e) => { e.preventDefault(); pick(matches[+el.dataset.i].key); };
+      });
+    };
+    const pick = (key) => {
+      box.style.display = 'none';
+      const f = S.funds.funds.find(x => x.key === key);
+      if (f) input.value = f.name;
+      loadLens(key);
+    };
+    input.oninput = search;
+    input.onfocus = search;
+    input.onblur = () => setTimeout(() => { box.style.display = 'none'; }, 140);
+    input.onkeydown = (e) => {
+      if (!matches.length) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        cursor = Math.max(0, Math.min(matches.length - 1, cursor + (e.key === 'ArrowDown' ? 1 : -1)));
+        $$('#lens-suggest div[data-i]').forEach((el, i) => el.classList.toggle('sel', i === cursor));
+        box.children[cursor]?.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        pick(matches[cursor >= 0 ? cursor : 0].key);
+      }
+    };
+    $('#lens-cat').onchange = search;
+    $('#lens-overlay').onchange = () => { if (lensKey) loadLens(lensKey); };
+    S.rendered.fundLens = true;
+  }
+  if (lensKey) await loadLens(lensKey);
+}
+
+async function loadLens(key) {
+  lensKey = key;
+  const host = $('#lens-body');
+  host.innerHTML = '<div class="loading">Running the framework…</div>';
+  const overlay = parseFloat($('#lens-overlay').value) || 0;
+  const d = await api('/fund/' + encodeURIComponent(key) + (overlay ? '?overlay=' + overlay : ''));
+  const f = d.fund, r = d.remark, c = d.composite, cls = d.classification;
+  const inPortfolio = S.portfolio[f.key] !== undefined;
+
+  host.innerHTML = `
+    <div class="verdict ${cls.tone}" style="margin-bottom:16px">
+      <div class="headline">${esc(r.headline)}</div>
+      <div class="bottom">${esc(r.bottomLine)}</div>
+      <div class="meta">
+        ${pill(cls.label)}
+        <span class="chip">${esc(f.category)}</span>
+        <span class="chip">${esc(f.amc || 'AMC not disclosed')}</span>
+        <span class="chip">benchmark ${esc(f.benchmark || '—')}</span>
+        ${f.onHouseWhitelist ? '<span class="chip">on the house whitelist</span>' : ''}
+        ${cls.capped ? '<span class="chip">risk-capped</span>' : ''}
+      </div>
+      ${cls.reason && f.gatesPassed ? `<p class="note" style="margin-top:11px">${esc(cls.reason)}</p>` : ''}
+    </div>
+
+    <div class="grid g4" style="margin-bottom:16px">
+      ${tile('Composite', n1(c.final, 1), `raw ${n1(c.raw, 1)}${c.overlay ? ` · IC overlay ${c.overlay > 0 ? '+' : ''}${c.overlay}` : ' · no overlay applied'}`)}
+      ${tile('Category rank', f.categoryRank ? `${f.categoryRank} / ${f.categoryCount}` : '—',
+             f.categoryRank ? `among gate-passing ${f.category} funds` : 'not ranked — rejected at Stage 1')}
+      ${tile('AUM', cr(f.aumCr), `category floor ${cr(S.fw.aumFloors[f.category])}`)}
+      ${tile('Evidence', `${f.evidence.weightPct}%`, `${f.evidence.parameters} of 21 parameters measured; ${r.unmeasuredWeight}% by convention`)}
+    </div>
+
+    <div class="grid g2" style="margin-bottom:16px">
+      <div class="card">
+        <header><h3>What it does well</h3>
+          <span class="sub">${r.strengths.length} evidenced finding${r.strengths.length === 1 ? '' : 's'}</span></header>
+        <div class="findings">${r.strengths.length ? r.strengths.map(s => `
+          <div class="finding good"><span class="mk">+</span>
+            <span class="txt"><code>${s.code}</code>${esc(s.text)}</span></div>`).join('')
+          : '<div class="empty">No parameter clears its top band on measured data.</div>'}</div>
+      </div>
+      <div class="card">
+        <header><h3>What gives pause</h3>
+          <span class="sub">${r.concerns.length} evidenced finding${r.concerns.length === 1 ? '' : 's'}</span></header>
+        <div class="findings">${r.concerns.length ? r.concerns.map(s => `
+          <div class="finding bad"><span class="mk">−</span>
+            <span class="txt"><code>${s.code}</code>${esc(s.text)}</span></div>`).join('')
+          : '<div class="empty">Nothing measured falls into a bottom band.</div>'}</div>
+      </div>
+    </div>
+
+    <div class="grid g2" style="margin-bottom:16px">
+      <div class="card">
+        <header><h3>Where it stacks</h3>
+          <span class="sub">percentile within ${esc(f.category)}, gate-passing funds only</span></header>
+        <div id="lens-pos"></div>
+        <div class="legend">
+          <span><i style="background:var(--series-2)"></i>This fund</span>
+          <span><i style="background:var(--axis)"></i>Category median</span>
+          <span style="color:var(--text-muted)">Left is worse, right is better — direction is normalised per metric</span>
+        </div>
+      </div>
+      <div class="card">
+        <header><h3>Pillar scores vs the category</h3>
+          <span class="sub">§7 weights for ${esc(f.category)} in brackets</span></header>
+        <div id="lens-pillars"></div>
+        <p class="note">${esc(d.weightRationale || 'Base weights apply to this category.')}</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <header><h3>Score decomposition</h3>
+        <span class="sub">composite = Σ (score ÷ 5) × effective weight — §8.1</span></header>
+      <div id="lens-bar"></div>
+      <div class="legend">
+        ${['A', 'B', 'C', 'D', 'E'].map((k, i) => `<span><i style="background:${Chart.PILLAR_COLORS[i]}"></i>${k}. ${esc(S.fw.pillars[k].name)} — ${c.pillars[k].available} pts</span>`).join('')}
+      </div>
+    </div>
+
+    <div class="grid g2" style="margin-bottom:16px">
+      <div class="card">
+        <header><h3>Stage 1 — hard gates</h3>
+          <span class="sub">a gate failure overrides any score (§5)</span></header>
+        <div class="table-wrap"><table class="tight"><tbody>
+          ${d.gates.map(g => `<tr>
+            <td style="width:1%"><span class="gate ${g.status}"><span class="mark">${
+              g.status === 'pass' ? '✓' : g.status === 'fail' ? '✕' : '?'}</span>${g.code}</span></td>
+            <td style="width:1%;white-space:nowrap">${esc(g.name)}</td>
+            <td style="font-size:12.5px">${esc(g.detail)}</td>
+          </tr>`).join('')}
+        </tbody></table></div>
+      </div>
+      <div class="card">
+        <header><h3>What the framework has not seen</h3>
+          <span class="sub">${r.unmeasuredWeight}% of the score rests on convention</span></header>
+        <div class="findings">${r.openItems.map(o => `
+          <div class="finding open"><span class="mk">?</span>
+            <span class="txt"><code>${o.code}</code>${esc(o.text)}</span></div>`).join('')}</div>
+        <p class="note">These are not pipeline gaps to be closed — Pillars D and E are
+        analyst inputs by design. They are listed so the reader knows exactly how much
+        of the verdict above is evidence and how much is the policy's
+        score-3-and-flag convention.</p>
+      </div>
+    </div>
+
+    ${r.movers.length ? `<div class="card" style="margin-bottom:16px">
+      <header><h3>What would move the score</h3>
+        <span class="sub">measured parameters scoring below 5, by points left on the table</span></header>
+      <div class="table-wrap"><table class="tight"><thead><tr>
+        <th>Parameter</th><th class="num">Score</th><th class="num">Points available</th>
+        <th>What a 5 looks like</th></tr></thead>
+        <tbody>${r.movers.map(m => `<tr>
+          <td><code style="font-family:var(--mono);font-size:11.5px;color:var(--text-muted)">${m.code}</code> ${esc(m.param)}</td>
+          <td class="num">${m.score} / 5</td><td class="num">+${n1(m.upside, 1)}</td>
+          <td style="font-size:12.5px;color:var(--text-secondary)">${esc(m.band5)}</td>
+        </tr>`).join('')}</tbody></table></div>
+      ${r.nextBand ? `<p class="note">${n1(r.nextBand.needed, 1)} points would take it to
+        ${esc(r.nextBand.label)}.</p>` : ''}
+    </div>` : ''}
+
+    ${r.triggers.length ? `<div class="card" style="margin-bottom:16px">
+      <header><h3>Event triggers firing</h3><span class="sub">§11.2 — these act between cycles and override scores</span></header>
+      ${r.triggers.map(t => `<div class="callout ${t.severity === 'exit' ? 'exit' : t.severity === 'watch' ? 'hold' : 'satellite'}" style="margin-bottom:8px">
+        <strong>${t.code} · ${esc(t.trigger)}</strong>${esc(t.detail)}</div>`).join('')}
+    </div>` : ''}
+
+    ${d.portfolio ? `<div class="card" style="margin-bottom:16px">
+      <header><h3>What it actually holds</h3>
+        <span class="sub">${d.portfolio.holdingCount} equity names · ${pct(d.portfolio.equityPct)} equity ·
+        ${pct(d.portfolio.cashPct)} cash · top-10 ${pct(d.portfolio.top10)}</span></header>
+      <div class="grid g3">
+        <div><h4 style="margin-bottom:8px">Top 12 holdings</h4><div id="lens-top"></div></div>
+        <div><h4 style="margin-bottom:8px">Sector allocation</h4><div id="lens-sec"></div></div>
+        <div><h4 style="margin-bottom:8px">Market-cap split</h4><div id="lens-cap"></div>
+          <h4 style="margin:14px 0 8px">Overlap with top peers</h4><div id="lens-ov"></div>
+        </div>
+      </div>
+      <p class="note">This book is not decoration — it scores four of the five Pillar C
+      parameters (C1 mandate fidelity, C2 concentration, C3 liquidity, C4 active share)
+      and it is what gate G7 tests. Overlap answers the substitution question before an
+      allocation is made: two funds are only diversifying if their books differ.</p>
+    </div>` : ''}
+
+    <div class="card" style="margin-bottom:16px">
+      <header><h3>Every parameter, in full</h3>
+        <span class="sub">ranked by weight earned · ${esc(f.category)} weights</span></header>
+      ${d.parameters.slice().sort((a, b) => b.effectiveWeight - a.effectiveWeight)
+        .map(p => paramRow(p)).join('')}
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <header><h3>Against the category</h3>
+        <span class="sub">${d.peers.length} gate-passing ${esc(f.category)} funds · click any point</span></header>
+      <div id="lens-scatter"></div>
+      <p class="note">Down and to the right is the wrong corner: high downside capture
+      with a weak rolling return. Dashed lines are the benchmark.</p>
+    </div>
+
+    <div class="card">
+      <header><h3>Add to a model portfolio</h3></header>
+      <div style="display:flex;gap:9px;align-items:flex-end;flex-wrap:wrap">
+        <div class="field"><label for="lens-w">Weight (% of equity)</label>
+          <input id="lens-w" type="number" min="0" max="100" step="0.5"
+                 value="${inPortfolio ? S.portfolio[f.key] : 10}" style="min-width:110px"></div>
+        <button class="icon-btn" id="lens-add">${inPortfolio ? 'Update weight' : 'Add to portfolio'}</button>
+        ${inPortfolio ? '<button class="icon-btn" id="lens-rm">Remove</button>' : ''}
+      </div>
+      <p class="note">Tested against the §10 IPS guardrails on the Portfolio tab.</p>
+    </div>`;
+
+  // Percentile position bars.
+  const posHost = $('#lens-pos');
+  posHost.innerHTML = r.standing.positions.map(p => `
+    <div class="posrow">
+      <div class="lab">${esc(p.metric)}</div>
+      <div class="scale"><div class="med" style="left:50%"></div>
+        <div class="marker" style="left:calc(${Math.max(0, Math.min(100, p.pctile ?? 50))}% - 1.5px)"></div></div>
+      <div class="val">${n1(p.value, 2)}${p.unit}</div>
+      <div class="band">${esc(p.band || 'peer set too thin')}</div>
+    </div>`).join('');
+
+  Chart.bars($('#lens-pillars'), ['A', 'B', 'C', 'D', 'E'].map((k, i) => {
+    const pc = d.pillarComparison[k];
+    return { label: `${k}. ${pc.name} (${pc.weight}%)`, value: pc.fund ?? 0,
+             median: pc.categoryMedian, best: pc.best, slot: i };
+  }), {
+    suffix: '%', max: 100, decimals: 0,
+    colorFor: r2 => Chart.PILLAR_COLORS[r2.slot],
+    tipFor: r2 => `<strong>${esc(r2.label)}</strong>
+      <div class="tt-row"><span>This fund</span><span>${n1(r2.value, 0)}%</span></div>
+      <div class="tt-row"><span>Category median</span><span>${n1(r2.median, 0)}%</span></div>
+      <div class="tt-row"><span>Category best</span><span>${n1(r2.best, 0)}%</span></div>`,
+  });
+
+  Chart.pillarBar($('#lens-bar'), c.pillars);
+
+  if (d.portfolio) {
+    const book = await api('/holdings/' + encodeURIComponent(f.key));
+    const equity = book.holdings.filter(x => !['current assets', 'cash', 'treps', 'net receivables']
+      .includes((x.sector || '').toLowerCase()));
+    Chart.bars($('#lens-top'), equity.slice(0, 12).map(x => ({
+      label: x.security, value: x.pct, sector: x.sector, mc: x.marketCap,
+    })), {
+      suffix: '%', decimals: 2,
+      tipFor: x => `<strong>${esc(x.label)}</strong>
+        <div class="tt-row"><span>Weight</span><span>${n1(x.value, 2)}%</span></div>
+        <div class="tt-row"><span>Sector</span><span>${esc(x.sector || '—')}</span></div>
+        <div class="tt-row"><span>Market cap</span><span>${esc(x.mc || '—')}</span></div>`,
+    });
+    Chart.bars($('#lens-sec'), d.portfolio.sectors.slice(0, 10).map(s => ({
+      label: s.name, value: s.pct,
+    })), { suffix: '%', decimals: 1 });
+    const cs = d.portfolio.capSplit || {};
+    Chart.bars($('#lens-cap'), ['Large Cap', 'Mid Cap', 'Small Cap']
+      .filter(k => cs[k] !== undefined).map(k => ({ label: k, value: cs[k] })),
+      { suffix: '%', decimals: 1, max: 100 });
+    Chart.bars($('#lens-ov'), (d.holdingsOverlap || []).map(o => ({
+      label: o.name, value: o.overlapPct, key: o.key, common: o.commonHoldings, score: o.score,
+    })), {
+      suffix: '%', decimals: 0, max: 100,
+      colorFor: o => o.value > 50 ? 'var(--critical)' : 'var(--series-1)',
+      tipFor: o => `<strong>${esc(o.label)}</strong>
+        <div class="tt-row"><span>Overlap</span><span>${n1(o.value, 1)}%</span></div>
+        <div class="tt-row"><span>Shared names</span><span>${o.common}</span></div>
+        <div class="tt-row"><span>Their score</span><span>${n1(o.score, 1)}</span></div>
+        ${o.value > 50 ? '<div style="color:var(--critical);margin-top:4px">Above 50% — holding both is one position twice</div>' : ''}`,
+      onClick: o => loadLensFromClick(o.key),
+    });
+  }
+
+  Chart.scatter($('#lens-scatter'), d.peers.map(p => ({
+    x: p.downsideCapture3Y, y: p.medianRolling3Y, label: p.name,
+    highlight: p.isSelf, key: p.key,
+    extra: `<div class="tt-row"><span>Score</span><span>${n1(p.score, 1)}</span></div>
+            <div class="tt-row"><span>TER</span><span>${pct(p.ter, 2)}</span></div>`,
+  })), {
+    xLabel: 'Downside capture (%)', yLabel: 'Median rolling 3Y CAGR (%)',
+    yRef: d.benchmark?.medianRolling3Y ?? null, xRef: 100, refLabel: 'Benchmark TRI',
+    onClick: p => { if (p.key && !p.highlight) loadLensFromClick(p.key); },
+  });
+
+  $('#lens-add').onclick = () => {
+    const w = parseFloat($('#lens-w').value);
+    if (w > 0) { S.portfolio[f.key] = w; savePortfolio(); show('portfolio'); }
+  };
+  const rm = $('#lens-rm');
+  if (rm) rm.onclick = () => { delete S.portfolio[f.key]; savePortfolio(); loadLens(f.key); };
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function loadLensFromClick(key) {
+  const f = S.funds.funds.find(x => x.key === key);
+  if (f) $('#lens-q').value = f.name;
+  loadLens(key);
+}
+
+/* ---------------------------------------------------------------- approach */
+
+async function renderApproach() {
+  if (S.rendered.approach) return;
+  const host = $('#view-approach');
+  const a = S.fw.approach;
+
+  host.innerHTML = `
+    <div class="card" style="margin-bottom:16px">
+      <h2 style="font-size:22px;letter-spacing:-0.015em">How we evaluate a mutual fund</h2>
+      <p style="font-size:15px;color:var(--text-secondary);max-width:76ch;margin-top:8px;line-height:1.65">
+        This is the reasoning behind the machinery. Every position below is enforced
+        somewhere in the system rather than merely stated — the note under each
+        section says where. ${esc(S.fw.policy.title)}, ${esc(S.fw.policy.version)},
+        ${esc(S.fw.policy.date)}.</p>
+    </div>
+
+    <div class="approach-layout">
+      <nav class="approach-nav">
+        <h4 style="padding:0 10px 6px">Contents</h4>
+        ${a.map((s, i) => `<a href="#ap-${s.id}">${i + 1}. ${esc(s.title)}</a>`).join('')}
+      </nav>
+      <div class="stack">
+        ${a.map((s, i) => `
+          <article class="card" id="ap-${s.id}">
+            <div class="essay">
+              <h4>${String(i + 1).padStart(2, '0')}</h4>
+              <h2>${esc(s.title)}</h2>
+              <div class="lede">${esc(s.lede)}</div>
+              ${s.body.map(p => `<p>${esc(p)}</p>`).join('')}
+              <div class="enforced"><b>Enforced by —</b> ${esc(s.enforced)}</div>
+            </div>
+          </article>`).join('')}
+
+        <article class="card">
+          <div class="essay">
+            <h2>What this does not do</h2>
+            <div class="lede">The boundaries matter as much as the method.</div>
+            <p>It does not decide asset allocation. Which categories a client should
+            hold, and in what proportion, belongs to their Investment Policy Statement,
+            which always prevails at the point of recommendation. This framework only
+            answers which fund within a category.</p>
+            <p>It does not validate a theme. For Sectoral and Thematic funds it ranks
+            funds within a theme; the sector call is a top-down decision taken before
+            this scorecard is opened. NFO waves cluster near sector peaks — launch
+            activity is treated as a contrarian signal, not a menu.</p>
+            <p>It does not forecast. A composite score is a statement about a fund's
+            quality relative to its peers on the evidence available today, not a
+            prediction of next year's return. Where the framework is confident it says
+            so with a band; where it is not, it says that too.</p>
+            <div class="enforced"><b>Enforced by —</b> category-relative scoring
+            throughout, and the IPS layer being a separate set of guardrails rather
+            than part of the score.</div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="essay">
+            <h2>Conventions</h2>
+            <div class="lede">The measurement rules, so two analysts get the same number.</div>
+            <ul style="font-size:14px;line-height:1.75;color:var(--text-primary);padding-left:20px;margin:0">
+              ${S.fw.conventions.map(c => `<li style="margin-bottom:5px">${esc(c)}</li>`).join('')}
+            </ul>
+          </div>
+        </article>
+      </div>
+    </div>`;
+
+  $$('#view-approach .approach-nav a').forEach(link => {
+    link.onclick = (e) => {
+      e.preventDefault();
+      document.getElementById(link.getAttribute('href').slice(1))
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+  });
+  S.rendered.approach = true;
 }
 
 /* --------------------------------------------------------------- whitelist */

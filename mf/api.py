@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, request
 
 from . import datastore as ds
 from . import framework as fw
+from . import narrative
 
 bp = Blueprint("mf", __name__, url_prefix="/api/mf")
 
@@ -49,6 +50,7 @@ def framework():
     return jsonify({
         "policy": fw.POLICY_META,
         "principles": fw.PRINCIPLES,
+        "approach": fw.APPROACH,
         "categories": fw.CATEGORY_DEFINITIONS,
         "categoryOrder": fw.POLICY_CATEGORIES,
         "gates": fw.GATES,
@@ -169,8 +171,10 @@ def fund(key):
              if r["category"] == record["category"] and r["gatesPassed"]]
     peers.sort(key=lambda r: -r["composite"]["final"])
 
+    bench = state["benchmarks"].get(record.get("benchmark"))
     return jsonify({
         "fund": ds._slim(record),
+        "remark": narrative.build_remark(record, peers, bench),
         "raw": {k: v for k, v in record.items()
                 if k not in ("gates", "scores", "composite", "classification",
                              "triggers", "portfolio")},
@@ -186,13 +190,57 @@ def fund(key):
                    "score": p["composite"]["final"],
                    "classification": p["classification"]["label"],
                    "downsideCapture3Y": p.get("downsideCapture3Y"),
+                   "upsideCapture3Y": p.get("upsideCapture3Y"),
                    "medianRolling3Y": p.get("medianRolling3Y"),
+                   "sortino3Y": p.get("sortino3Y"),
+                   "maxDrawdown3Y": p.get("maxDrawdown3Y"),
                    "stdDev3Y": p.get("stdDev3Y"), "ter": p.get("ter"),
                    "aumCr": p.get("aumCr"),
                    "isSelf": p["key"] == record["key"]}
                   for p in peers],
-        "benchmark": state["benchmarks"].get(record.get("benchmark")),
+        "benchmark": bench,
+        "pillarComparison": _pillar_comparison(record, peers),
+        "holdingsOverlap": _peer_overlap(state, record, peers),
     })
+
+
+def _pillar_comparison(record, peers):
+    """This fund's pillar scores against the category's median pillar scores."""
+    out = {}
+    for key in fw.PILLARS:
+        mine = record["composite"]["pillars"][key]["pct"]
+        vals = sorted(p["composite"]["pillars"][key]["pct"] for p in peers
+                      if p["composite"]["pillars"][key]["pct"] is not None)
+        out[key] = {
+            "name": fw.PILLARS[key]["name"],
+            "weight": fw.PILLAR_WEIGHTS[record["category"]][key],
+            "fund": mine,
+            "categoryMedian": vals[len(vals) // 2] if vals else None,
+            "best": vals[-1] if vals else None,
+        }
+    return out
+
+
+def _peer_overlap(state, record, peers, top=6):
+    """Overlap against the highest-scoring peers — the substitution question.
+
+    Two funds a client could hold together are only diversifying if their books
+    differ; this answers that before the allocation is made rather than after.
+    """
+    if not state["holdings"].get(record["key"]):
+        return None
+    rows = []
+    for peer in peers[:top + 1]:
+        if peer["key"] == record["key"] or not state["holdings"].get(peer["key"]):
+            continue
+        result = ds.overlap(record["key"], peer["key"], state)
+        if result:
+            rows.append({"key": peer["key"], "name": peer["name"],
+                         "score": peer["composite"]["final"],
+                         "overlapPct": result["overlapPct"],
+                         "commonHoldings": result["commonHoldings"]})
+    rows.sort(key=lambda r: -r["overlapPct"])
+    return rows[:top]
 
 
 @bp.route("/whitelist")
