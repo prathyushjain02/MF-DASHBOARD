@@ -1,0 +1,4 @@
+# Only needed to rebuild data/ from the source workbook and PDF.
+# The Flask app itself reads the built JSON and needs none of these.
+openpyxl>=3.1
+pdfplumber>=0.11

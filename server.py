@@ -1,11 +1,21 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
-import yfinance as yf
 from datetime import datetime, timedelta
+import os
 import traceback
 
-app = Flask(__name__)
+try:
+    import yfinance as yf
+except ImportError:  # the MF dashboard has no yfinance dependency
+    yf = None
+
+from mf.api import bp as mf_bp
+
+STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+
+app = Flask(__name__, static_folder=None)
 CORS(app)
+app.register_blueprint(mf_bp)
 
 def get_yf_symbol(symbol):
     """Try multiple suffix formats to find the right Yahoo Finance ticker"""
@@ -18,7 +28,19 @@ def get_yf_symbol(symbol):
 
 @app.route('/')
 def home():
-    return jsonify({"status": "ok", "message": "NSE Portfolio Backend (yfinance)"})
+    """Serve the Equity MF selection dashboard."""
+    return send_from_directory(STATIC_DIR, 'index.html')
+
+
+@app.route('/health')
+def health():
+    return jsonify({"status": "ok", "message": "NSE Portfolio Backend (yfinance + MF framework)"})
+
+
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory(STATIC_DIR, filename)
+
 
 @app.route('/api/marketStatus')
 def market_status():
