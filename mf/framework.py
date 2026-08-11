@@ -297,7 +297,7 @@ BLOCKS = [
         ],
     },
     {
-        "code": "aum", "tier": "amc",
+        "code": "aum",
         "name": "AUM (category adjusted)",
         "weight": 5,
         "why": "Size is read against the mandate. Small cap rewards nimble AUM and flags "
@@ -575,20 +575,14 @@ GLOSSARY = {
 # The selection process, as shown to clients
 # ---------------------------------------------------------------------------
 #
-# Two views of the same process, both taken from the Avendus deck.
-#
-#   SELECTION_NODES  the six factor diamond: three basic requirements and three
-#                    performance drivers.
-#   PROCESS_TIERS    the three tier screen (AMC, investment team, quantitative
-#                    factors) across equity, debt and international.
-#
-# Each node names what the model can measure and what stays an analyst's call.
-# `stat` keys are resolved against live universe figures at request time, so the
-# page reports what the current build actually knows rather than a fixed claim.
+# SELECTION_NODES is the six factor view from the deck: three basic requirements
+# and three performance drivers. Each node says what the factor covers and what
+# it means; `stat` keys are resolved against live universe figures at request
+# time, so the page reports the current build rather than a fixed claim.
 
 SELECTION_NODES = [
     {
-        "n": 1, "group": "basic", "code": "performance", "tier": "quant",
+        "n": 1, "group": "basic", "code": "performance",
         "name": "Past performance and risk analytics",
         "points": ["Long term consistent performance",
                    "Drawdowns and volatility in line with or lower than the market"],
@@ -600,7 +594,7 @@ SELECTION_NODES = [
         "stat": "performance",
     },
     {
-        "n": 2, "group": "basic", "code": "aum", "tier": "amc",
+        "n": 2, "group": "basic", "code": "aum",
         "name": "Assets under management",
         "points": ["Alpha reduces non-linearly as AUM rises"],
         "blocks": ["aum"],
@@ -611,7 +605,7 @@ SELECTION_NODES = [
         "stat": "aum",
     },
     {
-        "n": 3, "group": "basic", "code": "quant", "tier": "quant",
+        "n": 3, "group": "basic", "code": "quant",
         "name": "Detailed quant factors",
         "points": ["Historical track record",
                    "Volatility and drawdowns",
@@ -626,7 +620,7 @@ SELECTION_NODES = [
         "stat": "quant",
     },
     {
-        "n": 4, "group": "driver", "code": "fmType", "tier": "team",
+        "n": 4, "group": "driver", "code": "fmType",
         "name": "Type of fund manager",
         "points": ["Number of people in the investment team",
                    "Dependence on third party brokers against in-house analysis"],
@@ -638,7 +632,7 @@ SELECTION_NODES = [
         "stat": "fmType",
     },
     {
-        "n": 5, "group": "driver", "code": "attitude", "tier": "team",
+        "n": 5, "group": "driver", "code": "attitude",
         "name": "Attitude of investment team",
         "points": ["Hunger", "Age", "Ability to learn from mistakes",
                    "Personal investment in equities"],
@@ -650,7 +644,7 @@ SELECTION_NODES = [
         "stat": "attitude",
     },
     {
-        "n": 6, "group": "driver", "code": "stability", "tier": "team",
+        "n": 6, "group": "driver", "code": "stability",
         "name": "Stability of investment team",
         "points": ["Number of exits", "Years of working together",
                    "Incentive structure"],
@@ -663,15 +657,6 @@ SELECTION_NODES = [
     },
 ]
 
-# The one line the merged view exists to make.
-PROCESS_INSIGHT = (
-    "The three tiers and the six factors are the same framework at two "
-    "resolutions. Every factor sits in one tier, and they do not fall evenly: "
-    "the basic requirements come out of the AMC and quantitative tiers, while "
-    "all three performance drivers sit with the investment team. The numbers "
-    "tell you whether a fund qualifies. The team tells you whether it repeats."
-)
-
 SELECTION_GROUPS = {
     "basic": {"label": "Basic requirement", "range": "1 to 3",
               "note": "What a fund has to clear before the discussion starts."},
@@ -679,46 +664,12 @@ SELECTION_GROUPS = {
                "note": "What explains whether the record repeats."},
 }
 
-# The three tier screen, and the six factors sitting inside it. The two views in
-# the deck are the same framework at different resolutions: every one of the six
-# factors belongs to exactly one tier, and the split between them is not
-# arbitrary. Factors 1 to 3, the basic requirements, come out of the AMC and
-# quantitative tiers. Factors 4 to 6, the performance drivers, are all three in
-# the investment team tier.
-#
-# That is the observation worth putting in front of a reader: the numbers tell
-# you whether a fund qualifies, and the team tells you whether it repeats.
-PROCESS_TIERS = [
-    {
-        "code": "amc", "name": "AMCs", "order": 1,
-        "points": ["AUM and flows", "Parent group support",
-                   "Ability to come out of difficult situations"],
-        "means": "The house behind the fund. Flows tell you whether the AMC is "
-                 "gathering or bleeding assets, and how it behaved through a bad "
-                 "cycle tells you what it will do in the next one.",
-    },
-    {
-        "code": "team", "name": "Investment team", "order": 2,
-        "points": ["Stability of team: number of exits",
-                   "Number of people in the investment team",
-                   "Years the team has worked together"],
-        "means": "Depth and continuity. A record produced by people who have since "
-                 "left is a record of a fund that no longer exists in the same form.",
-    },
-    {
-        "code": "quant", "name": "Quantitative factors", "order": 3,
-        "points": ["Portfolio strategy, attributes",
-                   "Long term consistent performance, peer group comparison",
-                   "Volatility, drawdowns",
-                   "Risk adjusted returns: Sharpe ratio, Information ratio, "
-                   "excess returns",
-                   "Tracking error, expense ratios",
-                   "Portfolio turnover ratio"],
-        "means": "Everything the numbers can settle. Read against the fund's own "
-                 "category throughout, because a peer comparison only means something "
-                 "when the peers are doing the same job.",
-    },
-]
+SELECTION_GROUPS = {
+    "basic": {"label": "Basic requirement", "range": "1 to 3",
+              "note": "What a fund has to clear before the discussion starts."},
+    "driver": {"label": "Performance drivers", "range": "4 to 6",
+               "note": "What explains whether the record repeats."},
+}
 
 CATEGORY_ADJUSTMENTS = [
     {"name": "Vintage is weighted, not gated",

@@ -481,72 +481,40 @@ th.sortable.on .arrow { opacity: 1; }
 .tile .tile-lead .muted { font-size: 10.5px; }
 
 /* ==================================================== selection process ==== */
-/* The three tier screen and the six factors are one diagram: each tier is a
-   rung, and the factors that belong to it sit on that rung. The grouping is
-   carried by the left edge and a legend, never by colour alone. */
+.diamond { display: grid; grid-template-columns: 1fr auto 1fr; gap: 26px;
+  align-items: start; margin: 6px 0 8px; }
+.diamond-side h3 { font-size: 15px; font-weight: 500; display: inline;
+  color: var(--red); }
+.diamond-side .grp-range { font-size: 12px; color: var(--text-muted); margin-left: 5px; }
+.diamond-side > p { margin: 4px 0 12px; font-size: 12.5px; }
+.diamond-side.right { text-align: right; }
+.grp-list { display: flex; flex-direction: column; gap: 7px; }
 
-.insight { font-size: 15px; line-height: 1.55; color: var(--text-primary);
-  max-width: 92ch; margin: 0 0 16px; padding-left: 15px;
-  border-left: 3px solid var(--red); }
-
-.legend-groups { display: flex; flex-wrap: wrap; gap: 8px 26px; margin-bottom: 20px;
-  font-size: 12px; color: var(--text-muted); }
-.lg { display: inline-flex; align-items: baseline; gap: 7px; }
-.lg i { width: 10px; height: 10px; flex: none; transform: translateY(1px); }
-.lg.basic i { background: var(--seq-450); }
-.lg.driver i { background: var(--serious); }
-.lg em { font-style: normal; font-family: var(--mono); font-size: 11px; }
-
-.ladder { display: flex; flex-direction: column; }
-.rung { display: grid; grid-template-columns: 210px 24px 1fr; gap: 14px;
-  align-items: stretch; padding: 12px 0; border-bottom: 1px dashed var(--border); }
-.rung:last-child { border-bottom: 0; }
-
-.rung-label { position: relative; font: inherit; cursor: pointer; text-align: center;
-  background: #dfe3e8; border: 0; border-left: 3px solid var(--slate);
-  padding: 18px 30px 18px 14px; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 4px; }
-.rung-label:hover, .rung-label:focus-visible { background: #d3dae2; outline: none;
-  border-left-color: var(--red); }
-.rung-name { font-family: var(--title); font-weight: 500; font-size: 14px;
-  color: var(--text-primary); }
-.rung-count { font-size: 11px; color: var(--text-muted); font-family: var(--mono); }
-.rung-go { position: absolute; right: 11px; top: 50%; transform: translateY(-50%);
-  color: var(--text-muted); font-size: 15px; }
-.rung-arrow { color: var(--slate); font-size: 24px; align-self: center;
-  text-align: center; line-height: 1; }
-
-/* auto-fill rather than auto-fit: the AMC tier holds one factor, and auto-fit
-   would collapse the empty tracks and stretch that single card across the whole
-   row, breaking the alignment with the tiers below it. */
-.factorset { display: grid; gap: 8px;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); align-content: center; }
-.factor { display: grid; grid-template-columns: 26px 1fr auto; gap: 11px;
-  align-items: start; text-align: left; font: inherit; cursor: pointer;
-  padding: 12px 13px; background: var(--surface-2); border: 1px solid var(--border);
-  border-left: 3px solid var(--seq-450); }
-.factor.driver { border-left-color: var(--serious); }
-.factor:hover, .factor:focus-visible { background: var(--wash);
+.nodeline { display: flex; gap: 11px; align-items: center; text-align: left;
+  font: inherit; cursor: pointer; padding: 12px 13px; width: 100%;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-left: 3px solid var(--seq-450); transition: background 0.12s; }
+.nodeline:hover, .nodeline:focus-visible { background: var(--wash);
   border-left-color: var(--red); outline: none; }
-.factor-n { font-family: var(--mono); font-size: 15px; font-weight: 600;
-  color: var(--red); line-height: 1.3; }
-.factor-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.factor-name { font-family: var(--title); font-weight: 500; font-size: 13.5px;
-  color: var(--text-primary); }
-.factor-teaser { font-size: 12px; color: var(--text-muted); }
-.factor-stat { text-align: right; flex: none; display: flex; flex-direction: column;
-  align-items: flex-end; gap: 2px; width: 96px; }
-.factor-stat b { font-family: var(--mono); font-size: 20px; font-weight: 600;
-  color: var(--seq-550); line-height: 1; }
-.factor-stat em { font-style: normal; font-size: 9.5px; color: var(--text-muted);
-  line-height: 1.3; }
+.diamond-side.right .nodeline { flex-direction: row-reverse; text-align: right;
+  border-left: 1px solid var(--border); border-right: 3px solid var(--serious); }
+.diamond-side.right .nodeline:hover, .diamond-side.right .nodeline:focus-visible {
+  border-right-color: var(--red); }
+.nodeline-n { font-family: var(--mono); font-size: 13px; font-weight: 600;
+  color: var(--red); flex: none; }
+.nodeline-name { font-size: 13.5px; font-family: var(--title); font-weight: 500;
+  color: var(--text-primary); flex: 1; }
+.nodeline-go { color: var(--text-muted); font-size: 15px; flex: none; }
+.diamond-side.right .nodeline-go { transform: rotate(180deg); }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .rung-label { background: #2c333b; }
-  :root:not([data-theme="light"]) .rung-label:hover { background: #363f49; }
-}
-:root[data-theme="dark"] .rung-label { background: #2c333b; }
-:root[data-theme="dark"] .rung-label:hover { background: #363f49; }
+.diamond-mid { width: 300px; }
+.diamond-svg { max-width: 300px; }
+.dnode { cursor: pointer; }
+.dnode:focus { outline: none; }
+.dnode:focus circle, .dnode:hover circle { stroke: var(--red); stroke-width: 3; }
+.dnode-n { font-family: var(--title); font-size: 15px; font-weight: 600; fill: #fff; }
+.diamond-centre { font-family: var(--title); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.08em; fill: var(--text-secondary); }
 
 /* --------------------------------------------------------------- modal */
 .modal-backdrop { position: fixed; inset: 0; z-index: 200;
@@ -582,10 +550,12 @@ body.modal-open { overflow: hidden; }
 .np-live .np-v { white-space: normal; word-break: break-word; }
 
 @media (max-width: 980px) {
-  .rung { grid-template-columns: 1fr; gap: 8px; }
-  .rung-arrow { display: none; }
-  .rung-label { padding: 12px 30px 12px 14px; }
-  .factorset { grid-template-columns: 1fr; }
+  .diamond { grid-template-columns: 1fr; }
+  .diamond-mid { width: 100%; margin: 0 auto; max-width: 300px; }
+  .diamond-side.right { text-align: left; }
+  .diamond-side.right .nodeline { flex-direction: row;
+    border-left: 3px solid var(--serious); border-right: 1px solid var(--border); }
+  .diamond-side.right .nodeline-go { transform: none; }
   .np-grid { grid-template-columns: 1fr; }
   .modal { padding: 18px 16px 20px; }
 }

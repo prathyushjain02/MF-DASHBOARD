@@ -40,8 +40,6 @@ def framework():
         "contextMetrics": fw.CONTEXT_METRICS,
         "selectionNodes": fw.SELECTION_NODES,
         "selectionGroups": fw.SELECTION_GROUPS,
-        "processTiers": fw.PROCESS_TIERS,
-        "processInsight": fw.PROCESS_INSIGHT,
         "categoryAdjustments": fw.CATEGORY_ADJUSTMENTS,
         "howToUse": fw.HOW_TO_USE,
         "glossary": fw.GLOSSARY,
