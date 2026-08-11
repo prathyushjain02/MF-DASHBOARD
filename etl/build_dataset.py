@@ -50,25 +50,43 @@ DEFAULT_BENCHMARK = "Nifty 500 TRI"
 # column matching
 # --------------------------------------------------------------------------- #
 #
-# The sheet carries a TWO ROW header. Sheety turns row 1 into the JSON key and
-# hands row 2 back as the first data row, which is where the horizon lives:
+# The feed publishes flat, single-row headers in a regular shape:
 #
-#     key   'sharpeRatio'                 first row  '3Y'   ->  sharpe3Y
-#     key   'medianRollingReturns (%)'    first row  '1Y'   ->  medianRolling1Y
+#     sharpe [3Y]              ->  sharpe3Y
+#     sharpe [3Y]Decile        ->  sharpe3YDecile
+#     medianRolling (2017Cutoff) [5Y]  ->  medianRolling2017Cutoff5Y
+#     aum (current)            ->  aumCr
 #
-# Reading the horizon rather than assuming it matters: this feed publishes a 1Y
-# median rolling return where the previous one published 3Y, and hardcoding the
-# suffix would have silently relabelled a one year number as a three year one.
+# So the parser is generic rather than a list of names: pull the trailing
+# "Decile", pull the "[horizon]", normalise what is left, and look the stem up.
+# A new horizon appearing upstream is picked up without a code change, and
+# anything whose stem is unknown is reported instead of silently dropped.
 
-GROUP_BASE = {
-    "pointtopointreturns": "return",
-    "calendaryearreturns": "return",
-    "medianrollingreturns": "medianRolling",
-    "medianrollingreturns2017cutoff": "medianRolling@2017",
-    "sharperatio": "sharpe",
-    "treynorratio": "treynor",
+STEMS = {
+    "fundname": "fundName",
+    "amficode": "amfiCode",
+    "category": "category",
+    "benchmark": "benchmark",
+
+    "aumcurrentdate": "aumDate",
+    "aumcurrent": "aumCr",
+    "aum1ydate": "aum1YAgoDate",
+    "aum1yago": "aum1YAgoCr",
+    "netflow": "netFlowCr",
+
+    "p2p": "return",                    # 1MP2P -> return1M
+    "cytd": "returnCYTD",
+    "averagecy": "averageCy",
+    "cybeatcountvsbenchmark": "cyBeatCount",
+    "cybeatvsbenchmark": "cyBeatPct",
+
+    "medianrolling": "medianRolling",
+    "medianrolling2017cutoff": "medianRolling2017",
+
+    "sharpe": "sharpe",
+    "treynor": "treynor",
     "informationratio": "informationRatio",
-    "sortinoratio": "sortino",
+    "sortino": "sortino",
     "stddevann": "stdDev",
     "semistddevann": "semiStdDev",
     "maxdrawdown": "maxDrawdown",
@@ -76,53 +94,71 @@ GROUP_BASE = {
     "downsidecapture": "downsideCapture",
     "captureratio": "captureRatio",
     "beta": "beta",
+
+    "largecap": "largeCapPct",
+    "midcap": "midCapPct",
+    "smallcap": "smallCapPct",
+    "cashandothers": "cashPct",
 }
 
-# Columns whose sub-header names the field outright rather than a horizon.
-SUB_FIELDS = {
-    "asofdate": "asOfDate",
-    "cashothers": "cashAndOthers",
-    "large": "largeCapPct",
-    "mid": "midCapPct",
-    "small": "smallCapPct",
-}
-
-IDENTITY_FIELDS = {"fundname": "fundName", "amficode": "amfiCode",
-                   "category": "category", "benchmark": "benchmark"}
+# Calendar-year columns (cy24, cy23 ...) are kept as a block rather than as
+# individual fields, so a year rolling off does not need a code change.
+_CY = re.compile(r"^cy(\d{2})$")
+# '3YP2P' and '3YP2PDecile': the horizon leads rather than trailing.
+_LEADING_HORIZON = re.compile(r"^(\d+[MY])(.+)$")
 
 TEXT_FIELDS = {"fundName", "category", "benchmark", "fundManager", "amc",
-               "navDate", "asOfDate", "inceptionDate"}
+               "aumDate", "aum1YAgoDate", "navDate", "cyBeatCount", "inceptionDate"}
 
 
 def squash(s):
     return re.sub(r"[^a-z0-9]+", "", str(s or "").lower())
 
 
-def build_header_map(header_row, sub_row):
-    """Map the API's columns onto field names, reading the horizon off row 2."""
+def parse_column(col):
+    """(field, is_decile) for one API column, or (None, _) if unrecognised."""
+    raw = str(col or "").strip()
+    if not raw or raw == "id":
+        return None, False
+
+    is_decile = raw.endswith("Decile")
+    if is_decile:
+        raw = raw[: -len("Decile")]
+
+    horizon = ""
+    m = re.search(r"\[([^\]]+)\]\s*$", raw)
+    if m:
+        horizon = m.group(1).strip().upper().replace(" ", "")
+        raw = raw[: m.start()].strip()
+
+    key = squash(raw)
+
+    cy = _CY.match(key)
+    if cy:
+        field = f"returnCY{cy.group(1)}"
+        return (field + "Decile") if is_decile else field, is_decile
+
+    if not horizon:
+        lead = _LEADING_HORIZON.match(raw)
+        if lead:
+            horizon, key = lead.group(1).upper(), squash(lead.group(2))
+
+    stem = STEMS.get(key)
+    if stem is None:
+        return None, is_decile
+    field = stem + horizon if horizon else stem
+    return (field + "Decile") if is_decile else field, is_decile
+
+
+def build_header_map(header_row):
     mapping, unmapped = {}, []
     for col in header_row:
-        if col == "id":
-            continue
-        g = squash(col)
-        sub = squash(sub_row.get(col))
-        field = IDENTITY_FIELDS.get(g)
-        if field is None and sub in SUB_FIELDS and (g in ("", "aumflowscr",
-                                                          "marketcapallocation")):
-            field = SUB_FIELDS[sub]
-        if field is None and g in GROUP_BASE:
-            base = GROUP_BASE[g]
-            horizon = (sub_row.get(col) or "").strip().upper().replace(" ", "")
-            if not horizon:
-                unmapped.append(col)
-                continue
-            field = (base.replace("@", horizon + "@") if "@" in base
-                     else base + horizon)
-            field = field.replace("@", "")
+        field, _ = parse_column(col)
         if field is None:
-            unmapped.append(col)
+            if str(col).strip() not in ("", "id"):
+                unmapped.append(col)
         elif field in mapping.values():
-            unmapped.append(col)  # a second column claiming a taken field
+            unmapped.append(col)
         else:
             mapping[col] = field
     return mapping, unmapped
@@ -227,22 +263,14 @@ def fetch_pack(cache_path=None):
 
 
 def parse_pack(rows):
-    """Turn API rows into fund records, splitting benchmarks out as we go.
-
-    Row 0 of the payload is the second header row, not a fund, so it is consumed
-    as the horizon map and then dropped.
-    """
-    if len(rows) < 2:
+    """Turn API rows into fund records."""
+    if not rows:
         return {}, {}, []
-    mapping, unmapped = build_header_map(rows[0].keys(), rows[0])
+    mapping, unmapped = build_header_map(rows[0].keys())
     print(f"  mapped {len(mapping)} columns; {len(unmapped)} unmapped")
-    horizons = {v: rows[0].get(k) for k, v in mapping.items()}
-    for f in ("medianRolling1Y", "medianRolling3Y", "sharpe3Y", "sharpe5Y"):
-        if f in horizons:
-            print(f"    {f} <- horizon {horizons[f]!r}")
 
     funds, benchmarks = {}, {}
-    for r in rows[1:]:
+    for r in rows:
         rec = {}
         for col, field in mapping.items():
             v = r.get(col)
@@ -273,6 +301,12 @@ def parse_pack(rows):
         rec["category"] = (CATEGORY_MAP.get(category.strip().lower())
                            if vehicle == "MF" else None)
         rec["benchmark"] = rec.get("benchmark") or DEFAULT_BENCHMARK
+
+        # Net flow as a share of the opening book says more than the rupee figure.
+        prev, flow = rec.get("aum1YAgoCr"), rec.get("netFlowCr1Y")
+        if prev and flow is not None and prev > 0:
+            rec["netFlow1YPct"] = round(100.0 * flow / prev, 1)
+
         funds[rec["key"]] = rec
 
     return funds, benchmarks, unmapped
@@ -398,11 +432,18 @@ def parse_workbook(path, funds):
             m = rolling_metrics(series, bench_for.get(key) or broad)
             if not m:
                 continue
-            fund.update(m)
+            # The feed is authoritative for anything it publishes: its rolling
+            # medians and ratios span each fund's whole life, while the monthly
+            # sheet only reaches back to 2018. These values fill the gaps and
+            # supply the one thing the feed does not carry at all, the hit rate.
+            for k, v in m.items():
+                if fund.get(k) is None:
+                    fund[k] = v
             # A live record measured in months beats a bucket inferred from which
             # return horizons happen to be populated.
-            fund["vintageYears"] = round(len(series) / 12.0, 1)
-            fund["vintageBasis"] = f"{len(series)} months of return history"
+            if fund.get("vintageYears") is None:
+                fund["vintageYears"] = round(len(series) / 12.0, 1)
+                fund["vintageBasis"] = f"{len(series)} months of return history"
             enriched += 1
         print(f"  rolling statistics computed for {enriched} funds")
 

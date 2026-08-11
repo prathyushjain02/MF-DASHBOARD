@@ -41,8 +41,8 @@ def framework():
         "process": fw.PROCESS,
         "categoryAdjustments": fw.CATEGORY_ADJUSTMENTS,
         "howToUse": fw.HOW_TO_USE,
-        "limits": fw.LIMITS,
-        "nextUp": fw.NEXT_UP,
+        "glossary": fw.GLOSSARY,
+        "notScoredWhy": fw.NOT_SCORED_WHY,
     })
 
 

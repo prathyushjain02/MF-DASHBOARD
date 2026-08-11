@@ -79,7 +79,8 @@ _ROW_FIELDS = (
     "stdDev3Y", "semiStdDev3Y", "beta3Y", "ter",
     "decile3Y", "decile5Y", "vintageYears", "managerYears", "managerCycles",
     "effectiveStocks", "top10", "holdingCount", "mandateFit", "differentiation",
-    "categoryOverlap", "capMix", "hasHoldings", "loosePeerGroup",
+    "categoryOverlap", "capMix", "hasHoldings", "loosePeerGroup", "cashPct",
+    "netFlow1YPct", "cyBeatPct",
     "managerExperienceYears", "vintageBasis", "rollingHitRate3Y",
 )
 
@@ -106,8 +107,13 @@ def detail(fund, state=None):
     rec["loosePeerGroup"] = fw.loose_peer_group(fund.get("category"))
     rec["aumCurve"] = fw.aum_curve(fund.get("category"))
     rec["context"] = [
-        {**m, "value": fund.get(m["field"])} for m in fw.CONTEXT_METRICS
+        {**m, "value": fund.get(m["field"]),
+         "notScoredWhy": fw.NOT_SCORED_WHY.get(m["field"])}
+        for m in fw.CONTEXT_METRICS
     ]
+    # Cash sits outside the equity book by design, so it is reported next to the
+    # holdings rather than folded into them.
+    rec["cashPct"] = fund.get("cashPct")
     rec["peers"] = category_comparison(fund, state)
     rec["closest"] = closest_books(fund, state, limit=5)
     rec["holdings"] = top_holdings(fund, limit=15)

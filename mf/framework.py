@@ -168,54 +168,86 @@ BLOCKS = [
         "code": "return",
         "name": "Return and consistency",
         "weight": 27,
-        "why": "Median rolling return over 3 and 5 years, plus the share of rolling "
-               "three year windows that actually beat the benchmark. We read the "
-               "distribution, not a single point to point number that can hang on one "
-               "lucky endpoint, and the hit rate separates a fund that wins often from "
-               "one that won once by a lot.",
+        "why": "Every median rolling return the feed carries, 1 through 10 years, plus "
+               "the share of rolling three year windows that actually beat the "
+               "benchmark. We read the whole distribution rather than one point to "
+               "point number that can hang on a lucky start or end date, and the hit "
+               "rate separates a fund that wins often from one that won once by a lot. "
+               "Longer windows carry more weight than shorter ones.",
         "metrics": [
-            {"field": "medianRolling3Y", "label": "Median rolling 3Y", "weight": 40,
+            {"field": "medianRolling1Y", "label": "Median rolling 1Y", "weight": 8,
              "direction": "high", "unit": "%"},
-            {"field": "medianRolling5Y", "label": "Median rolling 5Y", "weight": 30,
+            {"field": "medianRolling3Y", "label": "Median rolling 3Y", "weight": 20,
+             "direction": "high", "unit": "%"},
+            {"field": "medianRolling5Y", "label": "Median rolling 5Y", "weight": 20,
+             "direction": "high", "unit": "%"},
+            {"field": "medianRolling7Y", "label": "Median rolling 7Y", "weight": 15,
+             "direction": "high", "unit": "%"},
+            {"field": "medianRolling10Y", "label": "Median rolling 10Y", "weight": 15,
              "direction": "high", "unit": "%"},
             {"field": "rollingHitRate3Y", "label": "Rolling 3Y windows beating benchmark",
-             "weight": 30, "direction": "high", "unit": "%"},
+             "weight": 22, "direction": "high", "unit": "%"},
         ],
     },
     {
         "code": "riskAdj",
         "name": "Risk adjusted",
         "weight": 24,
-        "why": "Sharpe, Sortino and Information Ratio over 3 and 5 years. Information "
-               "Ratio carries the most weight, since it is return earned per unit of "
-               "active risk taken away from the benchmark.",
+        "why": "Sharpe, Sortino and Information Ratio at every horizon published. "
+               "Information Ratio carries the most weight, since it is return earned "
+               "per unit of active risk taken away from the benchmark, which is the "
+               "thing an active fee is charged for.",
         "metrics": [
-            {"field": "informationRatio3Y", "label": "Information Ratio 3Y", "weight": 24,
+            {"field": "informationRatio3Y", "label": "Information Ratio 3Y", "weight": 13,
              "direction": "high"},
-            {"field": "informationRatio5Y", "label": "Information Ratio 5Y", "weight": 20,
+            {"field": "informationRatio5Y", "label": "Information Ratio 5Y", "weight": 11,
              "direction": "high"},
-            {"field": "sortino3Y", "label": "Sortino 3Y", "weight": 16,
+            {"field": "informationRatio7Y", "label": "Information Ratio 7Y", "weight": 6,
              "direction": "high"},
-            {"field": "sortino5Y", "label": "Sortino 5Y", "weight": 14,
+            {"field": "informationRatio10Y", "label": "Information Ratio 10Y", "weight": 6,
              "direction": "high"},
-            {"field": "sharpe3Y", "label": "Sharpe 3Y", "weight": 14,
-             "direction": "high"},
-            {"field": "sharpe5Y", "label": "Sharpe 5Y", "weight": 12,
-             "direction": "high"},
+            {"field": "sortino3Y", "label": "Sortino 3Y", "weight": 12, "direction": "high"},
+            {"field": "sortino5Y", "label": "Sortino 5Y", "weight": 10, "direction": "high"},
+            {"field": "sortino7Y", "label": "Sortino 7Y", "weight": 5, "direction": "high"},
+            {"field": "sortino10Y", "label": "Sortino 10Y", "weight": 5, "direction": "high"},
+            {"field": "sharpe3Y", "label": "Sharpe 3Y", "weight": 12, "direction": "high"},
+            {"field": "sharpe5Y", "label": "Sharpe 5Y", "weight": 10, "direction": "high"},
+            {"field": "sharpe7Y", "label": "Sharpe 7Y", "weight": 5, "direction": "high"},
+            {"field": "sharpe10Y", "label": "Sharpe 10Y", "weight": 5, "direction": "high"},
         ],
     },
     {
         "code": "capture",
         "name": "Capture and drawdown",
         "weight": 18,
-        "why": "Upside capture, downside capture and maximum drawdown. Rewards funds "
-               "that fall less than the market and recover better.",
+        "why": "Upside capture, downside capture and maximum drawdown at every horizon "
+               "published. Rewards funds that fall less than the market and recover "
+               "better. Downside carries more weight than upside, because a loss needs "
+               "a larger gain to undo it.",
         "metrics": [
-            {"field": "downsideCapture3Y", "label": "Downside capture", "weight": 40,
+            {"field": "downsideCapture3Y", "label": "Downside capture 3Y", "weight": 16,
              "direction": "low", "unit": "%"},
-            {"field": "upsideCapture3Y", "label": "Upside capture", "weight": 30,
+            {"field": "downsideCapture5Y", "label": "Downside capture 5Y", "weight": 12,
+             "direction": "low", "unit": "%"},
+            {"field": "downsideCapture7Y", "label": "Downside capture 7Y", "weight": 6,
+             "direction": "low", "unit": "%"},
+            {"field": "downsideCapture10Y", "label": "Downside capture 10Y", "weight": 6,
+             "direction": "low", "unit": "%"},
+            {"field": "upsideCapture3Y", "label": "Upside capture 3Y", "weight": 12,
              "direction": "high", "unit": "%"},
-            {"field": "maxDrawdown3Y", "label": "Maximum drawdown", "weight": 30,
+            {"field": "upsideCapture5Y", "label": "Upside capture 5Y", "weight": 9,
+             "direction": "high", "unit": "%"},
+            {"field": "upsideCapture7Y", "label": "Upside capture 7Y", "weight": 5,
+             "direction": "high", "unit": "%"},
+            {"field": "upsideCapture10Y", "label": "Upside capture 10Y", "weight": 4,
+             "direction": "high", "unit": "%"},
+            {"field": "maxDrawdown3Y", "label": "Maximum drawdown 3Y", "weight": 12,
+             "direction": "high", "unit": "%"},
+            {"field": "maxDrawdown5Y", "label": "Maximum drawdown 5Y", "weight": 9,
+             "direction": "high", "unit": "%"},
+            {"field": "maxDrawdown7Y", "label": "Maximum drawdown 7Y", "weight": 5,
+             "direction": "high", "unit": "%"},
+            {"field": "maxDrawdown10Y", "label": "Maximum drawdown 10Y", "weight": 4,
              "direction": "high", "unit": "%"},
         ],
     },
@@ -384,34 +416,156 @@ MEANINGFUL_GAP = 3.0
 # ---------------------------------------------------------------------------
 
 CONTEXT_METRICS = [
-    {"field": "medianRolling1Y", "label": "Median rolling 1Y", "unit": "%",
-     "why": "Shown, not scored. The shortest window and the noisiest, and the return "
-            "block already reads the 3 and 5 year distributions computed from the "
-            "monthly series."},
-    {"field": "rollingWindows3Y", "label": "Rolling 3Y windows measured", "unit": "",
-     "why": "How many independent three year windows the rolling figures rest on. "
-            "Shown so a rolling median from a short history is not read as one from a "
-            "long one."},
-    {"field": "return1Y", "label": "Point to point 1Y", "unit": "%",
-     "why": "Shown for context. A single point to point figure can hang on one lucky "
-            "start or end date, so the return block scores the rolling median instead."},
-    {"field": "return3Y", "label": "CAGR 3Y", "unit": "%", "why": "Context."},
-    {"field": "return5Y", "label": "CAGR 5Y", "unit": "%", "why": "Context."},
-    {"field": "stdDev3Y", "label": "Standard deviation", "unit": "%",
-     "why": "Shown, not scored. Moves almost in lockstep with Sortino and downside "
-            "capture, so scoring it would weight volatility several times over."},
-    {"field": "semiStdDev3Y", "label": "Semi standard deviation", "unit": "%",
-     "why": "Shown, not scored, for the same reason as standard deviation."},
-    {"field": "treynor3Y", "label": "Treynor", "unit": "",
-     "why": "Shown, not scored. Highly correlated with Sharpe once beta is stable."},
-    {"field": "beta3Y", "label": "Beta", "unit": "", "why": "Context."},
-    {"field": "ter", "label": "Expense ratio (direct)", "unit": "%",
-     "why": "Context. Direct plan TER, already net of the return series shown."},
-    {"field": "decile3Y", "label": "Category decile 3Y", "unit": "",
-     "why": "Derived within category from the 3Y CAGR. Context for the block scores."},
-    {"field": "decile5Y", "label": "Category decile 5Y", "unit": "",
-     "why": "Derived within category from the 5Y CAGR."},
+    {"field": "return1Y", "label": "CAGR 1Y", "unit": "%", "group": "cagr"},
+    {"field": "return2Y", "label": "CAGR 2Y", "unit": "%", "group": "cagr"},
+    {"field": "return3Y", "label": "CAGR 3Y", "unit": "%", "group": "cagr"},
+    {"field": "return5Y", "label": "CAGR 5Y", "unit": "%", "group": "cagr"},
+    {"field": "return7Y", "label": "CAGR 7Y", "unit": "%", "group": "cagr"},
+    {"field": "returnCYTD", "label": "Calendar year to date", "unit": "%", "group": "cagr"},
+    {"field": "cyBeatPct", "label": "Calendar years beating benchmark", "unit": "%",
+     "group": "cagr"},
+
+    {"field": "stdDev3Y", "label": "Standard deviation 3Y", "unit": "%", "group": "risk"},
+    {"field": "semiStdDev3Y", "label": "Semi standard deviation 3Y", "unit": "%",
+     "group": "risk"},
+    {"field": "beta3Y", "label": "Beta 3Y", "unit": "", "group": "risk"},
+    {"field": "treynor3Y", "label": "Treynor 3Y", "unit": "", "group": "risk"},
+
+    {"field": "aumCr", "label": "AUM", "unit": " cr", "group": "fund"},
+    {"field": "netFlow1YPct", "label": "Net flow over 1Y", "unit": "%", "group": "fund"},
+    {"field": "ter", "label": "Expense ratio (direct)", "unit": "%", "group": "fund"},
+    {"field": "vintageYears", "label": "Live track record", "unit": " yrs", "group": "fund"},
 ]
+
+# Why the three shown-but-not-scored risk fields are not scored. Kept separate
+# from the glossary because this is a modelling choice, not a definition.
+NOT_SCORED_WHY = {
+    "stdDev3Y": "Shown, not scored. Moves almost in lockstep with Sortino and downside "
+                "capture, so scoring it would weight volatility several times over.",
+    "semiStdDev3Y": "Shown, not scored, for the same reason as standard deviation.",
+    "treynor3Y": "Shown, not scored. Highly correlated with Sharpe once beta is stable.",
+    "beta3Y": "Context. Feeds Treynor, and reads as market sensitivity rather than skill.",
+}
+
+# ---------------------------------------------------------------------------
+# Glossary
+# ---------------------------------------------------------------------------
+#
+# Every technical term the dashboard prints has an entry here, and the UI attaches
+# it on hover. A number nobody can read is not disclosure.
+
+GLOSSARY = {
+    "median rolling return":
+        "Take every possible window of the stated length across the fund's life, work "
+        "out the annualised return of each, and report the middle one. It answers "
+        "'what did a typical holding period actually deliver', instead of the single "
+        "answer you get from one start date to one end date.",
+    "rolling 3y windows beating benchmark":
+        "Of all the three year windows in the fund's life, the share where it finished "
+        "ahead of its benchmark. A fund can carry a strong median while losing most "
+        "windows, if one great stretch pulls the average up. This separates the two.",
+    "cagr":
+        "Compound annual growth rate: the single yearly rate that would have taken you "
+        "from the start value to the end value. It depends entirely on the two dates "
+        "chosen, which is why it is shown here for context rather than scored.",
+    "calendar year to date":
+        "Return from 1 January of the current year to the data date.",
+    "calendar years beating benchmark":
+        "The share of completed calendar years in which the fund finished ahead of its "
+        "benchmark.",
+    "sharpe":
+        "Return above the risk free rate, divided by total volatility. Higher is "
+        "better: it is how much return the fund earned for each unit of bumpiness. It "
+        "treats upward and downward moves as equally bad, which is its main weakness.",
+    "sortino":
+        "Like Sharpe, but it only counts downward volatility. Usually the fairer "
+        "measure, because investors do not mind the fund going up sharply.",
+    "information ratio":
+        "Return above the benchmark, divided by how much the fund's path wanders away "
+        "from the benchmark. It is return per unit of active risk, which is precisely "
+        "what an active management fee is charged for. This is why it carries the most "
+        "weight inside the risk adjusted block.",
+    "treynor":
+        "Return above the risk free rate per unit of market sensitivity (beta), rather "
+        "than per unit of total volatility.",
+    "beta":
+        "How much the fund tends to move when the market moves. Beta of 1 means it "
+        "moves with the market, below 1 means it is steadier, above 1 means it swings "
+        "harder. It measures sensitivity, not skill.",
+    "standard deviation":
+        "How much the fund's returns bounce around their own average. Higher means a "
+        "rougher ride, in both directions.",
+    "semi standard deviation":
+        "The same idea as standard deviation but counting only returns below the "
+        "average, so it measures the rough part of the ride rather than all of it.",
+    "upside capture":
+        "In the months the benchmark rose, how much of that rise the fund captured. "
+        "110 means it gained 10 percent more than the benchmark in up months.",
+    "downside capture":
+        "In the months the benchmark fell, how much of that fall the fund took. 85 "
+        "means it lost 15 percent less than the benchmark in down months, so lower is "
+        "better. Below zero means the fund actually rose while the benchmark fell.",
+    "capture ratio":
+        "Upside capture divided by downside capture. Above 100 means the fund captures "
+        "more of the rises than it does of the falls.",
+    "maximum drawdown":
+        "The worst peak to trough fall over the period. This is the loss an investor "
+        "would have had to sit through, and it is the number to size a position "
+        "against rather than the average year.",
+    "effective number of stocks":
+        "How many holdings the fund effectively has once position sizes are accounted "
+        "for. A book of 60 names where the top 10 are half the portfolio behaves like "
+        "far fewer than 60, and this number says how many.",
+    "top 10 weight":
+        "Share of the equity book held in its ten largest positions. Higher means more "
+        "conviction and more single stock risk.",
+    "mandate fit":
+        "Whether the disclosed book meets the SEBI minimums for its category. 100 means "
+        "full compliance, anything less is the size of the shortfall.",
+    "differentiation":
+        "How little the fund's book overlaps the average portfolio of its category. "
+        "High means you are buying something the category does not already give you.",
+    "cash and others":
+        "The share of the fund not invested in equities: cash, treasury bills, TREPS "
+        "and receivables. Concentration and overlap here are computed on the invested "
+        "book, so this sits outside them.",
+    "aum":
+        "Assets under management, the size of the fund in crore.",
+    "net flow over 1y":
+        "Money in minus money out over the last year, as a share of where the fund "
+        "started. Large positive flows into a small or mid cap fund are a capacity "
+        "question, not just a popularity one.",
+    "expense ratio":
+        "The annual fee, already deducted from every return figure shown here.",
+    "live track record":
+        "How long the fund has actually been running. Where a named manager has run it "
+        "since before the return series begins, that appointment date is used, because "
+        "a manager cannot have run a fund before it existed.",
+    "tenure on this scheme":
+        "How long the longest serving current manager has run this particular fund. Not "
+        "years in the industry.",
+    "market cycles run":
+        "How many peak to trough falls of at least 12 percent in the broad market the "
+        "manager has run this fund through. The falls are found in the index's own "
+        "monthly history rather than taken from a list.",
+    "decile":
+        "Where the fund sits in its category on that measure, 1 being the best tenth "
+        "and 10 the worst.",
+    "composite":
+        "The weighted total of the seven block scores, out of 100. It orders a "
+        "shortlist. It does not select, and a gap of less than three points is not a "
+        "real difference.",
+    "coverage":
+        "How much of a block could actually be measured for this fund. Missing inputs "
+        "are never filled with a middle value; the block simply reweights over what is "
+        "there and reports it here.",
+    "evidence":
+        "The share of the model's total weight that could be scored for this fund. "
+        "Below 55 percent no composite is published at all.",
+    "percentile":
+        "Rank within the fund's own category on that measure, 0 to 100, where 100 is "
+        "the best in the category.",
+}
 
 # ---------------------------------------------------------------------------
 # Methodology copy (Tab 1 of the workbook)
@@ -461,43 +615,4 @@ HOW_TO_USE = [
     "Scores order the shortlist and frame the discussion. A 71 against a 68 is not a real "
     "difference, and the model groups funds into equal-rank tiers to say so. Judgement on "
     "the manager and the process sits above the number.",
-]
-
-# What the model does not do, stated so nobody has to infer it.
-LIMITS = [
-    {"name": "It does not select",
-     "text": "The score orders a shortlist and frames a discussion. The written rationale "
-             "leads, the number follows."},
-    {"name": "It is mostly backward looking",
-     "text": "Six of the seven blocks read what already happened. The portfolio block is "
-             "the only one that reads what the fund owns now, which is the only thing "
-             "that determines what happens next."},
-    {"name": "It does not do allocation",
-     "text": "How much equity a portfolio should hold, and in which categories, sits "
-             "outside this model."},
-    {"name": "It does not validate a theme",
-     "text": "Sectoral and thematic funds are scored against each other on execution. "
-             "Whether the theme is worth owning is a separate question."},
-    {"name": "It does not cover debt or hybrid",
-     "text": "Equity ratios do not carry over. Net yield after cost, credit look through "
-             "and duration adherence are the spine of that model, and it is not this one."},
-]
-
-NEXT_UP = [
-    {"name": "Active share",
-     "text": "Needs the benchmark constituents and weights. Today differentiation is "
-             "proxied by overlap against the category book, which is directionally right "
-             "and free from what we already have. Benchmark holdings would upgrade it to "
-             "true active share."},
-    {"name": "Name retention",
-     "text": "Needs a holdings file from about a year earlier. The metric is wired and "
-             "carries zero weight until that file exists, so it cannot silently move a "
-             "score."},
-    {"name": "A manager claims check",
-     "text": "Capture two or three structured claims from each manager meeting (cash "
-             "policy, number of names, style) and test them against the holdings every "
-             "month. The write up then reports where the pitch and the portfolio "
-             "disagree, which is the one genuinely forward looking signal in the system."},
-    {"name": "Debt and hybrid",
-     "text": "A separate model, on a separate spine."},
 ]

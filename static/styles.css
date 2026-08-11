@@ -378,3 +378,20 @@ button.primary { font: inherit; font-size: 13.5px; font-weight: 600; padding: 7p
 .caveat { border-left: 3px solid var(--warning); background: var(--surface-2);
   border-radius: 8px; padding: 10px 13px; font-size: 13px; color: var(--text-secondary);
   margin: 8px 0 12px; }
+
+/* -------------------------------------------------------- glossary terms */
+.term { border-bottom: 1px dotted var(--axis); cursor: help; }
+.term:focus { outline: 2px solid var(--series-1); outline-offset: 2px; border-radius: 2px; }
+
+/* ------------------------------------------------------ grouped numbers */
+.numgrid { display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); align-items: start; }
+.numgroup h5 { margin: 0 0 6px; font-size: 12.5px; font-weight: 600;
+  display: flex; flex-direction: column; gap: 1px; }
+.numgroup h5 span { font-weight: 400; }
+.numgroup .kv td { padding: 5px 10px; }
+.numgroup .pctile { width: 42px; }
+
+.holdfoot { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px;
+  color: var(--text-muted); margin: 2px 0 6px; }
+.holdfoot b { font-family: var(--mono); color: var(--text-primary); font-weight: 600; }

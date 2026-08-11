@@ -28,9 +28,9 @@ point at the repo, free plan is enough. `/health` is the health check path.
 
 | Block | Weight | What it uses |
 |---|---|---|
-| Return and consistency | 27% | Median rolling return 3Y and 5Y, plus the share of rolling 3Y windows that actually beat the benchmark. |
-| Risk adjusted | 24% | Sharpe, Sortino and Information Ratio, 3Y and 5Y. IR carries the most weight inside the block. |
-| Capture and drawdown | 18% | Upside capture, downside capture, maximum drawdown. |
+| Return and consistency | 27% | Every median rolling return the feed carries, 1 through 10 years, plus the share of rolling 3Y windows that actually beat the benchmark. Longer windows weigh more. |
+| Risk adjusted | 24% | Sharpe, Sortino and Information Ratio at 3Y, 5Y, 7Y and 10Y. IR carries the most weight inside the block. |
+| Capture and drawdown | 18% | Upside capture, downside capture and maximum drawdown at 3Y, 5Y, 7Y and 10Y. Downside weighs more than upside. |
 | Portfolio | 12% | Effective number of stocks, cap mix fit to mandate, differentiation vs the category book. |
 | Manager | 8% | Tenure on this scheme and market cycles run. From the fund manager master. |
 | Track record length | 6% | Longer live history scores higher. A weight, not a gate. |
@@ -50,6 +50,11 @@ Cap tops Flexicap here on merit, where a 5-year vintage gate would have discarde
 marks down size as a capacity risk; Midcap, Focused, Sectoral and Dividend Yield
 prefer a middle band; Largecap, Flexicap, Multicap, Large & Midcap, Value and ELSS
 reward scale with a floor for viability.
+
+**Every technical term carries its meaning on hover.** The glossary lives in
+`mf/framework.py` and the dashboard attaches it to any label that matches, walking
+from the specific form ("Sortino 5Y") down to the bare term. A number nobody can
+read is not disclosure.
 
 ### Scales
 
@@ -79,7 +84,7 @@ weight that was evidenced. The median fund now evidences 100%: every block score
 *Not rated*, keeps its block scores and all its data, and is excluded from ranking.
 Without this floor a fund with no return history at all tops its category on
 portfolio shape and size alone, because renormalising over two minor blocks
-produces a number that looks exactly like a real one. 177 of 559 schemes are Not
+produces a number that looks exactly like a real one. 61 of 559 schemes are Not
 rated on the current feed, almost all of them for having no quantitative history.
 
 ## Where a category is not a peer group
@@ -101,9 +106,23 @@ trivially have no overlap.
 | All funds | Every scheme, filterable, with a full detail card per fund. |
 | Portfolio | Look-through of a weighted set: combined book, sector exposure, pairwise overlap. |
 
-The **Client / Analyst toggle** is a presentation switch. In client view the
-composite and block scores are removed from the DOM, not dimmed, so a screenshot
-cannot leak them. The data and the rationale stay visible in both.
+The **Client / Analyst toggle** decides what the page is for, not just how much of
+it shows.
+
+| | Client | Analyst |
+|---|---|---|
+| Why we like it, What to watch | yes | yes |
+| Who runs it | yes | yes |
+| The numbers, grouped by block | yes | yes, plus each metric's category percentile |
+| What it holds, with cash | yes | yes |
+| Composite, band, rank, tier | no | yes |
+| Block scores, weights, coverage, evidence | no | yes |
+| Where the remaining points are | no | yes |
+| Engine flags: New Manager, Mandate shortfall, Capacity watch | no | yes |
+| Peer-group caveat, methodology and band tables | no | yes |
+
+Anything score-bearing is removed from the DOM in client view rather than dimmed,
+so a screenshot of client view cannot leak it.
 
 ## Architecture
 
