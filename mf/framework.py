@@ -297,7 +297,7 @@ BLOCKS = [
         ],
     },
     {
-        "code": "aum",
+        "code": "aum", "tier": "amc",
         "name": "AUM (category adjusted)",
         "weight": 5,
         "why": "Size is read against the mandate. Small cap rewards nimble AUM and flags "
@@ -588,7 +588,7 @@ GLOSSARY = {
 
 SELECTION_NODES = [
     {
-        "n": 1, "group": "basic", "code": "performance",
+        "n": 1, "group": "basic", "code": "performance", "tier": "quant",
         "name": "Past performance and risk analytics",
         "points": ["Long term consistent performance",
                    "Drawdowns and volatility in line with or lower than the market"],
@@ -600,7 +600,7 @@ SELECTION_NODES = [
         "stat": "performance",
     },
     {
-        "n": 2, "group": "basic", "code": "aum",
+        "n": 2, "group": "basic", "code": "aum", "tier": "amc",
         "name": "Assets under management",
         "points": ["Alpha reduces non-linearly as AUM rises"],
         "blocks": ["aum"],
@@ -611,7 +611,7 @@ SELECTION_NODES = [
         "stat": "aum",
     },
     {
-        "n": 3, "group": "basic", "code": "quant",
+        "n": 3, "group": "basic", "code": "quant", "tier": "quant",
         "name": "Detailed quant factors",
         "points": ["Historical track record",
                    "Volatility and drawdowns",
@@ -626,7 +626,7 @@ SELECTION_NODES = [
         "stat": "quant",
     },
     {
-        "n": 4, "group": "driver", "code": "fmType",
+        "n": 4, "group": "driver", "code": "fmType", "tier": "team",
         "name": "Type of fund manager",
         "points": ["Number of people in the investment team",
                    "Dependence on third party brokers against in-house analysis"],
@@ -638,7 +638,7 @@ SELECTION_NODES = [
         "stat": "fmType",
     },
     {
-        "n": 5, "group": "driver", "code": "attitude",
+        "n": 5, "group": "driver", "code": "attitude", "tier": "team",
         "name": "Attitude of investment team",
         "points": ["Hunger", "Age", "Ability to learn from mistakes",
                    "Personal investment in equities"],
@@ -650,7 +650,7 @@ SELECTION_NODES = [
         "stat": "attitude",
     },
     {
-        "n": 6, "group": "driver", "code": "stability",
+        "n": 6, "group": "driver", "code": "stability", "tier": "team",
         "name": "Stability of investment team",
         "points": ["Number of exits", "Years of working together",
                    "Incentive structure"],
@@ -663,6 +663,15 @@ SELECTION_NODES = [
     },
 ]
 
+# The one line the merged view exists to make.
+PROCESS_INSIGHT = (
+    "The three tiers and the six factors are the same framework at two "
+    "resolutions. Every factor sits in one tier, and they do not fall evenly: "
+    "the basic requirements come out of the AMC and quantitative tiers, while "
+    "all three performance drivers sit with the investment team. The numbers "
+    "tell you whether a fund qualifies. The team tells you whether it repeats."
+)
+
 SELECTION_GROUPS = {
     "basic": {"label": "Basic requirement", "range": "1 to 3",
               "note": "What a fund has to clear before the discussion starts."},
@@ -670,10 +679,18 @@ SELECTION_GROUPS = {
                "note": "What explains whether the record repeats."},
 }
 
-# The three tier screen. One framework, not one per asset class.
+# The three tier screen, and the six factors sitting inside it. The two views in
+# the deck are the same framework at different resolutions: every one of the six
+# factors belongs to exactly one tier, and the split between them is not
+# arbitrary. Factors 1 to 3, the basic requirements, come out of the AMC and
+# quantitative tiers. Factors 4 to 6, the performance drivers, are all three in
+# the investment team tier.
+#
+# That is the observation worth putting in front of a reader: the numbers tell
+# you whether a fund qualifies, and the team tells you whether it repeats.
 PROCESS_TIERS = [
     {
-        "code": "amc", "name": "AMCs",
+        "code": "amc", "name": "AMCs", "order": 1,
         "points": ["AUM and flows", "Parent group support",
                    "Ability to come out of difficult situations"],
         "means": "The house behind the fund. Flows tell you whether the AMC is "
@@ -681,7 +698,7 @@ PROCESS_TIERS = [
                  "cycle tells you what it will do in the next one.",
     },
     {
-        "code": "team", "name": "Investment team",
+        "code": "team", "name": "Investment team", "order": 2,
         "points": ["Stability of team: number of exits",
                    "Number of people in the investment team",
                    "Years the team has worked together"],
@@ -689,7 +706,7 @@ PROCESS_TIERS = [
                  "left is a record of a fund that no longer exists in the same form.",
     },
     {
-        "code": "quant", "name": "Quantitative factors",
+        "code": "quant", "name": "Quantitative factors", "order": 3,
         "points": ["Portfolio strategy, attributes",
                    "Long term consistent performance, peer group comparison",
                    "Volatility, drawdowns",

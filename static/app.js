@@ -124,49 +124,40 @@ async function renderApproach(host) {
   const fw = state.fw;
   if (!processStats) processStats = await get('/process');
 
-  const basic = fw.selectionNodes.filter((n) => n.group === 'basic');
-  const drivers = fw.selectionNodes.filter((n) => n.group === 'driver');
+  const tiers = [...fw.processTiers].sort((x, y) => x.order - y.order);
+  const byTier = {};
+  fw.selectionNodes.forEach((n) => (byTier[n.tier] ||= []).push(n));
+  Object.values(byTier).forEach((g) => g.sort((x, y) => x.n - y.n));
 
   host.innerHTML = `
     <section>
       <div class="section-head">
-        <h2>Fund selection process: mutual funds</h2>
-        <p class="lede">Six factors. Three a fund has to clear, three that explain
-        whether the record repeats. Click any of them.</p>
-      </div>
-
-      <div class="diamond">
-        <div class="diamond-side">
-          <h3>${esc(fw.selectionGroups.basic.label)}</h3>
-          <span class="grp-range">(${esc(fw.selectionGroups.basic.range)})</span>
-          <p class="muted">${esc(fw.selectionGroups.basic.note)}</p>
-          <div class="grp-list">${basic.map(nodeCard).join('')}</div>
-        </div>
-
-        <div class="diamond-mid" id="diamond-mid"></div>
-
-        <div class="diamond-side right">
-          <h3>${esc(fw.selectionGroups.driver.label)}</h3>
-          <span class="grp-range">(${esc(fw.selectionGroups.driver.range)})</span>
-          <p class="muted">${esc(fw.selectionGroups.driver.note)}</p>
-          <div class="grp-list">${drivers.map(nodeCard).join('')}</div>
-        </div>
-      </div>
-
-      <div class="section-head" style="margin-top:40px">
         <h2>Fund selection process</h2>
-        <p class="lede">The three tier screen every fund goes through. Click a tier
-        for what it means.</p>
+        <p class="lede">Three tiers, six factors. Click any of them.</p>
       </div>
-      <div class="tierflow">
-        ${fw.processTiers.map((t) => `
-          <button class="tier" data-tier="${esc(t.code)}">
-            <span class="tier-label">${esc(t.name)}</span>
-            <span class="tier-arrow" aria-hidden="true">&rsaquo;</span>
-            <span class="tier-points">
-              ${t.points.map((pt) => `<span>${esc(pt)}</span>`).join('')}
-            </span>
-          </button>`).join('')}
+
+      <p class="insight">${esc(fw.processInsight)}</p>
+
+      <div class="legend-groups">
+        ${Object.entries(fw.selectionGroups).map(([k, g]) => `
+          <span class="lg ${esc(k)}"><i></i>${esc(g.label)}
+            <em>(${esc(g.range)})</em> ${esc(g.note)}</span>`).join('')}
+      </div>
+
+      <div class="ladder">
+        ${tiers.map((t) => `
+          <div class="rung">
+            <button class="rung-label" data-tier="${esc(t.code)}">
+              <span class="rung-name">${esc(t.name)}</span>
+              <span class="rung-count">${(byTier[t.code] || []).length}
+                factor${(byTier[t.code] || []).length === 1 ? '' : 's'}</span>
+              <span class="rung-go" aria-hidden="true">&rsaquo;</span>
+            </button>
+            <div class="rung-arrow" aria-hidden="true">&rsaquo;</div>
+            <div class="factorset">
+              ${(byTier[t.code] || []).map(factorCard).join('')}
+            </div>
+          </div>`).join('')}
       </div>
     </section>`;
 
@@ -174,72 +165,43 @@ async function renderApproach(host) {
     el.onclick = () => openNodeModal(el.dataset.node));
   host.querySelectorAll('[data-tier]').forEach((el) =>
     el.onclick = () => openTierModal(el.dataset.tier));
-
-  drawDiamond();
   wireGlossary(host);
 }
 
-function nodeCard(n) {
-  return `
-    <button class="nodeline" data-node="${esc(n.code)}">
-      <span class="nodeline-n">${n.n}</span>
-      <span class="nodeline-name">${esc(n.name)}</span>
-      <span class="nodeline-go" aria-hidden="true">&rsaquo;</span>
-    </button>`;
+/* The card has room for a few words beside the number, not a sentence. The full
+   caption stays on the title attribute and in the modal. */
+function shortCaption(c) {
+  const map = {
+    'of three year windows beat the benchmark, for the median fund': 'median hit rate',
+    'funds sit where size starts to work against the mandate': 'funds on a size watch',
+    'median Information Ratio over three years': 'median IR, 3Y',
+    'named managers on the median scheme': 'managers, median scheme',
+    'funds where the longest serving manager is under three years in': 'funds, new manager',
+  };
+  return map[c] || c;
 }
 
-/* The diamond. Two chevron arms of three nodes meeting at a centre mark, drawn
-   as SVG so the arms scale with the panel. Position carries sequence only: this
-   is a process diagram, not a chart. */
-function drawDiamond() {
-  const fw = state.fw;
-  const host = $('#diamond-mid');
-  const w = 300, h = 320;
-  const ns = 'http://www.w3.org/2000/svg';
-  const mk = (t, a, txt) => { const e = document.createElementNS(ns, t);
-    Object.entries(a).forEach(([k, v]) => e.setAttribute(k, v));
-    if (txt != null) e.textContent = txt; return e; };
-  const svg = mk('svg', { viewBox: `0 0 ${w} ${h}`, class: 'chart diamond-svg' });
-
-  const cx = w / 2, cy = h / 2;
-  const pos = {
-    1: [cx - 74, cy - 96], 2: [cx - 116, cy], 3: [cx - 74, cy + 96],
-    4: [cx + 74, cy - 96], 5: [cx + 116, cy], 6: [cx + 74, cy + 96],
-  };
-
-  [[1, 2, 3], [4, 5, 6]].forEach((arm) => {
-    const d = arm.map((n, i) => `${i ? 'L' : 'M'}${pos[n][0]},${pos[n][1]}`).join(' ');
-    svg.appendChild(mk('path', { d, fill: 'none', stroke: 'var(--grid)',
-                                 'stroke-width': 16, 'stroke-linecap': 'round',
-                                 'stroke-linejoin': 'round' }));
-  });
-
-  svg.appendChild(mk('rect', { x: cx - 30, y: cy - 15, width: 60, height: 30,
-                               fill: 'var(--zebra)', stroke: 'var(--border-strong)' }));
-  svg.appendChild(mk('text', { x: cx, y: cy + 4, 'text-anchor': 'middle',
-                               class: 'diamond-centre' }, 'FUND'));
-
-  fw.selectionNodes.forEach((n) => {
-    const [x, y] = pos[n.n];
-    const g = mk('g', { class: 'dnode', tabindex: 0, role: 'button',
-                        'aria-label': n.name });
-    g.appendChild(mk('circle', {
-      cx: x, cy: y, r: 24,
-      fill: n.group === 'basic' ? 'var(--seq-450)' : 'var(--serious)',
-      stroke: 'var(--surface-2)', 'stroke-width': 2,
-    }));
-    g.appendChild(mk('text', { x, y: y + 6, 'text-anchor': 'middle',
-                               class: 'dnode-n' }, n.n));
-    Chart.hoverable(g, `<strong>${esc(n.n + '. ' + n.name)}</strong>
-      <div class="tt-note">Click to open</div>`);
-    g.onclick = () => openNodeModal(n.code);
-    g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault(); openNodeModal(n.code); } };
-    svg.appendChild(g);
-  });
-
-  host.innerHTML = '';
-  host.appendChild(svg);
+/* A factor, sized to be read at a glance: number, name, the live headline that
+   belongs to it, and the first line of what it means. The rest is behind the
+   click. */
+function factorCard(n) {
+  const stat = (processStats || {})[n.stat] || {};
+  const hasNumber = stat.headline && stat.headline !== '\u2014';
+  // First sentence, capped: one factor's opening line runs to 130 characters and
+  // made its rung twice the height of the others.
+  let teaser = String(n.means || '').split('. ')[0] + '.';
+  if (teaser.length > 92) teaser = teaser.slice(0, 89).replace(/[\s,]+$/, '') + '…';
+  return `
+    <button class="factor ${esc(n.group)}" data-node="${esc(n.code)}">
+      <span class="factor-n">${n.n}</span>
+      <span class="factor-body">
+        <span class="factor-name">${esc(n.name)}</span>
+        <span class="factor-teaser">${esc(teaser)}</span>
+      </span>
+      ${hasNumber ? `<span class="factor-stat" title="${esc(stat.caption || '')}">
+        <b>${esc(stat.headline)}</b>
+        <em>${esc(shortCaption(stat.caption))}</em></span>` : ''}
+    </button>`;
 }
 
 /* ------------------------------------------------------------------ modal */
