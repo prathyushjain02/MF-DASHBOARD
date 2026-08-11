@@ -14,8 +14,6 @@ Metric scores use one of four scales, chosen per metric in the framework:
     curve        a piecewise-linear map from the raw value to 0-100. Used for
                  AUM, where the shape differs by category and "good" is not
                  simply "more".
-    band         distance from a target band, so both ends are marked down. Used
-                 for the effective number of stocks.
     absolute     the raw value is already a meaningful 0-100. Used for mandate
                  fit, where full compliance means 100 and nothing else does.
 
@@ -165,7 +163,6 @@ def portfolio_stats(book, category):
 
     return {
         "holdingCount": len(book),
-        "effectiveStocks": round(1.0 / hhi, 1) if hhi > 0 else None,
         "top10": round(sum(b["weight"] for b in book[:10]), 1),
         "largestPosition": round(book[0]["weight"], 2),
         "capMix": {k: round(v, 1) for k, v in caps.items()},
@@ -322,9 +319,6 @@ def _metric_score(fund, m, pops):
         return raw, percentile(raw, pops.get(field, []), direction), "percentile"
     if direction == "curve":
         return raw, curve_score(raw, fw.aum_curve(fund.get("category"))["points"]), "curve"
-    if direction == "band":
-        lo, hi = fw.EFFECTIVE_N_BAND.get(fund.get("category"), (20, 50))
-        return raw, band_score(raw, lo, hi), "band"
     return raw, (None if raw is None else max(0.0, min(100.0, raw))), "absolute"
 
 

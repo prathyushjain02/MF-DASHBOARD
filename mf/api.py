@@ -31,7 +31,6 @@ def framework():
         "categories": fw.CATEGORIES,
         "mandate": fw.MANDATE,
         "aumCurves": {c: fw.aum_curve(c) for c in fw.CATEGORIES},
-        "effectiveStocksBand": fw.EFFECTIVE_N_BAND,
         "loosePeerGroups": fw.LOOSE_PEER_GROUPS,
         "bands": fw.BANDS,
         "meaningfulGap": fw.MEANINGFUL_GAP,
@@ -173,7 +172,7 @@ def holdings(key):
     return jsonify({
         "key": key, "name": f["name"], "category": f["category"],
         "stats": {k: f.get(k) for k in
-                  ("holdingCount", "effectiveStocks", "top10", "largestPosition",
+                  ("holdingCount", "top10", "largestPosition",
                    "capMix", "topSectors", "mandateFit", "differentiation",
                    "categoryOverlap")},
         "mandate": fw.MANDATE.get(f["category"], {}),

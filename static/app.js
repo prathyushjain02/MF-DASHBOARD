@@ -194,11 +194,14 @@ function drawStairs() {
       fill: FACTOR_SIDE[i], 'fill-opacity': 0.7,
     }));
 
-    /* The caption sits directly over its own tread and climbs with it, so six of
-       them stagger up the diagram instead of stacking on one line and colliding.
-       Width is held to the tread for the same reason. */
+    /* The caption climbs far more slowly than the tread beneath it, so the lower
+       a step is the further its text stands above it and the longer its leader
+       runs. Tracking the step exactly put the first caption down at the foot of
+       the diagram with a stub of a leader; this keeps the row of headings close
+       to level while still rising left to right. */
     const lx = x + depth + 10;
-    const capBottom = y - depth - 26;
+    const topY = baseY - (n - 1) * rise;          // the highest tread
+    const capBottom = (topY - depth - 22) - (n - 1 - i) * (rise * 0.18);
     g.appendChild(mk('line', { x1: lx, y1: y - depth - 4, x2: lx, y2: capBottom + 4,
                                stroke: FACTOR_INK[i], 'stroke-width': 1.5,
                                'stroke-dasharray': '3 3' }));
@@ -356,7 +359,6 @@ async function renderShortlists(host) {
             <span class="tile-open">&rsaquo;</span>
             <h3>${esc(c.category)}</h3>
             <span class="tile-count">${c.count} schemes</span>
-            <span class="tile-lead">${tileLead(c)}</span>
           </button>`).join('')}
       </div>
       <div id="catpanel" class="catpanel"></div>
@@ -444,25 +446,6 @@ function drawCategoryPanel(category) {
   wireGlossary(panel);
 }
 
-function tileLead(c) {
-  const f = c.funds[0];
-  if (!f) return '<span class="muted">Nothing rated yet</span>';
-  const house = esc(shortHouse(f));
-  const metric = f.medianRolling3Y != null
-    ? { v: f.medianRolling3Y, unit: 'rolling 3Y' }
-    : (f.return1Y != null ? { v: f.return1Y, unit: 'CAGR 1Y' } : null);
-  return `${house}${metric
-    ? ` <b>${num(metric.v, 1)}%</b><br><span class="muted">leads on ${metric.unit}</span>`
-    : '<br><span class="muted">leads on composite</span>'}`;
-}
-
-/* Inside one category every scheme name ends in the same words, so the house is
-   the part that identifies it. */
-function shortHouse(f) {
-  const house = String(f.amc || '')
-    .replace(/\s*(Mutual Fund|Asset Management|AMC|MF)\s*$/i, '').trim();
-  return house || f.name;
-}
 
 /* ------------------------------------------------------------ 3. all funds */
 
@@ -713,6 +696,7 @@ async function renderFundPage(host) {
           <span class="snapcard-title">Growth of 100 rupees</span>
           <span class="snapcard-sub" id="growth-sub">daily NAV, rebased to zero
             at the start of the window</span>
+          <button class="chart-more" data-card="done">Every period &rsaquo;</button>
         </span>
         <div class="periodbar" id="periodbar" role="group"
              aria-label="Chart period"></div>
@@ -724,18 +708,11 @@ async function renderFundPage(host) {
              '<div id="c-caps"></div>' +
              `<div class="cardfoot">
                 <span>${term('Top 10 weight')}</span><b>${num(f.top10, 0)}%</b>
-                <span>${term('Effective number of stocks')}</span>
-                  <b>${num(f.effectiveStocks, 0)}</b></div>`)}
+                <span>Largest</span><b>${num(f.largestPosition, 1)}%</b></div>`)}
 
       ${card('rolling', 'What a holding period gave',
              'median of every window of that length',
              '<div id="c-rolling"></div>')}
-
-      ${card('done', 'How it has done',
-             `against ${esc(bm.name || 'its benchmark')}${
-               bm.kind === 'index' ? ' (index)' : ''}`,
-             '<div id="c-returns"></div>' +
-             `<p class="cardnote" id="c-returns-note"></p>`)}
 
       ${card('risk', 'How it behaves in a fall', 'capture against the benchmark at 100',
              '<div id="c-capture"></div>' +
@@ -754,6 +731,18 @@ async function renderFundPage(host) {
                 <span>${term('Market cycles run')}</span>
                   <b>${num(f.managerCycles, 0)}</b>
                 ${mgrs.length > 1 ? `<span>and ${mgrs.length - 1} more</span>` : ''}</div>`)}
+
+      ${card('ratios', 'Return per unit of risk', 'three years, against category peers',
+             `<div class="ratiogrid">
+                <div><span class="k">${term('Sharpe')}</span>
+                     <span class="v">${num(f.sharpe3Y, 2)}</span></div>
+                <div><span class="k">${term('Sortino')}</span>
+                     <span class="v">${num(f.sortino3Y, 2)}</span></div>
+                <div><span class="k">${term('Information ratio')}</span>
+                     <span class="v">${num(f.informationRatio3Y, 2)}</span></div>
+                <div><span class="k">${term('Beta')}</span>
+                     <span class="v">${num(f.beta3Y, 2)}</span></div>
+              </div>`)}
 
       ${card('size', 'Size and cost', esc(f.vintageBasis || ''),
              `<div class="bigstat label-first">
@@ -776,13 +765,6 @@ async function renderFundPage(host) {
       <span>${esc(x.why)}</span></div>`).join('')}</div>` : ''}`;
 
   // --- the visuals -------------------------------------------------------
-  const periods = [['3M', 'return3M'], ['6M', 'return6M'], ['1Y', 'return1Y'],
-                   ['3Y', 'return3Y'], ['5Y', 'return5Y']];
-  Chart.barsPairedV($('#c-returns'),
-    periods.map(([lab, k]) => ({ label: lab, a: f[k], b: bm[k] })),
-    { aLabel: 'Fund', bLabel: bm.name || 'Index' });
-  $('#c-returns-note').innerHTML = leadNote(f, bm);
-
   Chart.bars($('#c-rolling'),
     [['1Y', 'medianRolling1Y'], ['3Y', 'medianRolling3Y'], ['5Y', 'medianRolling5Y'],
      ['7Y', 'medianRolling7Y'], ['10Y', 'medianRolling10Y']]
@@ -904,20 +886,6 @@ function card(code, title, sub, body) {
     </button>`;
 }
 
-/* The one sentence a reader wants under a returns chart: the longest period
-   where both the fund and the benchmark have a figure, and the gap. */
-function leadNote(f, bm) {
-  for (const [lab, k] of [['5Y', 'return5Y'], ['3Y', 'return3Y'], ['1Y', 'return1Y']]) {
-    if (f[k] != null && bm[k] != null) {
-      const d = f[k] - bm[k];
-      return `<b>${lab}</b> — fund ${num(f[k], 1)}% against ${esc(bm.name)}
-        ${num(bm[k], 1)}%. <b>${d >= 0 ? 'Ahead' : 'Behind'} by
-        ${num(Math.abs(d), 1)} points.</b>`;
-    }
-  }
-  return '';
-}
-
 /* ---------------------------------------------------- the card modals */
 
 function kvTable(rows) {
@@ -952,6 +920,35 @@ function openCardModal(code) {
             ['20' + k.slice(-2), num(f[k], 1) + '%'])) : '<p class="muted">Not published.</p>'}
           ${f.cyBeatPct != null ? `<p class="muted sm">Beat the benchmark in
             ${num(f.cyBeatPct, 0)}% of completed calendar years.</p>` : ''}</div>
+      </div>`);
+  }
+
+  if (code === 'ratios') {
+    return openModal(head('Return per unit of risk',
+      'What the return cost in risk, at every horizon the feed publishes. ' +
+      'Information Ratio carries the most weight of the three inside the model, ' +
+      'because it is return earned per unit of risk taken away from the ' +
+      'benchmark, which is the thing an active fee is charged for.') +
+      `<div class="np-grid">
+        <div class="np-col"><h5>${term('Sharpe')} and ${term('Sortino')}</h5>
+          ${kvTable([['Sharpe 3Y', num(f.sharpe3Y, 2)], ['Sharpe 5Y', num(f.sharpe5Y, 2)],
+                     ['Sharpe 7Y', num(f.sharpe7Y, 2)], ['Sharpe 10Y', num(f.sharpe10Y, 2)],
+                     ['Sortino 3Y', num(f.sortino3Y, 2)], ['Sortino 5Y', num(f.sortino5Y, 2)],
+                     ['Sortino 7Y', num(f.sortino7Y, 2)],
+                     ['Sortino 10Y', num(f.sortino10Y, 2)]])}</div>
+        <div class="np-col"><h5>${term('Information ratio')} and market sensitivity</h5>
+          ${kvTable([['Information Ratio 3Y', num(f.informationRatio3Y, 2)],
+                     ['Information Ratio 5Y', num(f.informationRatio5Y, 2)],
+                     ['Information Ratio 7Y', num(f.informationRatio7Y, 2)],
+                     ['Information Ratio 10Y', num(f.informationRatio10Y, 2)],
+                     ['Beta 3Y', num(f.beta3Y, 2)],
+                     ['Standard deviation 3Y', num(f.stdDev3Y, 2) + '%'],
+                     ['Semi standard deviation 3Y', num(f.semiStdDev3Y, 2) + '%'],
+                     ['Treynor 3Y', num(f.treynor3Y, 2)]])}
+          <p class="muted sm">Standard deviation, semi standard deviation and
+          Treynor are shown, not scored: they move almost in lockstep with
+          Sortino and downside capture, so scoring them would weight volatility
+          several times over.</p></div>
       </div>`);
   }
 
@@ -1013,7 +1010,6 @@ function openCardModal(code) {
                      ['Cash and others', num(f.cashPct, 1) + '%']])}
           <h5 style="margin-top:14px">Shape of the equity book</h5>
           ${kvTable([['Holdings', num(f.holdingCount, 0)],
-                     ['Effective number of stocks', num(f.effectiveStocks, 0)],
                      ['Top 10 weight', num(f.top10, 0) + '%'],
                      ['Largest position', num(f.largestPosition, 2) + '%'],
                      ['Cap mix fit to mandate', num(f.mandateFit, 0) + '%'],

@@ -97,13 +97,10 @@ def why_we_like_it(fund):
             out.append(f"Protects well on the way down (downside capture {n(dn, 0)}).")
 
     top10 = _f(fund.get("top10"))
-    effn = _f(fund.get("effectiveStocks"))
     if top10 is not None and top10 >= 45:
         out.append(f"High conviction portfolio, top 10 at {n(top10, 0)} percent.")
-    elif effn is not None and b.get("portfolio", {}).get("score", 0) and \
-            b["portfolio"]["score"] >= 65:
-        out.append(f"Book shaped to the mandate, effective holdings of "
-                   f"{n(effn, 0)} stocks.")
+    elif b.get("portfolio", {}).get("score", 0) and b["portfolio"]["score"] >= 65:
+        out.append("Book shaped to the mandate it is sold against.")
 
     diff = _f(fund.get("differentiation"))
     if diff is not None and diff >= 70 and not fw.loose_peer_group(fund.get("category")):

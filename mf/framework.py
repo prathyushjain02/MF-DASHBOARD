@@ -254,21 +254,6 @@ def excluded_amc(amc):
     return (amc or "").strip() in EXCLUDED_AMCS
 
 
-# Effective number of stocks: the band a faithful book for this category sits in.
-# Scored as distance from the band, so both over-diversification and
-# over-concentration are marked down. Focused is deliberately tight.
-EFFECTIVE_N_BAND = {
-    "Flexicap": (20, 45),
-    "Largecap": (20, 45),
-    "Large & Midcap": (25, 55),
-    "Multicap": (30, 60),
-    "Midcap": (25, 55),
-    "Smallcap": (30, 70),
-    "Focused": (12, 25),
-    "Value / Contra": (20, 50),
-    "Dividend Yield": (20, 45),
-}
-
 # ---------------------------------------------------------------------------
 # The seven blocks
 # ---------------------------------------------------------------------------
@@ -383,16 +368,13 @@ BLOCKS = [
         "code": "portfolio",
         "name": "Portfolio",
         "weight": 12,
-        "why": "From the holdings file: concentration (effective number of stocks), fit "
-               "to the category mandate by market cap, and differentiation measured as "
-               "overlap against the category book.",
+        "why": "From the holdings file: fit to the category mandate by market cap, and "
+               "differentiation measured as overlap against the category book.",
         "metrics": [
-            {"field": "effectiveStocks", "label": "Effective number of stocks", "weight": 34,
-             "direction": "band"},
-            {"field": "mandateFit", "label": "Cap mix fit to mandate", "weight": 33,
+            {"field": "mandateFit", "label": "Cap mix fit to mandate", "weight": 50,
              "direction": "absolute", "unit": "%"},
             {"field": "differentiation", "label": "Differentiation vs category book",
-             "weight": 33, "direction": "high", "unit": "%"},
+             "weight": 50, "direction": "high", "unit": "%"},
             {"field": "nameRetention", "label": "Name retention vs a year earlier",
              "weight": 0, "direction": "absolute", "unit": "%",
              "note": "Needs a holdings file from about a year earlier. Not in the "
@@ -649,10 +631,6 @@ GLOSSARY = {
         "The worst peak to trough fall over the period. This is the loss an investor "
         "would have had to sit through, and it is the number to size a position "
         "against rather than the average year.",
-    "effective number of stocks":
-        "How many holdings the fund effectively has once position sizes are accounted "
-        "for. A book of 60 names where the top 10 are half the portfolio behaves like "
-        "far fewer than 60, and this number says how many.",
     "top 10 weight":
         "Share of the equity book held in its ten largest positions. Higher means more "
         "conviction and more single stock risk.",
