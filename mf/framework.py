@@ -231,9 +231,9 @@ BLOCKS = [
             {"field": "rollingHitRate3Y", "label": "Rolling 3Y windows beating benchmark",
              "weight": 22, "direction": "high", "unit": "%"},
             {"field": "return6M", "label": "Recent 6M return", "weight": 6,
-             "direction": "high", "unit": "%"},
+             "direction": "high", "unit": "%", "support": True},
             {"field": "return1Y", "label": "Recent 1Y return", "weight": 10,
-             "direction": "high", "unit": "%"},
+             "direction": "high", "unit": "%", "support": True},
         ],
     },
     {
@@ -427,7 +427,12 @@ def aum_curve(category):
 # share of total block weight the fund is reported as Not rated rather than being
 # given a number: renormalising over two minor blocks would otherwise let a fund
 # with no return history at all top its category on portfolio shape and size.
-MIN_EVIDENCE = 55
+#
+# Set at 60 so a fund missing both the risk adjusted block (24) and the capture
+# block (18) cannot be rated: those two together are 42 of the 100, and a fund we
+# can measure for neither risk adjusted return nor drawdown behaviour is not a
+# fund we can rank. A young fund missing just one of them still clears the floor.
+MIN_EVIDENCE = 60
 
 BANDS = [
     {"code": "A", "label": "A", "min": 72, "tone": "good",

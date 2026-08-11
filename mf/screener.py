@@ -332,7 +332,7 @@ def _score_fund(fund, pops):
     blocks, earned, available = [], 0.0, 0.0
     for block in fw.BLOCKS:
         rows, bw_have, bw_all = [], 0.0, 0.0
-        acc = 0.0
+        acc, core_have = 0.0, 0.0
         for m in block["metrics"]:
             raw, score, scale = _metric_score(fund, m, pops)
             rows.append({"field": m["field"], "label": m["label"], "weight": m["weight"],
@@ -343,7 +343,14 @@ def _score_fund(fund, pops):
             if score is not None and m["weight"] > 0:
                 acc += score * m["weight"]
                 bw_have += m["weight"]
-        bscore = round(acc / bw_have, 1) if bw_have > 0 else None
+                if not m.get("support"):
+                    core_have += m["weight"]
+        # A support metric can tilt a block but never stand it up on its own. The
+        # recent 6M and 1Y are a haircut on a fund that has a real record, not a
+        # substitute for one, so a block with only support metrics present is
+        # treated as unscored. This stops a brand new fund from rating its whole
+        # return block off one recent number while its rolling history is absent.
+        bscore = round(acc / bw_have, 1) if (bw_have > 0 and core_have > 0) else None
         # Coverage is measured against the metrics that carry weight, so a metric
         # parked at zero weight (name retention today) cannot dilute it.
         weighted_all = sum(m["weight"] for m in block["metrics"] if m["weight"] > 0)
