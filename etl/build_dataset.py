@@ -190,6 +190,22 @@ def fund_key(name) -> str:
     return _KEY_ALIASES.get(s, s)
 
 
+def direct_ter(name, value):
+    """Expense ratio, but only from a row that is explicitly the direct plan.
+
+    Both plans of a scheme sit in these sheets and only one of them is named. The
+    direct plan carries "- Dir"; the regular plan is usually just "Fund Name -
+    Growth" with no marker at all, so a filter that drops "- Reg" lets it
+    straight through. Since a regular plan runs roughly 0.6 to 1.0 points dearer,
+    that quietly published a distributor-loaded fee as the direct one on the
+    funds where only the unmarked row existed. Anything not marked direct is
+    dropped rather than guessed at.
+    """
+    if not re.search(r"-\s*Dir\b", str(name), re.I):
+        return None
+    return num(value)
+
+
 def clean_display_name(name) -> str:
     return _PLAN_SUFFIX.sub("", str(name or "")).strip()
 
@@ -361,7 +377,7 @@ def parse_workbook(path, funds):
                 continue
             matched += 1
             for field, val in (("amc", str(row[1]).strip() if row[1] else None),
-                               ("attrDate", as_date(row[2])), ("ter", num(row[3])),
+                               ("attrDate", as_date(row[2])), ("ter", direct_ter(name, row[3])),
                                ("largeCapPct", num(row[4])), ("midCapPct", num(row[5])),
                                ("smallCapPct", num(row[6])), ("cashPct", num(row[7]))):
                 if fund.get(field) is None and val is not None:
@@ -406,7 +422,7 @@ def parse_workbook(path, funds):
             if not name or re.search(r"-\s*Reg\b", str(name)):
                 continue
             fund = funds.get(fund_key(name))
-            ter = num(row[1])
+            ter = direct_ter(name, row[1])
             if fund and ter is not None and fund.get("ter") is None:
                 fund["ter"] = ter
                 matched += 1

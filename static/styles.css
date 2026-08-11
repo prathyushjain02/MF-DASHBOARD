@@ -22,6 +22,11 @@
  * Quality bands run blue to red through a neutral grey, a diverging pair using
  * the brand's own accent rather than an off-brand green, and every use ships
  * with a text label beside the swatch.
+ *
+ * Light only. The template is a printed identity in a fixed palette, and a dark
+ * rendering of it was a second set of tokens to keep honest for no one who
+ * actually reads this, so `color-scheme: light` pins the page and every colour
+ * below is the one the brand specifies.
  */
 
 :root {
@@ -78,41 +83,6 @@
   --sans: "Franklin Gothic Book", "Libre Franklin", "Franklin Gothic Medium",
           "Helvetica Neue", Helvetica, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
-}
-
-/* The template is a light, printed identity. A dark rendering keeps the same
-   hues and inverts only the surfaces, so brand red and slate stay themselves
-   instead of being approximated. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --surface-1: #1b1b1c; --surface-2: #202021; --plane: #131314;
-    --zebra: #262627; --wash: #1e2731; --grid: #2e2e30; --axis: #4a4a4c;
-    --border: #313133; --border-strong: #46464a;
-    --text-primary: #f2f2f2; --text-secondary: #a6b0ba; --text-muted: #8d8d90;
-    --ink: #f2f2f2; --ink-strong: #ffffff; --red: #e64a4a;
-    --critical: #e64a4a; --serious: #c97a7c; --warning: #7d8794;
-    --good: #a6b0ba; --good-text: #c3dff4;
-    --seq-100: #2b3a49; --seq-200: #3a5064; --seq-300: #4c6b80;
-    --seq-450: #708090; --seq-550: #93b2cc; --seq-700: #c3dff4;
-    --series-1: #a6b0ba; --series-2: #e64a4a; --series-3: #93b2cc;
-    --series-4: #8d8d90; --series-5: #f9a1a3;
-  }
-}
-
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --surface-1: #1b1b1c; --surface-2: #202021; --plane: #131314;
-  --zebra: #262627; --wash: #1e2731; --grid: #2e2e30; --axis: #4a4a4c;
-  --border: #313133; --border-strong: #46464a;
-  --text-primary: #f2f2f2; --text-secondary: #a6b0ba; --text-muted: #8d8d90;
-  --ink: #f2f2f2; --ink-strong: #ffffff; --red: #e64a4a;
-  --critical: #e64a4a; --serious: #c97a7c; --warning: #7d8794;
-  --good: #a6b0ba; --good-text: #c3dff4;
-  --seq-100: #2b3a49; --seq-200: #3a5064; --seq-300: #4c6b80;
-  --seq-450: #708090; --seq-550: #93b2cc; --seq-700: #c3dff4;
-  --series-1: #a6b0ba; --series-2: #e64a4a; --series-3: #93b2cc;
-  --series-4: #8d8d90; --series-5: #f9a1a3;
 }
 
 * { box-sizing: border-box; }
@@ -497,49 +467,29 @@ th.sortable.on .arrow { opacity: 1; }
 .tile .tile-lead .muted { font-size: 10.5px; }
 
 /* ==================================================== selection process ==== */
-/* Funnel on the left, one row per factor on the right, level with its own band.
-   The art is flat and on the house ramp rather than the glossy 3D of the
-   reference slide. */
-/* The funnel scales to the height of the rows beside it, so band N sits level
-   with factor N. Sized the other way round the art ran out well above the last
-   row and the pairing stopped reading. */
-.funnelwrap { display: grid; grid-template-columns: minmax(200px, 280px) 1fr;
-  gap: 30px; align-items: stretch; margin-top: 14px; }
-.funnelart { display: flex; align-items: center; justify-content: center;
-  min-height: 0; }
-.funnel-svg { height: 100%; width: auto; max-width: 280px; max-height: 560px;
-  display: block; }
-.funnel-n { font-family: var(--mono); font-size: 15px; font-weight: 600;
-  fill: #fff; }
-.funnel-foot { font-family: var(--title); font-size: 11px; font-weight: 600;
-  letter-spacing: 0.08em; fill: var(--text-secondary); }
-.fband { cursor: pointer; }
-.fband:focus { outline: none; }
-.fband:hover, .fband:focus { stroke: var(--red); stroke-width: 2.5; }
+/* The staircase: one tread per factor, climbing left to right, each with its
+   heading standing above it on a dropped leader. Drawn as one SVG so the whole
+   diagram scales as a unit, with the captions in foreignObject so they wrap and
+   hyphenate like real text rather than being hand-broken into tspans. */
+.stairs { margin-top: 16px; }
+.stairs-svg { width: 100%; height: auto; display: block; }
+.step { cursor: pointer; }
+.step:focus { outline: none; }
+.step:hover path, .step:focus path, .step:hover rect, .step:focus rect {
+  filter: brightness(1.06); }
+.step:hover .stepcap b, .step:focus .stepcap b { color: var(--red); }
 
-.stagelist { display: flex; flex-direction: column; gap: 7px; }
-.stage { display: grid; grid-template-columns: 4px auto 1fr auto auto;
-  gap: 1px 12px; align-items: baseline; text-align: left; font: inherit;
-  width: 100%; cursor: pointer; padding: 10px 14px 11px;
-  background: var(--surface-2); border: 1px solid var(--border);
-  transition: background 0.12s; }
-.stage:hover, .stage:focus-visible { background: var(--wash); outline: none; }
-.stage .stage-chip { grid-row: 1 / 3; align-self: stretch; }
-.stage-n { font-family: var(--mono); font-size: 13px; font-weight: 600;
-  color: var(--red); }
-.stage-label { font-family: var(--title); font-size: 13.5px; font-weight: 500;
-  color: var(--text-primary); }
-/* The figure sits on the title's line, right of it, so a row is two lines and
-   the six of them stack to about the depth of the funnel. */
-.stage-stat { font-family: var(--mono); font-size: 17px; font-weight: 600;
-  color: var(--seq-550); line-height: 1.1; }
-.stage-go { color: var(--text-muted); font-size: 15px; }
-.stage:hover .stage-go { color: var(--red); }
-.stage-note { grid-column: 3 / 6; font-size: 11.5px; color: var(--text-muted);
-  line-height: 1.4; }
+.stepcap { display: flex; flex-direction: column; gap: 3px; height: 100%;
+  justify-content: flex-end; font-family: var(--sans); }
+.stepcap b { font-family: var(--title); font-size: 13.5px; font-weight: 500;
+  color: var(--text-primary); line-height: 1.25; }
+.stepcap span { font-size: 11.5px; color: var(--text-muted); line-height: 1.4; }
 
-@media (max-width: 860px) {
-  .funnelwrap { grid-template-columns: 1fr; gap: 16px; }
+@media (max-width: 900px) {
+  /* Six treads across will not survive a phone, so the diagram becomes a list
+     of the same six steps, keeping the colour that carries the climb. */
+  .stairs-svg { display: none; }
+  .stairs { display: flex; flex-direction: column; gap: 7px; }
 }
 
 /* --------------------------------------------------------------- modal */
@@ -606,12 +556,6 @@ body.modal-open { overflow: hidden; }
   background: none; border: 0; padding: 0 0 12px; cursor: pointer; }
 .backlink:hover { color: var(--red); }
 .detail.fundpage { padding-top: 16px; }
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .grid tbody tr:nth-child(odd) td.roll {
-    background: #23303c; }
-}
-:root[data-theme="dark"] .grid tbody tr:nth-child(odd) td.roll { background: #23303c; }
 
 /* ====================================================== fund snapshot ==== */
 .fundhead { display: flex; justify-content: space-between; align-items: flex-end;

@@ -124,60 +124,37 @@ async function renderApproach(host) {
   const fw = state.fw;
   if (!processStats) processStats = await get('/process');
 
-  const nodes = fw.selectionNodes;
-
   host.innerHTML = `
     <section>
       <div class="section-head">
         <h2>Fund selection process: mutual funds</h2>
-        <p class="lede">Six factors, in order. Three a fund has to clear before
-        the discussion starts, three that explain whether the record repeats.
-        Click any of them for the detail and the live figures behind it.</p>
+        <p class="lede">Six factors, read in order. The first three are what a
+        fund has to clear before the discussion starts; the last three are what
+        explain whether the record repeats. Click any step for the detail and
+        the live figures behind it.</p>
       </div>
-
-      <div class="funnelwrap">
-        <div class="funnelart" id="funnelart"></div>
-        <div class="stagelist">
-          ${nodes.map((n) => factorRow(n)).join('')}
-        </div>
-      </div>
+      <div class="stairs" id="stairs"></div>
     </section>`;
 
-  host.querySelectorAll('[data-node]').forEach((el) =>
-    el.onclick = () => openNodeModal(el.dataset.node));
-
-  drawFunnel();
+  drawStairs();
   wireGlossary(host);
 }
 
-/* One row per factor, sitting level with its band in the funnel. It leads with
-   the factor's live figure rather than its name, because the number is what
-   makes the factor concrete: "AUM" is a topic, "11 funds sit where size starts
-   to work against the mandate" is a finding. */
-function factorRow(n) {
-  const s = (processStats || {})[n.stat] || {};
-  return `
-    <button class="stage" data-node="${esc(n.code)}">
-      <span class="stage-chip" style="background:${FACTOR_INK[n.n - 1]}"></span>
-      <span class="stage-n">${n.n}</span>
-      <span class="stage-label">${esc(n.name)}</span>
-      <span class="stage-stat">${esc(s.headline || '\u2014')}</span>
-      <span class="stage-go" aria-hidden="true">&rsaquo;</span>
-      <span class="stage-note">${esc(s.caption || '')}</span>
-    </button>`;
-}
+/* The staircase. One tread per factor, each a step higher than the last, with
+   its heading and description standing above it on a dropped leader.
 
-/* Basic requirements run down the slate end of the house ramp, the performance
-   drivers through its red end, which is the same split the two groups carried
-   before and keeps the reading that one set is a gate and the other explains. */
+   The reference art was an isometric block per step in four brand colours. The
+   house palette has one accent, so the rise is carried by the sequential ramp
+   from pale blue up into brand red, which also marks where the basic
+   requirements end and the performance drivers begin. */
 const FACTOR_INK = ['var(--seq-200)', 'var(--seq-300)', 'var(--seq-450)',
                     'var(--seq-550)', 'var(--serious)', 'var(--red)'];
+/* The isometric side and top faces, darkened and lightened off each tread. */
+const FACTOR_SIDE = ['#9fc4e2', '#7593ab', '#5a6774', '#3c4653', '#d98486',
+                     '#a11313'];
 
-/* The funnel: one band per factor, narrowing to the shortlist. Position carries
-   sequence, not magnitude, so the bands are equal depth. Flat fills on the house
-   ramp rather than the glossy three dimensional reference art. */
-function drawFunnel() {
-  const host = $('#funnelart');
+function drawStairs() {
+  const host = $('#stairs');
   if (!host) return;
   const nodes = state.fw.selectionNodes;
   const ns = 'http://www.w3.org/2000/svg';
@@ -185,49 +162,66 @@ function drawFunnel() {
     Object.entries(a).forEach(([k, v]) => e.setAttribute(k, v));
     if (txt != null) e.textContent = txt; return e; };
 
-  const w = 300, h = 400, cx = w / 2;
-  const svg = mk('svg', { viewBox: `0 0 ${w} ${h}`, class: 'chart funnel-svg',
-                          role: 'img',
-                          'aria-label': 'The six factors, narrowing to a shortlist' });
-
-  const yTop = 26, yBot = 300, ry = 10;
-  const wTop = 132, wBot = 26;
   const n = nodes.length;
-  const halfAt = (i) => wTop + (wBot - wTop) * (i / n);
-  const yAt = (i) => yTop + (yBot - yTop) * (i / n);
+  const W = 1240, H = 470;
+  const svg = mk('svg', { viewBox: `0 0 ${W} ${H}`, class: 'chart stairs-svg',
+                          role: 'img', 'aria-label': 'The six factors, in order' });
+
+  const padL = 10, padR = 6;
+  const tread = (W - padL - padR) / (n + 0.42);   // room for the last step's depth
+  const depth = tread * 0.26;                     // isometric offset
+  const rise = 40;                                // how much each step climbs
+  const slab = 24;                                // thickness of a tread
+  const baseY = H - 34;                           // front-top edge of the first step
+  const capH = 104;                               // caption box
 
   nodes.forEach((node, i) => {
-    const y0 = yAt(i), y1 = yAt(i + 1), w0 = halfAt(i), w1 = halfAt(i + 1);
-    const ink = FACTOR_INK[i];
-    const band = mk('path', {
-      d: `M${cx - w0},${y0} L${cx + w0},${y0} L${cx + w1},${y1} L${cx - w1},${y1} Z`,
-      fill: ink, stroke: 'var(--surface-1)', 'stroke-width': 1.5,
-      class: 'fband', tabindex: 0, role: 'button', 'aria-label': node.name,
-    });
-    Chart.hoverable(band, `<strong>${esc(node.n + '. ' + node.name)}</strong>
-      <div class="tt-note">Click to open</div>`);
-    band.onclick = () => openNodeModal(node.code);
-    band.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault(); openNodeModal(node.code); } };
-    svg.appendChild(band);
-    svg.appendChild(mk('ellipse', {
-      cx, cy: y0, rx: w0, ry, fill: ink,
-      stroke: 'var(--surface-1)', 'stroke-width': 1.5,
+    const x = padL + i * tread;
+    const y = baseY - i * rise;
+    const g = mk('g', { class: 'step', tabindex: 0, role: 'button',
+                        'aria-label': node.name });
+
+    // top face, then front and right side, so the tread reads as a solid block
+    g.appendChild(mk('path', {
+      d: `M${x},${y} L${x + tread},${y} L${x + tread + depth},${y - depth} `
+         + `L${x + depth},${y - depth} Z`, fill: FACTOR_INK[i],
     }));
-    svg.appendChild(mk('text', { x: cx, y: (y0 + y1) / 2 + ry / 2 + 4,
-                                 'text-anchor': 'middle', class: 'funnel-n' },
-                       node.n));
+    g.appendChild(mk('rect', { x, y, width: tread, height: slab,
+                               fill: FACTOR_SIDE[i] }));
+    g.appendChild(mk('path', {
+      d: `M${x + tread},${y} L${x + tread + depth},${y - depth} `
+         + `L${x + tread + depth},${y - depth + slab} L${x + tread},${y + slab} Z`,
+      fill: FACTOR_SIDE[i], 'fill-opacity': 0.7,
+    }));
+
+    /* The caption sits directly over its own tread and climbs with it, so six of
+       them stagger up the diagram instead of stacking on one line and colliding.
+       Width is held to the tread for the same reason. */
+    const lx = x + depth + 10;
+    const capBottom = y - depth - 26;
+    g.appendChild(mk('line', { x1: lx, y1: y - depth - 4, x2: lx, y2: capBottom + 4,
+                               stroke: FACTOR_INK[i], 'stroke-width': 1.5,
+                               'stroke-dasharray': '3 3' }));
+    g.appendChild(mk('circle', { cx: lx, cy: y - depth - 4, r: 3.5,
+                                 fill: FACTOR_INK[i] }));
+
+    const fo = mk('foreignObject', { x: lx - 4, y: capBottom - capH,
+                                     width: tread - 6, height: capH });
+    const div = document.createElement('div');
+    div.className = 'stepcap';
+    div.innerHTML = `<b>${esc(node.name)}</b><span>${
+      (node.points || []).slice(0, 2).map(esc).join('. ')}.</span>`;
+    fo.appendChild(div);
+    g.appendChild(fo);
+
+    Chart.hoverable(g, `<strong>${esc(node.name)}</strong>
+      <div class="tt-note">Click to open</div>`);
+    g.onclick = () => openNodeModal(node.code);
+    g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault(); openNodeModal(node.code); } };
+    svg.appendChild(g);
   });
 
-  // The neck and the arrow: what comes out of the bottom.
-  svg.appendChild(mk('rect', { x: cx - 13, y: yBot, width: 26, height: 24,
-                               fill: 'var(--red)' }));
-  svg.appendChild(mk('path', {
-    d: `M${cx - 30},${yBot + 24} L${cx + 30},${yBot + 24} L${cx},${yBot + 62} Z`,
-    fill: 'var(--red)',
-  }));
-  svg.appendChild(mk('text', { x: cx, y: h - 6, 'text-anchor': 'middle',
-                               class: 'funnel-foot' }, 'Shortlist'));
   host.innerHTML = '';
   host.appendChild(svg);
 }
