@@ -13,9 +13,12 @@ Design notes that matter, because they are choices and not accidents:
 *   Standard deviation, semi standard deviation and Treynor are deliberately not
     scored. They move almost in lockstep with Sortino and downside capture, so
     scoring them would weight volatility several times over. They stay visible.
-*   Point to point and CAGR figures are shown for context. The return block scores
-    the rolling median, because a point to point number can hang on one lucky
-    start or end date.
+*   The return block is built on the rolling median, because a single point to
+    point number can hang on one lucky start or end date. It also carries a small
+    weight on the trailing 6M and 1Y so that a fund lagging right now is not fully
+    masked by a strong lifetime record; those recent windows are percentiled
+    against category peers, so the question they ask is "is this fund behind its
+    peers today", not "did the market go up". The longer CAGR figures stay context.
 *   Vintage is a weight, not a gate. Short manager tenure is a flag, not a reject.
 
 House style for anything user facing in this file: no em dashes.
@@ -211,7 +214,9 @@ BLOCKS = [
                "benchmark. We read the whole distribution rather than one point to "
                "point number that can hang on a lucky start or end date, and the hit "
                "rate separates a fund that wins often from one that won once by a lot. "
-               "Longer windows carry more weight than shorter ones.",
+               "Longer windows carry more weight than shorter ones. A small weight sits "
+               "on the trailing 6M and 1Y as well, so a fund that is lagging its peers "
+               "right now is not fully hidden behind a strong lifetime record.",
         "metrics": [
             {"field": "medianRolling1Y", "label": "Median rolling 1Y", "weight": 8,
              "direction": "high", "unit": "%"},
@@ -225,6 +230,10 @@ BLOCKS = [
              "direction": "high", "unit": "%"},
             {"field": "rollingHitRate3Y", "label": "Rolling 3Y windows beating benchmark",
              "weight": 22, "direction": "high", "unit": "%"},
+            {"field": "return6M", "label": "Recent 6M return", "weight": 6,
+             "direction": "high", "unit": "%"},
+            {"field": "return1Y", "label": "Recent 1Y return", "weight": 10,
+             "direction": "high", "unit": "%"},
         ],
     },
     {
@@ -389,8 +398,12 @@ AUM_CURVES = {
     "_default": {
         "shape": "scale",
         "note": "Capacity is rarely the binding constraint. Scale is rewarded, with a "
-                "floor so a very small fund is marked down for viability.",
-        "points": [(100, 30), (500, 55), (2000, 75), (8000, 92), (25000, 100), (80000, 100)],
+                "floor so a very small fund is marked down for viability, and a mild "
+                "taper at the very top: even here a genuinely enormous book carries "
+                "some capacity drag, so it is marked down slightly rather than scored "
+                "identically to a fund a fifth its size.",
+        "points": [(100, 30), (500, 55), (2000, 75), (8000, 92), (25000, 100),
+                   (60000, 92), (150000, 80)],
     },
 }
 
@@ -722,7 +735,9 @@ CATEGORY_ADJUSTMENTS = [
      "text": "Size means different things in different mandates, so the AUM score uses a "
              "different curve per category. Small cap rewards nimble AUM and flags large "
              "size as a capacity risk. Mid cap and focused prefer a middle band. Large "
-             "cap and flexi reward scale, with a floor for viability."},
+             "cap and flexi reward scale, with a floor for viability and a mild taper at "
+             "the very top so a genuinely enormous book is not scored the same as one a "
+             "fifth its size."},
     {"name": "Everything is percentiled within its own category",
      "text": "A fund is only ever compared to its true peers. No metric is scored on an "
              "absolute scale, so a category-wide drawdown does not push a whole category "
