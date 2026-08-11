@@ -123,6 +123,20 @@ function renderApproach(host) {
         <div class="caveat"><strong>${esc(cat)}.</strong> ${esc(why)}</div>`).join('')
         || '<p class="muted">None flagged.</p>'}
 
+      <h3>Market cycles</h3>
+      <p>The manager block counts cycles actually run, and the cycles are derived from
+      the benchmark's own monthly series rather than from a remembered list of
+      corrections. A cycle is a peak to trough fall of at least 12 percent.</p>
+      <table class="grid">
+        <thead><tr><th>Peak</th><th>Trough</th><th class="r">Depth</th><th>Recovered</th></tr></thead>
+        <tbody>${(state.meta.marketCycles || []).map((c) => `
+          <tr><td class="mono">${esc(c.peak)}</td><td class="mono">${esc(c.trough)}</td>
+            <td class="r mono">${num(c.depthPct, 1)}%</td>
+            <td class="mono muted">${esc(c.recovered || 'not yet')}</td></tr>`).join('')
+          || '<tr><td colspan="4" class="muted">No monthly series in this build.</td></tr>'}
+        </tbody>
+      </table>
+
       <h3>Bands</h3>
       <table class="grid">
         <thead><tr><th>Band</th><th class="r">Composite</th><th>What it means</th></tr></thead>
@@ -440,6 +454,22 @@ async function openFund(key) {
       </table>
     </div>
 
+    ${(f.managers || []).length ? `
+    <h4>Who runs it</h4>
+    <table class="grid dense">
+      <thead><tr><th>Manager</th><th class="r">Tenure on this fund</th>
+        <th class="r">Industry experience</th><th>Since</th></tr></thead>
+      <tbody>${f.managers.map((m) => `
+        <tr><td>${esc(m.name)}</td>
+          <td class="r mono">${m.tenureYears == null ? '—' : num(m.tenureYears, 1) + ' yrs'}</td>
+          <td class="r mono dim">${m.experienceYears == null ? '—' : num(m.experienceYears, 0) + ' yrs'}</td>
+          <td class="muted">${esc(m.sinceBasis || 'not stated')}</td></tr>`).join('')}
+      </tbody>
+    </table>
+    <p class="muted sm">Tenure drives the manager block from the longest serving name,
+    because the question is how long this money has been run by the people running it
+    now. Live record: ${esc(f.vintageBasis || '—')}.</p>` : ''}
+
     <div class="two">
       <div class="panel">
         <h4>The numbers</h4>
@@ -518,6 +548,7 @@ function metricRows(f) {
   const rows = [
     ['Median rolling 3Y', f.medianRolling3Y, '%'],
     ['Median rolling 5Y', f.medianRolling5Y, '%'],
+    ['Rolling 3Y windows beating benchmark', f.rollingHitRate3Y, '%'],
     ['Sharpe 3Y', f.sharpe3Y, ''],
     ['Sortino 3Y', f.sortino3Y, ''],
     ['Information Ratio 3Y', f.informationRatio3Y, ''],

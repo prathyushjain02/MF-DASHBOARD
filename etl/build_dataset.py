@@ -28,6 +28,7 @@ import os
 import re
 import shutil
 import sys
+import statistics
 from collections import defaultdict
 from datetime import datetime, timezone
 
@@ -39,7 +40,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(ROOT, "data")
 HISTORY_DIR = os.path.join(DATA_DIR, "history")
 
-SHEETY_URL = "https://api.sheety.co/26381234f19b00348c9bb3d7604a8d84/dataPack/sheet1"
+SHEETY_URL = ("https://api.sheety.co/26381234f19b00348c9bb3d7604a8d84"
+              "/allFundsQuantData/allFunds")
 
 DEFAULT_BENCHMARK = "Nifty 500 TRI"
 
@@ -48,115 +50,81 @@ DEFAULT_BENCHMARK = "Nifty 500 TRI"
 # column matching
 # --------------------------------------------------------------------------- #
 #
-# Each target field lists the header forms it answers to. Matching is done on a
-# squashed form of the header (lowercase, alphanumerics only), so "Sharpe Ratio
-# 3Y", "sharpeRatio3Y" and "sharpe_ratio_3y" all land in the same place.
+# The sheet carries a TWO ROW header. Sheety turns row 1 into the JSON key and
+# hands row 2 back as the first data row, which is where the horizon lives:
+#
+#     key   'sharpeRatio'                 first row  '3Y'   ->  sharpe3Y
+#     key   'medianRollingReturns (%)'    first row  '1Y'   ->  medianRolling1Y
+#
+# Reading the horizon rather than assuming it matters: this feed publishes a 1Y
+# median rolling return where the previous one published 3Y, and hardcoding the
+# suffix would have silently relabelled a one year number as a three year one.
 
-FIELD_SYNONYMS = {
-    "fundName":            ["fundname", "scheme", "schemename", "fund", "name"],
-    "category":            ["category", "schemecategory", "cat", "categoryname"],
-    "amfiCode":            ["amficode", "amfi", "schemecode", "code"],
-    "benchmark":           ["benchmark", "benchmarkname", "benchmarkindex"],
-
-    "aumCr":               ["aumcr", "aum", "aumincr", "aumrscr", "corpus", "corpuscr",
-                            "aumcrore", "aumcrores", "netassets"],
-    "nav":                 ["nav", "navrs"],
-    "navDate":             ["navdate", "asofdate", "asof", "date", "dataasof"],
-    "fundManager":         ["fundmanager", "manager", "fundmanagers", "fmname"],
-    "amc":                 ["amc", "amcname", "fundhouse", "mutualfund"],
-    "ter":                 ["ter", "expenseratio", "expenseratiodirect", "terdirect",
-                            "expense"],
-
-    "return1Y":            ["ptp1y", "pointtopoint1y", "return1y", "cagr1y", "oneyear",
-                            "r1y", "trailing1y"],
-    "return3Y":            ["cagr3y", "return3y", "ptp3y", "threeyear", "r3y",
-                            "trailing3y"],
-    "return5Y":            ["cagr5y", "return5y", "ptp5y", "fiveyear", "r5y",
-                            "trailing5y"],
-    "return2Y":            ["cagr2y", "return2y", "twoyear", "r2y"],
-    "returnCYTD":          ["cytd", "ytd", "calendarytd", "returnytd"],
-
-    "medianRolling3Y":     ["roll3y", "rolling3y", "medianrolling3y", "medianrollingreturn3y",
-                            "medianrollingreturns3y", "rollingmedian3y", "medianroll3y"],
-    "medianRolling5Y":     ["roll5y", "rolling5y", "medianrolling5y", "medianrollingreturn5y",
-                            "medianrollingreturns5y", "rollingmedian5y", "medianroll5y"],
-
-    "sharpe3Y":            ["sharpe3y", "sharperatio3y", "sharpe"],
-    "sharpe5Y":            ["sharpe5y", "sharperatio5y"],
-    "sortino3Y":           ["sortino3y", "sortinoratio3y", "sortino"],
-    "sortino5Y":           ["sortino5y", "sortinoratio5y"],
-    "informationRatio3Y":  ["ir3y", "informationratio3y", "inforatio3y", "informationratio",
-                            "ir"],
-    "informationRatio5Y":  ["ir5y", "informationratio5y", "inforatio5y"],
-    "treynor3Y":           ["treynor", "treynor3y", "treynorratio", "treynorratio3y"],
-
-    "upsideCapture3Y":     ["upcap", "upsidecapture", "upsidecapture3y", "upcapture",
-                            "upsidecaptureratio"],
-    "downsideCapture3Y":   ["dncap", "downcap", "downsidecapture", "downsidecapture3y",
-                            "downcapture", "downsidecaptureratio"],
-    "captureRatio3Y":      ["captureratio", "captureratio3y"],
-    "maxDrawdown3Y":       ["maxdd", "maxdrawdown", "maximumdrawdown", "maxdrawdown3y",
-                            "mdd"],
-    "stdDev3Y":            ["stddev", "standarddeviation", "stddev3y", "sd", "sd3y",
-                            "volatility"],
-    "semiStdDev3Y":        ["semistddev", "semistandarddeviation", "semisd",
-                            "semistddev3y", "downsidedeviation"],
-    "beta3Y":              ["beta", "beta3y"],
-    "alpha3Y":             ["alpha", "alpha3y", "jensensalpha"],
-
-    "decile3Y":            ["decile3y", "categorydecile3y", "quartile3y"],
-    "decile5Y":            ["decile5y", "categorydecile5y", "quartile5y"],
-
-    "largeCapPct":         ["largecap", "largecappct", "largecapallocation", "large"],
-    "midCapPct":           ["midcap", "midcappct", "midcapallocation", "mid"],
-    "smallCapPct":         ["smallcap", "smallcappct", "smallcapallocation", "small"],
-    "cashPct":             ["cash", "cashpct", "cashandothers", "cashequivalents"],
-
-    "managerYears":        ["mgryrs", "manageryears", "managertenure", "tenure",
-                            "tenureyears", "managertenureyears"],
-    "managerExperienceYears": ["expyrs", "experienceyears", "managerexperience",
-                               "industryexperience", "experience"],
-    "managerCycles":       ["cycles", "marketcycles", "managercycles", "cyclesrun"],
-    "vintageYears":        ["vintageyrs", "vintageyears", "vintage", "trackrecord",
-                            "trackrecordyears", "ageyears", "inceptionyears"],
-    "inceptionDate":       ["inceptiondate", "launchdate", "inception"],
+GROUP_BASE = {
+    "pointtopointreturns": "return",
+    "calendaryearreturns": "return",
+    "medianrollingreturns": "medianRolling",
+    "medianrollingreturns2017cutoff": "medianRolling@2017",
+    "sharperatio": "sharpe",
+    "treynorratio": "treynor",
+    "informationratio": "informationRatio",
+    "sortinoratio": "sortino",
+    "stddevann": "stdDev",
+    "semistddevann": "semiStdDev",
+    "maxdrawdown": "maxDrawdown",
+    "upsidecapture": "upsideCapture",
+    "downsidecapture": "downsideCapture",
+    "captureratio": "captureRatio",
+    "beta": "beta",
 }
 
-# Fields that stay text rather than being coerced to a number.
+# Columns whose sub-header names the field outright rather than a horizon.
+SUB_FIELDS = {
+    "asofdate": "asOfDate",
+    "cashothers": "cashAndOthers",
+    "large": "largeCapPct",
+    "mid": "midCapPct",
+    "small": "smallCapPct",
+}
+
+IDENTITY_FIELDS = {"fundname": "fundName", "amficode": "amfiCode",
+                   "category": "category", "benchmark": "benchmark"}
+
 TEXT_FIELDS = {"fundName", "category", "benchmark", "fundManager", "amc",
-               "navDate", "inceptionDate"}
+               "navDate", "asOfDate", "inceptionDate"}
 
 
 def squash(s):
     return re.sub(r"[^a-z0-9]+", "", str(s or "").lower())
 
 
-def build_header_map(sample_row):
-    """Map the API's own column keys onto our field names."""
-    lookup = {}
-    for field, syns in FIELD_SYNONYMS.items():
-        for s in syns:
-            lookup.setdefault(s, field)
-
+def build_header_map(header_row, sub_row):
+    """Map the API's columns onto field names, reading the horizon off row 2."""
     mapping, unmapped = {}, []
-    for col in sample_row:
+    for col in header_row:
         if col == "id":
             continue
-        sq = squash(col)
-        field = lookup.get(sq)
-        if field is None:
-            # Second pass: allow a header that merely contains a synonym, longest
-            # synonym first so "downsidecapture" wins over "capture".
-            for s in sorted(lookup, key=len, reverse=True):
-                if len(s) >= 5 and s in sq:
-                    field = lookup[s]
-                    break
+        g = squash(col)
+        sub = squash(sub_row.get(col))
+        field = IDENTITY_FIELDS.get(g)
+        if field is None and sub in SUB_FIELDS and (g in ("", "aumflowscr",
+                                                          "marketcapallocation")):
+            field = SUB_FIELDS[sub]
+        if field is None and g in GROUP_BASE:
+            base = GROUP_BASE[g]
+            horizon = (sub_row.get(col) or "").strip().upper().replace(" ", "")
+            if not horizon:
+                unmapped.append(col)
+                continue
+            field = (base.replace("@", horizon + "@") if "@" in base
+                     else base + horizon)
+            field = field.replace("@", "")
         if field is None:
             unmapped.append(col)
-        elif field not in mapping.values():
-            mapping[col] = field
-        else:
+        elif field in mapping.values():
             unmapped.append(col)  # a second column claiming a taken field
+        else:
+            mapping[col] = field
     return mapping, unmapped
 
 
@@ -259,14 +227,22 @@ def fetch_pack(cache_path=None):
 
 
 def parse_pack(rows):
-    """Turn API rows into fund records, splitting benchmarks out as we go."""
-    if not rows:
+    """Turn API rows into fund records, splitting benchmarks out as we go.
+
+    Row 0 of the payload is the second header row, not a fund, so it is consumed
+    as the horizon map and then dropped.
+    """
+    if len(rows) < 2:
         return {}, {}, []
-    mapping, unmapped = build_header_map(rows[0].keys())
+    mapping, unmapped = build_header_map(rows[0].keys(), rows[0])
     print(f"  mapped {len(mapping)} columns; {len(unmapped)} unmapped")
+    horizons = {v: rows[0].get(k) for k, v in mapping.items()}
+    for f in ("medianRolling1Y", "medianRolling3Y", "sharpe3Y", "sharpe5Y"):
+        if f in horizons:
+            print(f"    {f} <- horizon {horizons[f]!r}")
 
     funds, benchmarks = {}, {}
-    for r in rows:
+    for r in rows[1:]:
         rec = {}
         for col, field in mapping.items():
             v = r.get(col)
@@ -276,8 +252,7 @@ def parse_pack(rows):
             continue
         category = (rec.get("category") or "").strip()
 
-        if category.lower().startswith("benchmark") or "index" in category.lower() \
-                and "fund" not in category.lower():
+        if category.lower().startswith("benchmark"):
             benchmarks[name] = {**rec, "name": name}
             continue
 
@@ -297,7 +272,6 @@ def parse_pack(rows):
         rec["sourceCategory"] = category
         rec["category"] = (CATEGORY_MAP.get(category.strip().lower())
                            if vehicle == "MF" else None)
-        rec.setdefault("benchmark", None)
         rec["benchmark"] = rec.get("benchmark") or DEFAULT_BENCHMARK
         funds[rec["key"]] = rec
 
@@ -385,8 +359,283 @@ def parse_workbook(path, funds):
             holdings[key].sort(key=lambda h: -h["pct"])
         print(f"  Underlying Portfolio: {rows_seen} rows across {len(holdings)} funds")
 
+    # Sheet2 carries the current expense ratio, which the feed does not.
+    if "Sheet2" in sheets:
+        matched = 0
+        for row in wb["Sheet2"].iter_rows(min_row=4, max_col=5, values_only=True):
+            name = row[0]
+            if not name or re.search(r"-\s*Reg\b", str(name)):
+                continue
+            fund = funds.get(fund_key(name))
+            ter = num(row[1])
+            if fund and ter is not None and fund.get("ter") is None:
+                fund["ter"] = ter
+                matched += 1
+        print(f"  Sheet2: expense ratio on {matched} funds")
+
+    # Monthly series: real rolling statistics, and the market cycles the manager
+    # block counts against.
+    cycles = []
+    monthly = parse_monthly(wb)
+    if monthly:
+        bench_for = {}
+        for f in funds.values():
+            bm = f.get("benchmark")
+            if bm in monthly:
+                bench_for[f["key"]] = monthly[bm]
+        broad = monthly.get(DEFAULT_BENCHMARK) or monthly.get("Nifty 500 TRI") \
+            or monthly.get("BSE 200 TRI")
+        cycles = market_cycles(broad)
+        print(f"  derived {len(cycles)} market cycles from {DEFAULT_BENCHMARK}: "
+              + ", ".join(f"{c['peak']}->{c['trough']} {c['depthPct']}%" for c in cycles))
+
+        enriched = 0
+        for raw_name, series in monthly.items():
+            key = fund_key(raw_name)
+            fund = funds.get(key)
+            if not fund or not re.search(r"-\s*Dir\b", str(raw_name)):
+                continue
+            m = rolling_metrics(series, bench_for.get(key) or broad)
+            if not m:
+                continue
+            fund.update(m)
+            # A live record measured in months beats a bucket inferred from which
+            # return horizons happen to be populated.
+            fund["vintageYears"] = round(len(series) / 12.0, 1)
+            fund["vintageBasis"] = f"{len(series)} months of return history"
+            enriched += 1
+        print(f"  rolling statistics computed for {enriched} funds")
+
     wb.close()
-    return dict(holdings)
+    return dict(holdings), cycles
+
+
+# --------------------------------------------------------------------------- #
+# 3. monthly return series -> real rolling statistics
+# --------------------------------------------------------------------------- #
+#
+# The workbook carries 97 months of returns per scheme and per benchmark. That is
+# enough for 62 rolling three year windows and 38 rolling five year ones, so the
+# rolling figures below are computed rather than proxied. Verified against the
+# workbook's own stated CAGR: Parag Parikh Flexi Cap 3Y computes to 14.64 against
+# a published 14.62, and 5Y to 14.66 against 14.65.
+
+RF_ANNUAL = 7.0          # risk free, per cent per annum
+MONTHS_3Y, MONTHS_5Y = 36, 60
+
+
+def _cagr(monthly):
+    """Annualised compound return from a run of monthly per cent returns."""
+    p = 1.0
+    for r in monthly:
+        p *= 1.0 + r / 100.0
+    if p <= 0:
+        return None
+    return (p ** (12.0 / len(monthly)) - 1.0) * 100.0
+
+
+def _windows(series, size):
+    return [series[i:i + size] for i in range(len(series) - size + 1)]
+
+
+def parse_monthly(wb):
+    """Read the two month-on-month sheets into {name: [(date, return %)]}."""
+    out = {}
+    for sheet in ("Mom Performance", "BMMom Performance"):
+        if sheet not in wb.sheetnames:
+            continue
+        it = wb[sheet].iter_rows(min_row=4, values_only=True)
+        header = list(next(it))
+        rows = [r for r in it if r and isinstance(r[0], datetime)]
+        rows.sort(key=lambda r: r[0])
+        for ci, name in enumerate(header):
+            if ci == 0 or not name:
+                continue
+            pts = [(r[0], float(r[ci])) for r in rows
+                   if ci < len(r) and isinstance(r[ci], (int, float))
+                   and not isinstance(r[ci], bool)]
+            if len(pts) >= MONTHS_3Y:
+                out[str(name).strip()] = pts
+        print(f"  {sheet}: {len(rows)} months, series for "
+              f"{sum(1 for k in out)} names so far")
+    return out
+
+
+def rolling_metrics(series, bench):
+    """Rolling medians, the rolling hit rate, and the five year ratios.
+
+    The hit rate is the share of rolling three year windows in which the fund beat
+    its benchmark. It is the honest version of 'consistency': a fund can carry a
+    high median while losing most windows, and this separates the two.
+    """
+    vals = [v for _, v in series]
+    out = {}
+    if len(vals) >= MONTHS_3Y:
+        w3 = [c for c in (_cagr(w) for w in _windows(vals, MONTHS_3Y)) if c is not None]
+        if w3:
+            out["medianRolling3Y"] = round(statistics.median(w3), 2)
+            out["rollingWindows3Y"] = len(w3)
+    if len(vals) >= MONTHS_5Y:
+        w5 = [c for c in (_cagr(w) for w in _windows(vals, MONTHS_5Y)) if c is not None]
+        if w5:
+            out["medianRolling5Y"] = round(statistics.median(w5), 2)
+
+    if bench:
+        # Align on date so a fund with a shorter life is compared only over the
+        # months both actually lived through.
+        bmap = dict(bench)
+        pairs = [(d, v, bmap[d]) for d, v in series if d in bmap]
+        if len(pairs) >= MONTHS_3Y:
+            fv = [p[1] for p in pairs]
+            bv = [p[2] for p in pairs]
+            wins = 0
+            total = 0
+            for i in range(len(pairs) - MONTHS_3Y + 1):
+                a, b = _cagr(fv[i:i + MONTHS_3Y]), _cagr(bv[i:i + MONTHS_3Y])
+                if a is None or b is None:
+                    continue
+                total += 1
+                wins += 1 if a > b else 0
+            if total:
+                out["rollingHitRate3Y"] = round(100.0 * wins / total, 1)
+
+        if len(pairs) >= MONTHS_5Y:
+            fv = [p[1] for p in pairs][-MONTHS_5Y:]
+            bv = [p[2] for p in pairs][-MONTHS_5Y:]
+            fa, ba = _cagr(fv), _cagr(bv)
+            sd = statistics.pstdev(fv) * (12 ** 0.5)
+            down = [min(0.0, r - RF_ANNUAL / 12) for r in fv]
+            dd = (sum(d * d for d in down) / len(down)) ** 0.5 * (12 ** 0.5)
+            te = statistics.pstdev([a - b for a, b in zip(fv, bv)]) * (12 ** 0.5)
+            if fa is not None and sd > 0:
+                out["sharpe5Y"] = round((fa - RF_ANNUAL) / sd, 4)
+            if fa is not None and dd > 0:
+                out["sortino5Y"] = round((fa - RF_ANNUAL) / dd, 4)
+            if fa is not None and ba is not None and te > 0:
+                out["informationRatio5Y"] = round((fa - ba) / te, 4)
+    return out
+
+
+def market_cycles(bench_series, threshold=12.0):
+    """Drawdown episodes in a broad benchmark, derived rather than asserted.
+
+    A cycle is a peak to trough fall of at least `threshold` per cent followed by a
+    recovery back to the old peak. Using the index's own monthly series means the
+    dates come from the data in front of us instead of from a remembered list of
+    corrections.
+    """
+    if not bench_series:
+        return []
+    level, peak, peak_date = 1.0, 1.0, bench_series[0][0]
+    trough, trough_date, in_dd = None, None, False
+    cycles = []
+    for d, r in bench_series:
+        level *= 1.0 + r / 100.0
+        if level >= peak:
+            if in_dd and trough is not None:
+                cycles.append({"peak": peak_date.strftime("%Y-%m"),
+                               "trough": trough_date.strftime("%Y-%m"),
+                               "recovered": d.strftime("%Y-%m"),
+                               "depthPct": round(100.0 * (trough / peak - 1), 1)})
+                in_dd = False
+            peak, peak_date, trough = level, d, None
+            continue
+        if trough is None or level < trough:
+            trough, trough_date = level, d
+        if 100.0 * (1 - level / peak) >= threshold:
+            in_dd = True
+    if in_dd and trough is not None:
+        cycles.append({"peak": peak_date.strftime("%Y-%m"),
+                       "trough": trough_date.strftime("%Y-%m"),
+                       "recovered": None,
+                       "depthPct": round(100.0 * (trough / peak - 1), 1)})
+    return cycles
+
+
+# --------------------------------------------------------------------------- #
+# 4. the fund manager master
+# --------------------------------------------------------------------------- #
+
+def parse_managers(path, funds, cycles):
+    """Per fund manager tenure, experience and cycles run.
+
+    A fund usually has several named managers. Tenure is taken from the longest
+    serving one, because the question the block asks is how long this money has
+    been run by the people running it now, not how recently somebody joined the
+    team. Every named manager is kept for display.
+    """
+    import openpyxl
+
+    print(f"  opening manager master {os.path.basename(path)} ...")
+    wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
+    ws = wb[wb.sheetnames[0]]
+    it = ws.iter_rows(min_row=2, max_col=5, values_only=True)
+
+    today = datetime.now(timezone.utc).replace(tzinfo=None)
+    per_fund = defaultdict(list)
+    unmatched = set()
+    for mgr, amc, fund_name, exp, since in it:
+        if not fund_name or not mgr:
+            continue
+        key = fund_key(fund_name)
+        if key not in funds:
+            unmatched.add(str(fund_name).strip())
+            continue
+        if isinstance(since, datetime):
+            years = (today - since).days / 365.25
+            basis = since.strftime("%Y-%m-%d")
+        elif str(since or "").strip().lower() == "inception":
+            # Managing since inception: tenure is the fund's live record, which we
+            # only know once the monthly series has been read. Marked and filled in
+            # by the caller rather than guessed here.
+            years, basis = None, "inception"
+        else:
+            years, basis = None, None
+        per_fund[key].append({"name": str(mgr).strip(), "amc": str(amc or "").strip(),
+                              "experienceYears": num(exp), "sinceBasis": basis,
+                              "tenureYears": None if years is None else round(years, 1)})
+    wb.close()
+
+    matched, lifted = 0, 0
+    for key, mgrs in per_fund.items():
+        fund = funds[key]
+        # A manager cannot have run a fund before the fund existed, so a dated
+        # appointment older than the return window is a hard lower bound on the
+        # fund's age. Without this, every fund older than the 97 months the
+        # workbook carries is pinned at the same vintage and the track record
+        # block stops discriminating for half the universe.
+        dated = [m["tenureYears"] for m in mgrs
+                 if m["tenureYears"] is not None and m["sinceBasis"] not in (None, "inception")]
+        live = num(fund.get("vintageYears"))
+        if dated and (live is None or max(dated) > live):
+            fund["vintageYears"] = round(max(dated), 1)
+            fund["vintageBasis"] = (f"at least {max(dated):.1f}Y: a named manager has run "
+                                    f"it since {min(m['sinceBasis'] for m in mgrs if m['sinceBasis'] not in (None, 'inception'))}")
+            lifted += 1
+        live = num(fund.get("vintageYears"))
+        for m in mgrs:
+            if m["sinceBasis"] == "inception" and live:
+                m["tenureYears"] = round(live, 1)
+        tenures = [m["tenureYears"] for m in mgrs if m["tenureYears"] is not None]
+        exps = [m["experienceYears"] for m in mgrs if m["experienceYears"] is not None]
+        if not tenures:
+            continue
+        matched += 1
+        longest = max(tenures)
+        fund["managers"] = mgrs
+        fund["managerYears"] = longest
+        fund["fundManager"] = ", ".join(m["name"] for m in mgrs)
+        if exps:
+            fund["managerExperienceYears"] = max(exps)
+        # Cycles the longest serving manager has actually run this fund through.
+        start = today.timestamp() - longest * 365.25 * 86400
+        fund["managerCycles"] = sum(
+            1 for c in cycles
+            if datetime.strptime(c["trough"], "%Y-%m").timestamp() >= start)
+
+    print(f"  manager master: tenure set on {matched} funds; vintage lifted above the "
+          f"return window on {lifted}; {len(unmatched)} scheme names did not match")
+    return matched, sorted(unmatched)[:20]
 
 
 # --------------------------------------------------------------------------- #
@@ -519,7 +768,8 @@ def diff_against_previous(funds):
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--workbook", help="Avendus Automation xlsx (AUM, manager, holdings)")
+    ap.add_argument("--workbook", help="Underlying xlsx (AUM, holdings, monthly returns)")
+    ap.add_argument("--managers", help="fund manager master xlsx (tenure, experience)")
     ap.add_argument("--snapshot", action="store_true",
                     help="archive this build under data/history/<date>/")
     ap.add_argument("--diff", action="store_true",
@@ -548,10 +798,10 @@ def main():
     in_scope = [f for f in funds.values() if f.get("category") in CATEGORIES]
     print(f"  {len(funds)} schemes, {len(in_scope)} inside the eleven equity categories")
 
-    holdings = {}
+    holdings, cycles = {}, []
     if args.workbook:
         print("2. workbook")
-        holdings = parse_workbook(args.workbook, funds)
+        holdings, cycles = parse_workbook(args.workbook, funds)
     else:
         print("2. workbook skipped; holdings left as they are on disk")
         hp = os.path.join(DATA_DIR, "holdings.json")
@@ -559,10 +809,16 @@ def main():
             with open(hp, encoding="utf-8") as fh:
                 holdings = json.load(fh)
 
-    print("3. validation")
+    if args.managers:
+        print("3. fund manager master")
+        parse_managers(args.managers, funds, cycles)
+    else:
+        print("3. manager master skipped; the manager block stays unscored")
+
+    print("4. validation")
     checks = validate(funds, holdings, prev_meta, strict=not args.force)
 
-    print("4. writing")
+    print("5. writing")
     write_json("funds.json", list(funds.values()))
     write_json("benchmarks.json", benchmarks)
     if args.workbook:
@@ -576,6 +832,7 @@ def main():
                        for c in CATEGORIES},
         "source": SHEETY_URL,
         "unmappedColumns": unmapped,
+        "marketCycles": cycles,
         "checks": checks,
     })
 
@@ -586,7 +843,7 @@ def main():
             print(f"    - {c}")
 
     if args.snapshot:
-        print("5. snapshot")
+        print("6. snapshot")
         snapshot()
     if args.diff:
         d = diff_against_previous(funds)

@@ -25,8 +25,8 @@ app.register_blueprint(mf_bp)
 _BOOT_ERROR = None
 try:
     _state = datastore.load()
-    print(f"[mf] loaded {len(_state['funds'])} scored funds "
-          f"({_state['meta'].get('metricsAsOf', 'date unknown')})")
+    print(f"[mf] loaded {len(_state['funds'])} funds "
+          f"(built {_state['meta'].get('builtAt', 'unknown')})")
 except Exception as exc:  # noqa: BLE001 - never let a data fault stop the process
     _BOOT_ERROR = str(exc)
     traceback.print_exc()
@@ -59,7 +59,8 @@ def health():
         "status": "ok",
         "service": "NSE Portfolio Backend + Equity MF selection framework",
         "scoredFunds": len(_state["funds"]),
-        "metricsAsOf": _state["meta"].get("metricsAsOf"),
+        "builtAt": _state["meta"].get("builtAt"),
+        "inScope": _state["meta"].get("inScopeFunds"),
         "yfinance": yf is not None,
     })
 

@@ -212,9 +212,13 @@ def derive_inputs(fund, holdings_rows):
     """Everything the blocks need that is not already a field on the record."""
     out = {}
 
-    # Vintage. The feed carries no inception date, so the live record is read off
-    # the longest return series present. That makes it a bucket, not a precise
-    # age, and it is reported as such rather than dressed up with decimals.
+    # Vintage. Where the monthly series was read the live record is an exact month
+    # count and the ETL has already set it. Otherwise it falls back to the longest
+    # return horizon present, which is a bucket and is reported as one.
+    if _f(fund.get("vintageYears")) is not None:
+        out["vintageYears"] = _f(fund["vintageYears"])
+        out["vintageBasis"] = fund.get("vintageBasis") or "from the return series"
+        return _finish_inputs(fund, holdings_rows, out)
     for horizon, years in ((("return5Y",), 5.0), (("return3Y",), 3.0),
                            (("return2Y",), 2.0), (("return1Y",), 1.0)):
         if any(_f(fund.get(h)) is not None for h in horizon):
@@ -232,6 +236,14 @@ def derive_inputs(fund, holdings_rows):
         if v is not None:
             out[f] = v
 
+    return _finish_inputs(fund, holdings_rows, out)
+
+
+def _finish_inputs(fund, holdings_rows, out):
+    for f in ("managerYears", "managerExperienceYears", "managerCycles"):
+        v = _f(fund.get(f))
+        if v is not None:
+            out[f] = v
     book = equity_book(holdings_rows)
     out["_book"] = book
     out.update(portfolio_stats(book, fund.get("category")))

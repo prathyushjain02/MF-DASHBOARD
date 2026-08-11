@@ -168,13 +168,18 @@ BLOCKS = [
         "code": "return",
         "name": "Return and consistency",
         "weight": 27,
-        "why": "Median rolling return over 3 and 5 years. We read the distribution, "
-               "not a single point to point number that can hang on one lucky endpoint.",
+        "why": "Median rolling return over 3 and 5 years, plus the share of rolling "
+               "three year windows that actually beat the benchmark. We read the "
+               "distribution, not a single point to point number that can hang on one "
+               "lucky endpoint, and the hit rate separates a fund that wins often from "
+               "one that won once by a lot.",
         "metrics": [
-            {"field": "medianRolling3Y", "label": "Median rolling 3Y", "weight": 55,
+            {"field": "medianRolling3Y", "label": "Median rolling 3Y", "weight": 40,
              "direction": "high", "unit": "%"},
-            {"field": "medianRolling5Y", "label": "Median rolling 5Y", "weight": 45,
+            {"field": "medianRolling5Y", "label": "Median rolling 5Y", "weight": 30,
              "direction": "high", "unit": "%"},
+            {"field": "rollingHitRate3Y", "label": "Rolling 3Y windows beating benchmark",
+             "weight": 30, "direction": "high", "unit": "%"},
         ],
     },
     {
@@ -379,6 +384,14 @@ MEANINGFUL_GAP = 3.0
 # ---------------------------------------------------------------------------
 
 CONTEXT_METRICS = [
+    {"field": "medianRolling1Y", "label": "Median rolling 1Y", "unit": "%",
+     "why": "Shown, not scored. The shortest window and the noisiest, and the return "
+            "block already reads the 3 and 5 year distributions computed from the "
+            "monthly series."},
+    {"field": "rollingWindows3Y", "label": "Rolling 3Y windows measured", "unit": "",
+     "why": "How many independent three year windows the rolling figures rest on. "
+            "Shown so a rolling median from a short history is not read as one from a "
+            "long one."},
     {"field": "return1Y", "label": "Point to point 1Y", "unit": "%",
      "why": "Shown for context. A single point to point figure can hang on one lucky "
             "start or end date, so the return block scores the rolling median instead."},

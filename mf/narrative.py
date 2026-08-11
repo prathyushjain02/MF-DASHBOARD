@@ -32,6 +32,16 @@ def n(v, dp=1):
     return "n/a" if f is None else f"{f:,.{dp}f}"
 
 
+def n0(v):
+    """Round half up, to match what the dashboard prints.
+
+    Python rounds halves to even, JavaScript rounds them up, so a block score of
+    76.5 rendered by both shows 76 in the prose and 77 in the table beside it.
+    """
+    f = _f(v)
+    return "n/a" if f is None else f"{int(f + 0.5) if f >= 0 else -int(-f + 0.5)}"
+
+
 def _blocks(fund):
     return {b["code"]: b for b in fund.get("blocks", [])}
 
@@ -155,18 +165,18 @@ def what_to_watch(fund):
     ret = b.get("return", {}).get("score")
     ra = b.get("riskAdj", {}).get("score")
     if ret is not None and ra is not None and ret >= 65 and ra < 40:
-        out.append(f"Returns rank well ({ret:.0f}) but the risk adjusted block does not "
-                   f"({ra:.0f}). The return has been bought with volatility rather than "
+        out.append(f"Returns rank well ({n0(ret)}) but the risk adjusted block does not "
+                   f"({n0(ra)}). The return has been bought with volatility rather than "
                    f"earned per unit of risk.")
     if ret is not None and ra is not None and ra >= 65 and ret < 40:
-        out.append(f"Well run on a risk adjusted basis ({ra:.0f}) without the absolute "
-                   f"return to show for it ({ret:.0f}). Reasonable for a defensive "
+        out.append(f"Well run on a risk adjusted basis ({n0(ra)}) without the absolute "
+                   f"return to show for it ({n0(ret)}). Reasonable for a defensive "
                    f"sleeve, thin as a core holding.")
 
     aum_b = b.get("aum", {})
     if aum_b.get("score") is not None and aum_b["score"] < 40:
         curve = fw.aum_curve(fund.get("category"))
-        out.append(f"Size scores {aum_b['score']:.0f} on the {fund.get('category')} AUM "
+        out.append(f"Size scores {n0(aum_b['score'])} on the {fund.get('category')} AUM "
                    f"curve at Rs {n(fund.get('aumCr'), 0)} cr. {curve['note']}")
 
     mdd = _f(fund.get("maxDrawdown3Y"))
@@ -221,7 +231,7 @@ def score_movers(fund):
         avail = round((100 - b["score"]) * b["weight"] / 100.0, 2)
         rows.append({"block": b["name"], "score": b["score"], "weight": b["weight"],
                      "available": avail,
-                     "note": f"Scores {b['score']:.0f} of 100 on a {b['weight']}% block. "
+                     "note": f"Scores {n0(b['score'])} of 100 on a {b['weight']}% block. "
                              f"{avail:.1f} composite points are still on the table here."})
     rows.sort(key=lambda r: -(r["available"] or -1))
     return rows
