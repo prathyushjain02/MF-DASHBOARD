@@ -1,52 +1,34 @@
-<!doctype html>
-<html lang="en">
-<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Equity MF Selection & Monitoring — Dashboard</title>
+<title>Mutual Fund Screener</title>
 <link rel="stylesheet" href="/static/styles.css">
-</head>
-<body>
 
-<header class="masthead">
+<header id="masthead">
   <div class="brand">
-    <h1>Equity MF Selection &amp; Monitoring</h1>
-    <small id="mast-sub">Loading the scored universe…</small>
+    <h1>Mutual Fund Screener</h1>
+    <p>Actively managed equity. Every fund scored against its own category.</p>
   </div>
-  <div class="spacer"></div>
-  <nav class="tabs" id="tabs" role="tablist">
-    <button data-view="overview" aria-current="page">Overview</button>
-    <button data-view="fund">Rate a fund</button>
-    <button data-view="whitelist">Whitelist</button>
-    <button data-view="screener">Screener</button>
-    <button data-view="categories">Categories</button>
-    <button data-view="holdings">Holdings &amp; overlap</button>
-    <button data-view="portfolio">Portfolio</button>
-    <button data-view="monitoring">Monitoring</button>
-    <button data-view="approach">Our approach</button>
-    <button data-view="framework">Reference</button>
-  </nav>
-  <button class="icon-btn" id="theme-toggle" title="Toggle light / dark">◐</button>
+  <div class="masthead-right">
+    <div id="viewtoggle" class="segmented" role="group" aria-label="Presentation mode">
+      <button data-mode="client" class="on" aria-pressed="true">Client</button>
+      <button data-mode="analyst" aria-pressed="false">Analyst</button>
+    </div>
+    <div id="buildmeta" class="buildmeta"></div>
+  </div>
 </header>
 
-<main>
-  <section class="view active" id="view-overview"><div class="loading">Loading…</div></section>
-  <section class="view" id="view-fund"><div class="loading">Loading…</div></section>
-  <section class="view" id="view-whitelist"><div class="loading">Loading…</div></section>
-  <section class="view" id="view-screener"><div class="loading">Loading…</div></section>
-  <section class="view" id="view-categories"><div class="loading">Loading…</div></section>
-  <section class="view" id="view-holdings"><div class="loading">Loading…</div></section>
-  <section class="view" id="view-portfolio"><div class="loading">Loading…</div></section>
-  <section class="view" id="view-monitoring"><div class="loading">Loading…</div></section>
-  <section class="view" id="view-approach"><div class="loading">Loading…</div></section>
-  <section class="view" id="view-framework"><div class="loading">Loading…</div></section>
+<nav id="tabs" role="tablist">
+  <button data-view="approach" role="tab">How we look at funds</button>
+  <button data-view="shortlist" role="tab" class="on">Category top funds</button>
+  <button data-view="all" role="tab">All funds</button>
+  <button data-view="portfolio" role="tab">Portfolio</button>
+</nav>
+
+<main id="main" aria-live="polite">
+  <div class="loading">Loading the universe…</div>
 </main>
 
-<div class="drawer-backdrop" id="drawer-backdrop"></div>
-<aside class="drawer" id="drawer" aria-hidden="true"></aside>
-<div class="tooltip" id="tooltip" role="status"></div>
+<div id="tooltip" role="tooltip" aria-hidden="true"></div>
 
 <script src="/static/charts.js"></script>
 <script src="/static/app.js"></script>
-</body>
-</html>

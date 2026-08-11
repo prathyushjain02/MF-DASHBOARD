@@ -88,50 +88,62 @@ const Chart = (() => {
     });
   }
 
-  /* --------------------------------------------------- stacked pillar bar */
-  /* Identity encoding: the five pillars take categorical slots 1–5 in fixed
-     order. A 2px surface gap separates adjacent segments; a legend is always
-     present and each segment carries a direct label when it is wide enough. */
-  const PILLAR_COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)',
-                         'var(--series-4)', 'var(--series-5)'];
-
-  function pillarBar(host, pillars, opts = {}) {
-    const { height = 34, showLabels = true } = opts;
+  /* ---------------------------------------------------- weighted block bar */
+  /* Seven blocks is past the categorical cap, and the reader's question here is
+     "how much of each block did this fund earn", which is magnitude and not
+     identity. So the bar uses one hue against a recessive track, segment width
+     is the block's weight in the composite, and every segment carries a direct
+     label. No hue is ever cycled. */
+  function blockBar(host, blocks, opts = {}) {
+    const { height = 34 } = opts;
     host.innerHTML = '';
-    const keys = ['A', 'B', 'C', 'D', 'E'];
-    const total = keys.reduce((s, k) => s + (pillars[k]?.available || 0), 0) || 100;
-    const w = host.clientWidth || 600;
-    const svg = el('svg', { class: 'chart', viewBox: `0 0 ${w} ${height + 20}`, height: height + 20 });
-
+    const total = blocks.reduce((s, b) => s + b.weight, 0) || 100;
+    const w = host.clientWidth || 640;
+    const svg = el('svg', { class: 'chart', viewBox: `0 0 ${w} ${height + 34}`,
+                            height: height + 34 });
     let x = 0;
-    keys.forEach((k, i) => {
-      const p = pillars[k];
-      if (!p) return;
-      const segW = (p.available / total) * w;
-      const earnedW = (p.earned / total) * w;
-      // Available weight, recessive.
-      svg.appendChild(el('rect', {
-        x, y: 0, width: Math.max(0, segW - 2), height,
-        rx: 4, fill: 'var(--grid)',
-      }));
-      // Earned weight, in the pillar's hue.
-      const mark = el('rect', {
-        x, y: 0, width: Math.max(0, Math.min(earnedW, segW - 2)), height,
-        rx: 4, fill: PILLAR_COLORS[i],
-      });
-      hoverable(mark, `<strong>${k}. ${p.name}</strong>
-        <div class="tt-row"><span>Earned</span><span>${fmt(p.earned, 2)}</span></div>
-        <div class="tt-row"><span>Available</span><span>${fmt(p.available, 2)}</span></div>
-        <div class="tt-row"><span>Pillar score</span><span>${fmt(p.pct, 0)}%</span></div>`);
-      svg.appendChild(mark);
-      if (showLabels && segW > 34) {
-        svg.appendChild(el('text', {
-          x: x + segW / 2 - 1, y: height + 14, class: 'tick-label',
-          'text-anchor': 'middle',
-        }, `${k} ${fmt(p.pct, 0)}%`));
+    blocks.forEach((b) => {
+      const segW = (b.weight / total) * w;
+      const pct = b.score == null ? 0 : b.score / 100;
+      svg.appendChild(el('rect', { x, y: 0, width: Math.max(0, segW - 2), height,
+                                   rx: 4, fill: 'var(--grid)' }));
+      if (b.score != null) {
+        const mark = el('rect', {
+          x, y: height * (1 - pct), width: Math.max(0, segW - 2), height: height * pct,
+          rx: 4, fill: seqColor(pct),
+        });
+        hoverable(mark, `<strong>${b.name}</strong>
+          <div class="tt-row"><span>Block score</span><span>${fmt(b.score, 0)} / 100</span></div>
+          <div class="tt-row"><span>Weight</span><span>${b.weight}%</span></div>
+          <div class="tt-row"><span>Coverage</span><span>${fmt(b.coverage, 0)}%</span></div>`);
+        svg.appendChild(mark);
+      } else {
+        const miss = el('rect', { x, y: 0, width: Math.max(0, segW - 2), height,
+                                  rx: 4, fill: 'url(#hatch)' });
+        hoverable(miss, `<strong>${b.name}</strong>
+          <div class="tt-row"><span>Not scored</span><span>no data</span></div>
+          <div class="tt-row"><span>Weight</span><span>${b.weight}%</span></div>`);
+        svg.appendChild(miss);
+      }
+      if (segW > 30) {
+        svg.appendChild(el('text', { x: x + segW / 2 - 1, y: height + 14,
+                                     class: 'tick-label', 'text-anchor': 'middle' },
+                           b.score == null ? 'n/s' : fmt(b.score, 0)));
+        svg.appendChild(el('text', { x: x + segW / 2 - 1, y: height + 28,
+                                     class: 'tick-label dim', 'text-anchor': 'middle' },
+                           b.weight + '%'));
       }
       x += segW;
     });
+    const defs = el('defs');
+    const pat = el('pattern', { id: 'hatch', width: 6, height: 6,
+                                patternUnits: 'userSpaceOnUse',
+                                patternTransform: 'rotate(45)' });
+    pat.appendChild(el('rect', { width: 6, height: 6, fill: 'var(--grid)' }));
+    pat.appendChild(el('line', { x1: 0, y1: 0, x2: 0, y2: 6,
+                                 stroke: 'var(--axis)', 'stroke-width': 2 }));
+    defs.appendChild(pat);
+    svg.appendChild(defs);
     host.appendChild(svg);
   }
 
@@ -386,6 +398,6 @@ const Chart = (() => {
   }
   function seqInk(t) { return t > 0.55 ? '#ffffff' : 'var(--text-primary)'; }
 
-  return { bars, pillarBar, scatter, histogram, rangeStrip, funnel,
-           seqColor, seqInk, hoverable, showTip, hideTip, fmt, PILLAR_COLORS };
+  return { bars, blockBar, scatter, histogram, rangeStrip, funnel,
+           seqColor, seqInk, hoverable, showTip, hideTip, fmt };
 })();

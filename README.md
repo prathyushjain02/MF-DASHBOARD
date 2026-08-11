@@ -1,206 +1,171 @@
-# Equity Mutual Fund Selection & Monitoring Dashboard
+# Mutual Fund Screener
 
-An operational implementation of the **Equity MF Selection & Monitoring Policy v2.0**
-and its companion scorecard workbook. The policy is a document; this is the same
-policy as a running system — 567 SEBI equity schemes put through the seven hard
-gates, scored on all 21 parameters with category-adjusted weights, classified,
-constructed into a whitelist, and monitored against the event triggers.
+An active equity fund screener built to `MF_Screener_Instructions.md`. One model
+with two jobs: rank the funds in each category and surface the shortlist, then
+present that shortlist the way a client should see it, with a written rationale
+and the number kept behind an analyst toggle.
+
+567 actively managed equity schemes, scored on seven weighted blocks, every metric
+percentiled inside its own category.
 
 ## Running it
 
-The app is **self-contained**: `data/*.json` is committed, so it needs neither the
-source workbook nor the whitelist PDF nor a live API call at boot. Clone and run.
+The app is self-contained: `data/*.json` is committed, so it needs no live API call
+at boot. Clone and run.
 
 ```bash
 git clone -b claude/mutual-fund-dashboard-f4ew40 \
     https://github.com/prathyushjain02/nse-backend.git
 cd nse-backend
 pip install -r requirements.txt
-python -m flask --app server run --port 5000     # → http://127.0.0.1:5000
+python -m flask --app server run --port 5000     # http://127.0.0.1:5000
 ```
 
-That is the whole setup. The universe evaluates on the first request — 567 funds
-in about 0.6 seconds, ~50 MB resident — and is cached for the process lifetime.
+Deploying: `render.yaml` and `Procfile` are included. On Render, New -> Blueprint,
+point at the repo, free plan is enough. `/health` is the health check path.
 
-**Deploying.** `render.yaml` and `Procfile` are included, so any of these works
-without further configuration:
+## The model
 
-| Host | What to do |
-|---|---|
-| Render | New → Blueprint → point at the repo. The free plan is sufficient. |
-| Railway / Heroku / Fly | Detects the `Procfile` automatically. |
-| Anything else | `gunicorn server:app --bind 0.0.0.0:$PORT --workers 2` |
-
-`/health` is wired as the health-check path. The dashboard is served at `/`, and
-the pre-existing yfinance equity endpoints are untouched at `/api/equity/...`.
-
-**Refreshing the data** is a local step, not a server one — rebuild and commit:
-
-```bash
-pip install -r etl/requirements.txt
-python etl/build_dataset.py --workbook <Avendus_Automation.xlsx> \
-                            --whitelist-pdf <Mutual_Fund_Whitelist.pdf>
-git commit -am "Refresh dataset"
-```
-
-Arguments are independent: omit `--workbook` to refresh only the API metrics and
-leave the holdings as they are.
-
-## What it does
-
-| Stage | Policy | Implementation |
+| Block | Weight | What it uses |
 |---|---|---|
-| Universe | §4 | 1,221 schemes from the feed, 567 inside the eleven SEBI equity categories |
-| Stage 1 — gates | §5 | Seven gates; G1/G2/G5/G6/G7 tested from data, G3/G4 returned as `manual` |
-| Stage 2 — scoring | §6–7 | 21 parameters, category-adjusted pillar weights, Quant Helper bands |
-| Stage 3 — classification | §8 | Composite, ±5 IC overlay, the B1 downside-capture risk cap, four bands |
-| Whitelist | §9 | Constructed by depth + per-AMC caps, reconciled against the live house list |
-| Guardrails | §10 | Portfolio tested for AMC/scheme caps, core floor, satellite and tactical caps |
-| Monitoring | §11 | Automatable triggers (T3–T7) run across the universe as an exception log |
+| Return and consistency | 27% | Median rolling return 3Y and 5Y. The distribution is read, not a point to point number. |
+| Risk adjusted | 24% | Sharpe, Sortino and Information Ratio, 3Y and 5Y. IR carries the most weight inside the block. |
+| Capture and drawdown | 18% | Upside capture, downside capture, maximum drawdown. |
+| Portfolio | 12% | Effective number of stocks, cap mix fit to mandate, differentiation vs the category book. |
+| Manager | 8% | Tenure on this scheme and market cycles run. |
+| Track record length | 6% | Longer live history scores higher. A weight, not a gate. |
+| AUM, category adjusted | 5% | Size read against the mandate, on a different curve per category. |
 
-## Rate a fund
+Standard deviation, semi standard deviation and Treynor are shown but not scored:
+they move almost in lockstep with Sortino and downside capture, so scoring them
+would weight volatility several times over. Point to point and CAGR are shown for
+context; the return block scores the rolling median.
 
-Pick any of the 567 in-scope schemes and the framework runs it end to end, then
-writes it up. The remark (`mf/narrative.py`) is assembled from the evaluated
-record — nothing is generalised from the fund's name, its AMC's reputation or the
-category's fashion. If a sentence appears, a number in the record supports it and
-the number is quoted alongside.
+**Vintage is weighted, not gated.** A short live history counts for less through
+the 6% block, it does not remove the fund. Short manager tenure is a flag, never a
+reject. This is the main behavioural difference from a gated model: WhiteOak Flexi
+Cap tops Flexicap here on merit, where a 5-year vintage gate would have discarded it.
 
-The page answers, in order: the verdict and what to do about it; what the fund
-does well and what gives pause, each tagged to the parameter that evidenced it;
-where it stacks as a percentile within its own category on seven metrics; its
-pillar scores against the category median; the gate results; **what the framework
-has not seen**, with the exact share of the score resting on convention; what
-would move the score, with the points available on each parameter; the triggers
-firing; what it actually holds; and every parameter in full.
+**AUM is scored by category.** Six distinct curves. Smallcap rewards nimble AUM and
+marks down size as a capacity risk; Midcap, Focused, Sectoral and Dividend Yield
+prefer a middle band; Largecap, Flexicap, Multicap, Large & Midcap, Value and ELSS
+reward scale with a floor for viability.
 
-The remark says uncomfortable things when the data supports them. A fund with
-excellent downside capture and weak upside capture is told it will trail in
-rallies and that the client should hear so before buying, not after. A fund that
-scores 83 and fails the vintage gate is told the score is irrelevant this cycle.
+### Scales
 
-## Holdings — what they are used for
+Not every metric is a percentile, and the ones that are not say so:
 
-The 34,035 security-level positions are not a display feature; they are scoring
-inputs. Four of the five Pillar C parameters and one hard gate are computed from
-them:
+| Scale | Used for | Why |
+|---|---|---|
+| `percentile` | returns, ratios, capture, vintage, manager | Comparative by nature. Ranked inside the fund's own category, ties share a mid rank. |
+| `curve` | AUM | "Good" is not simply "more", and the shape differs by mandate. |
+| `band` | effective number of stocks | Both over-diversification and over-concentration are departures from the mandate. |
+| `absolute` | mandate fit | Full compliance means 100 and nothing else does. |
 
-| Use | Where |
+### Bands
+
+A 72 and above, B 58, C 42, Review below that. Bands are wide on purpose. A
+composite difference below **3 points is not a real difference**, so funds inside
+that distance of their tier leader are shown as equally ranked. The model orders a
+shortlist; it does not select.
+
+## Two honesty rules that change the output
+
+**1. Missing data is never filled with a neutral middle value.** A block reweights
+over the metrics it actually has, and every fund reports the share of the model's
+weight that was evidenced. The median fund evidences 92%.
+
+**2. Below 55% evidence a fund carries no composite at all.** It is reported as
+*Not rated*, keeps its block scores and all its data, and is excluded from ranking.
+Without this floor a fund with no return history at all tops its category on
+portfolio shape and size alone, because renormalising over two minor blocks
+produces a number that looks exactly like a real one. 189 of 567 schemes are Not
+rated on the current feed, almost all of them for having no quantitative history.
+
+## Where a category is not a peer group
+
+Everything is scored against category peers, which only means something when the
+peers do the same job. **Sectoral / Thematic is a SEBI label, not a peer group**: a
+Taiwan equity fund, a pharma fund and a defence fund share a bucket and nothing
+else. Those funds are still scored, because execution within a theme is a fair
+question, but the caveat travels with the number everywhere it appears, and
+differentiation is left unscored there because two funds on different themes
+trivially have no overlap.
+
+## The pages
+
+| Page | What it is |
 |---|---|
-| **C1** mandate fidelity | Headroom over the SEBI cap minimums, from the disclosed allocation — 562 funds |
-| **C2** concentration | Top-10, largest position, top-3 sector weights against category norms; inverted for Focused — 563 funds |
-| **C3** liquidity | Small-cap share of the equity sleeve weighted by AUM — 556 funds |
-| **C4** active share | Book structure: holding count against top-10 concentration — 563 funds |
-| **G7** concentration sanity | Top-10 ≤60% and single stock ≤10%; **77 funds are rejected on this gate** |
-| **G5** mandate compliance | Fallback cap split when the attribute sheet has no mid/small breakdown |
+| How we look at funds | The methodology, generated from the same object the engine scores with, so it cannot drift from the code. |
+| Category top funds | The shortlist per category, each with its written rationale. |
+| All funds | Every scheme, filterable, with a full detail card per fund. |
+| Portfolio | Look-through of a weighted set: combined book, sector exposure, pairwise overlap. |
 
-Beyond scoring they drive the overlap analytics: pairwise overlap as Σ min(weight)
-over shared names, the substitution check against a fund's top-scoring peers, and
-portfolio look-through to stock, sector and market-cap level. That is what turns
-§10's "beyond roughly ten schemes, overlap makes the portfolio an expensive index
-fund" from a maxim into a number you can see before the allocation is made.
-
-Cash, TREPS and receivables are excluded from the equity sleeve throughout, so
-concentration and overlap are computed on the invested book rather than diluted
-by cash.
-
-## Our approach
-
-A written page (`fw.APPROACH`) covering how funds are evaluated and why: the three
-questions kept separate, rolling over point-to-point, the downside asymmetry, why
-gates beat scores, why comparison is category-relative, why data gaps are
-disclosed rather than filled, why the whitelist is constructed, why bands beat
-percentile ranks, and how the framework audits itself. Each section names the
-mechanism that enforces it, plus a section on what the framework deliberately does
-*not* do — allocation, theme validation, forecasting.
+The **Client / Analyst toggle** is a presentation switch. In client view the
+composite and block scores are removed from the DOM, not dimmed, so a screenshot
+cannot leak them. The data and the rationale stay visible in both.
 
 ## Architecture
 
 ```
-etl/build_dataset.py   Merges four sources into data/*.json. Run offline.
-mf/framework.py        The policy encoded as data — every weight, band, gate and
-                       threshold. The single source of truth, matching the
-                       workbook's Weights tab.
-mf/scoring.py          The three-stage engine: gates, 21 parameters, composite,
-                       risk cap, classification, triggers.
-mf/narrative.py        Writes the analyst remark for a single fund, entirely from
-                       its evaluated record.
-mf/datastore.py        Loads and evaluates once; whitelist construction, holdings
-                       overlap, look-through, IPS guardrail checks.
+etl/build_dataset.py   Merges the feed and the workbook into data/*.json. Run offline.
+mf/framework.py        The model as data: blocks, weights, curves, bands, copy.
+mf/screener.py         The engine: scales, portfolio metrics, blocks, composite, tiers.
+mf/narrative.py        Why we like it / What to watch, from the fund's own record.
+mf/datastore.py        Loads and scores once; category books, overlap, look-through.
 mf/api.py              Flask blueprint under /api/mf.
-static/                The dashboard — no build step, no external dependencies.
+static/                The dashboard. No build step, no external dependencies.
 ```
 
-### Data sources
+## Refreshing the data
 
-| Source | Supplies |
+```bash
+pip install -r etl/requirements.txt
+python etl/build_dataset.py --workbook <Avendus_Automation.xlsx> --snapshot --diff
+git commit -am "Refresh dataset"
+```
+
+Arguments are independent: omit `--workbook` to refresh only the feed and leave the
+holdings as they are.
+
+Three things the refresh does that are worth knowing:
+
+- **Column matching is by synonym, not exact string**, so a header renamed upstream
+  does not silently drop a metric. Anything unmatched is printed at the end of the
+  run under *unmapped columns*, which is the one place a quiet data loss would hide.
+- **`--snapshot` archives the build** to `data/history/<date>/`. Point in time
+  snapshots cannot be reconstructed later. Every refresh that does not archive is a
+  period of evidence permanently lost, and without the archive there is no way to
+  ever ask whether the ranking predicted anything.
+- **Validation can refuse the write.** Name-based joins degrade silently: a scheme
+  gets renamed, its key stops matching, and it simply loses its holdings and its AUM
+  without anything failing. The build checks join rate, field coverage and universe
+  size against the previous build and aborts rather than writing a broken dataset.
+  `--force` overrides.
+
+`--diff` reports what changed against the last snapshot: funds added and dropped,
+band changes, and composite moves of 5 points or more.
+
+## Known gaps
+
+| Gap | Effect |
 |---|---|
-| Sheety `dataPack` APIs (flexiCap / largeCap / smid / others) | Rolling returns, Sharpe / Sortino / Treynor / information ratio, SD, semi-SD, max drawdown, up/down capture, beta, TER, market-cap allocation, benchmarks |
-| Avendus Automation workbook | AUM, NAV, fund manager, point-to-point returns, AMC, market-cap split, and 34,035 security-level holdings across 563 funds |
-| Mutual Fund Whitelist PDF | The live Jul–Sep 2026 house whitelist, for reconciliation |
-| Policy docx + Scorecard xlsx | The framework itself — `mf/framework.py` |
+| Manager tenure and cycles are not in the feed | The 8% manager block is unscored for every fund and reported as such. It is an analyst input; supply it and the block scores itself. |
+| No holdings file from a year earlier | Name retention is wired but carries **zero weight**, so it cannot silently move a score. |
+| No benchmark constituent weights | Differentiation is proxied by overlap against the category book. Benchmark holdings would upgrade it to true active share. |
+| Rolling 5Y, and the 5Y ratios | Absent from the current feed, so those blocks score on their 3Y metrics and report ~55% coverage. |
+| Vintage is bucketed | The feed carries no inception date, so live record is read off the longest return series: 5Y, 3Y, 2Y or 1Y. |
 
-The four sources are joined on a normalised scheme key. Direct-growth plans only,
-per gate G6.
+## The quantitative feed
 
-## The honesty rule
+```
+https://api.sheety.co/26381234f19b00348c9bb3d7604a8d84/dataPack/sheet1
+```
 
-The policy says that where a parameter's data is unavailable it scores 3 and is
-flagged — an analyst never guesses, and a data gap never silently punishes or
-rewards a fund (§6.2). The engine follows this literally and surfaces it: every
-parameter reports whether its score was **measured**, derived from **holdings**,
-or assigned by **convention**, and each fund carries an evidence figure — the
-share of its total weight resting on measured data. Roughly 80% of a typical
-score is evidenced; the remainder is Pillars D and E's analyst inputs (manager
-tenure, AMC process, governance, disclosure), which are judgement calls by design
-rather than gaps in the pipeline.
-
-Three parameters are explicit proxies, and say so in their own notes rather than
-in a footnote:
-
-- **A2** (rolling-return consistency) uses the 3Y information ratio. The parameter
-  wants the share of daily-rolled 3Y windows beating the benchmark, which needs a
-  NAV pipeline; excess return over its own tracking error is the closest available
-  measure of how *reliably* rather than how much a fund beats its benchmark.
-- **C3** (portfolio liquidity) uses the small-cap share of the book weighted by
-  AUM. Days-to-liquidate at 20% of ADTV needs security-level volume data.
-- **C4** (active share) reads book structure — holding count against top-10
-  concentration. True active share needs benchmark constituent weights.
-
-Gates G3 and G4 are returned as *unassessable* rather than passed. Silently
-passing a gate the data cannot test would misstate the eligible universe, which is
-the one thing a selection framework must not do.
-
-## API
-
-| Endpoint | Returns |
-|---|---|
-| `GET /api/mf/meta` | Universe counts, category coverage, build metadata |
-| `GET /api/mf/framework` | The whole encoded policy |
-| `GET /api/mf/funds` | Scored universe; filters for category, classification, gates, AUM, downside capture, search |
-| `GET /api/mf/fund/<key>` | Full scorecard plus the written remark, pillar comparison against category medians, and overlap with top peers. `?overlay=±5` re-runs Stage 3 with an IC overlay |
-| `GET /api/mf/category/<name>` | Category dossier: mandate, weights and rationale, peer dispersion, league table |
-| `GET /api/mf/whitelist` | Constructed whitelist, AMC concentration, construction notes, reconciliation against the house list |
-| `GET /api/mf/holdings/<key>` | Security-level book with derived statistics |
-| `GET /api/mf/overlap?keys=a,b,c` | Pairwise overlap matrix; shared positions for a pair |
-| `POST /api/mf/portfolio` | `{"weights": {"<key>": pct}}` → guardrail checks, look-through, overlap |
-| `GET /api/mf/monitoring` | Every automatable trigger currently firing |
-
-## Rebuilding the data
-
-`etl/requirements.txt` holds the extraction-only dependencies (`openpyxl`,
-`pdfplumber`). The Flask app reads the built JSON and needs neither. Arguments
-are independent — omit `--workbook` to refresh only the API metrics.
-
-Changing a weight, band or threshold means editing `mf/framework.py` and the
-companion workbook together. The policy calls changing one without the other a
-breach, and the dashboard would disagree with the workbook it claims to implement.
-
-## Notes on the current cycle
-
-- 328 of 567 schemes are rejected at Stage 1, 245 of them on the vintage gate.
-  Several score above 80 and are still rejected — that is the gate working as
-  designed, not a scoring failure.
-- The framework's constructed whitelist and the live house whitelist agree on 9
-  names. Every disagreement is attributed to a specific rule: a failed gate, the
-  two-per-AMC cap, or a rank below the category's depth guidance.
+**This endpoint is not currently serving.** It has returned, in order, a 500
+(`Cannot read property '0' of undefined`, meaning the sheet exists but Sheety cannot
+parse its header row) and then a 404 (`No project found matching that name`). The
+committed dataset is the previous good pull, remapped onto the new category labels,
+so the app runs and every number on screen is real. The ETL points at the new
+endpoint and will pick it up the moment it serves; it fails with a diagnosis rather
+than a traceback until then.

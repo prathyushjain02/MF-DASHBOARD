@@ -1,17 +1,23 @@
-"""Build the mutual-fund dashboard dataset.
+"""Build the screener dataset.
 
-Merges four source systems into a single normalised set of JSON files under data/:
+Two sources, merged on a normalised scheme key:
 
-  1. Sheety `dataPack` APIs (flexiCap / largeCap / smid / others)  -> quantitative metrics
-  2. Avendus Automation workbook (Performance, Equity Attribute,
-     Underlying Portfolio sheets)                                 -> AUM, manager, holdings
-  3. Mutual Fund Whitelist PDF                                    -> the live house whitelist
-  4. Equity MF Selection Policy / Scorecard MASTER                -> encoded in mf/framework.py
+  1. The Sheety dataPack sheet  -> every quantitative field
+  2. The Avendus Automation workbook (optional) -> AUM, manager, holdings
 
-Run:  python etl/build_dataset.py --workbook <xlsx> --whitelist-pdf <pdf>
+Run:
 
-Every argument is optional: whichever sources are supplied get refreshed, the rest
-are left as they are on disk. The API pull needs no arguments.
+    python etl/build_dataset.py                          # quant only
+    python etl/build_dataset.py --workbook <file.xlsx>   # quant + holdings
+    python etl/build_dataset.py --snapshot               # also archive this build
+
+Both arguments are independent: whichever sources are supplied get refreshed, the
+rest are left as they are on disk.
+
+The API's column headers are matched by synonym rather than by exact string, so a
+header being renamed upstream does not silently drop a metric. Anything that
+cannot be matched is printed at the end of the run under "unmapped columns",
+which is the one place a quiet data loss would otherwise hide.
 """
 
 from __future__ import annotations
@@ -20,70 +26,153 @@ import argparse
 import json
 import os
 import re
+import shutil
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mf.framework import CATEGORY_MAP, POLICY_CATEGORIES  # noqa: E402
+from mf.framework import CATEGORY_MAP, CATEGORIES  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(ROOT, "data")
+HISTORY_DIR = os.path.join(DATA_DIR, "history")
 
-SHEETY_BASE = "https://api.sheety.co/26381234f19b00348c9bb3d7604a8d84/dataPack"
-SHEETY_PACKS = ["flexiCap", "largeCap", "smid", "others"]
+SHEETY_URL = "https://api.sheety.co/26381234f19b00348c9bb3d7604a8d84/dataPack/sheet1"
 
-# The Sheety sheets carry a two-row header. Row 1 becomes the JSON key, row 2 is
-# returned as the first data row and tells us which sub-column survived the flatten.
-API_FIELD_MAP = {
-    "aum &Flows (₹Cr)": "asOfDate",
-    "": "cashAndOthers",
-    "pointToPointReturns (%)": "return1M",
-    "calendarYearReturns (%)": "returnCYTD",
-    "medianRollingReturns (%)": "medianRolling3Y",
-    "medianRollingReturns2017Cutoff (%)": "medianRolling3Y2017",
-    "sharpeRatio": "sharpe3Y",
-    "treynorRatio": "treynor3Y",
-    "informationRatio": "informationRatio3Y",
-    "sortinoRatio": "sortino3Y",
-    "stdDev (ann %)": "stdDev3Y",
-    "semiStdDev (ann %)": "semiStdDev3Y",
-    "maxDrawdown (%)": "maxDrawdown3Y",
-    "upsideCapture (%)": "upsideCapture3Y",
-    "downsideCapture (%)": "downsideCapture3Y",
-    "captureRatio (%)": "captureRatio3Y",
-    "beta": "beta3Y",
-    "marketCapAllocation (%)": "largeCapPct",
-    "expenseRatio (%)": "ter",
-}
-
-# Which benchmark each Sheety pack is quoted against.
-PACK_BENCHMARK = {
-    "largeCap": "Nifty 50 TRI",
-    "flexiCap": "Nifty 500 TRI",
-    "smid": "BSE MidSmallCap TRI",
-    "others": "Nifty 500 TRI",
-}
+DEFAULT_BENCHMARK = "Nifty 500 TRI"
 
 
 # --------------------------------------------------------------------------- #
-# name normalisation — the join key across all four sources
+# column matching
+# --------------------------------------------------------------------------- #
+#
+# Each target field lists the header forms it answers to. Matching is done on a
+# squashed form of the header (lowercase, alphanumerics only), so "Sharpe Ratio
+# 3Y", "sharpeRatio3Y" and "sharpe_ratio_3y" all land in the same place.
+
+FIELD_SYNONYMS = {
+    "fundName":            ["fundname", "scheme", "schemename", "fund", "name"],
+    "category":            ["category", "schemecategory", "cat", "categoryname"],
+    "amfiCode":            ["amficode", "amfi", "schemecode", "code"],
+    "benchmark":           ["benchmark", "benchmarkname", "benchmarkindex"],
+
+    "aumCr":               ["aumcr", "aum", "aumincr", "aumrscr", "corpus", "corpuscr",
+                            "aumcrore", "aumcrores", "netassets"],
+    "nav":                 ["nav", "navrs"],
+    "navDate":             ["navdate", "asofdate", "asof", "date", "dataasof"],
+    "fundManager":         ["fundmanager", "manager", "fundmanagers", "fmname"],
+    "amc":                 ["amc", "amcname", "fundhouse", "mutualfund"],
+    "ter":                 ["ter", "expenseratio", "expenseratiodirect", "terdirect",
+                            "expense"],
+
+    "return1Y":            ["ptp1y", "pointtopoint1y", "return1y", "cagr1y", "oneyear",
+                            "r1y", "trailing1y"],
+    "return3Y":            ["cagr3y", "return3y", "ptp3y", "threeyear", "r3y",
+                            "trailing3y"],
+    "return5Y":            ["cagr5y", "return5y", "ptp5y", "fiveyear", "r5y",
+                            "trailing5y"],
+    "return2Y":            ["cagr2y", "return2y", "twoyear", "r2y"],
+    "returnCYTD":          ["cytd", "ytd", "calendarytd", "returnytd"],
+
+    "medianRolling3Y":     ["roll3y", "rolling3y", "medianrolling3y", "medianrollingreturn3y",
+                            "medianrollingreturns3y", "rollingmedian3y", "medianroll3y"],
+    "medianRolling5Y":     ["roll5y", "rolling5y", "medianrolling5y", "medianrollingreturn5y",
+                            "medianrollingreturns5y", "rollingmedian5y", "medianroll5y"],
+
+    "sharpe3Y":            ["sharpe3y", "sharperatio3y", "sharpe"],
+    "sharpe5Y":            ["sharpe5y", "sharperatio5y"],
+    "sortino3Y":           ["sortino3y", "sortinoratio3y", "sortino"],
+    "sortino5Y":           ["sortino5y", "sortinoratio5y"],
+    "informationRatio3Y":  ["ir3y", "informationratio3y", "inforatio3y", "informationratio",
+                            "ir"],
+    "informationRatio5Y":  ["ir5y", "informationratio5y", "inforatio5y"],
+    "treynor3Y":           ["treynor", "treynor3y", "treynorratio", "treynorratio3y"],
+
+    "upsideCapture3Y":     ["upcap", "upsidecapture", "upsidecapture3y", "upcapture",
+                            "upsidecaptureratio"],
+    "downsideCapture3Y":   ["dncap", "downcap", "downsidecapture", "downsidecapture3y",
+                            "downcapture", "downsidecaptureratio"],
+    "captureRatio3Y":      ["captureratio", "captureratio3y"],
+    "maxDrawdown3Y":       ["maxdd", "maxdrawdown", "maximumdrawdown", "maxdrawdown3y",
+                            "mdd"],
+    "stdDev3Y":            ["stddev", "standarddeviation", "stddev3y", "sd", "sd3y",
+                            "volatility"],
+    "semiStdDev3Y":        ["semistddev", "semistandarddeviation", "semisd",
+                            "semistddev3y", "downsidedeviation"],
+    "beta3Y":              ["beta", "beta3y"],
+    "alpha3Y":             ["alpha", "alpha3y", "jensensalpha"],
+
+    "decile3Y":            ["decile3y", "categorydecile3y", "quartile3y"],
+    "decile5Y":            ["decile5y", "categorydecile5y", "quartile5y"],
+
+    "largeCapPct":         ["largecap", "largecappct", "largecapallocation", "large"],
+    "midCapPct":           ["midcap", "midcappct", "midcapallocation", "mid"],
+    "smallCapPct":         ["smallcap", "smallcappct", "smallcapallocation", "small"],
+    "cashPct":             ["cash", "cashpct", "cashandothers", "cashequivalents"],
+
+    "managerYears":        ["mgryrs", "manageryears", "managertenure", "tenure",
+                            "tenureyears", "managertenureyears"],
+    "managerExperienceYears": ["expyrs", "experienceyears", "managerexperience",
+                               "industryexperience", "experience"],
+    "managerCycles":       ["cycles", "marketcycles", "managercycles", "cyclesrun"],
+    "vintageYears":        ["vintageyrs", "vintageyears", "vintage", "trackrecord",
+                            "trackrecordyears", "ageyears", "inceptionyears"],
+    "inceptionDate":       ["inceptiondate", "launchdate", "inception"],
+}
+
+# Fields that stay text rather than being coerced to a number.
+TEXT_FIELDS = {"fundName", "category", "benchmark", "fundManager", "amc",
+               "navDate", "inceptionDate"}
+
+
+def squash(s):
+    return re.sub(r"[^a-z0-9]+", "", str(s or "").lower())
+
+
+def build_header_map(sample_row):
+    """Map the API's own column keys onto our field names."""
+    lookup = {}
+    for field, syns in FIELD_SYNONYMS.items():
+        for s in syns:
+            lookup.setdefault(s, field)
+
+    mapping, unmapped = {}, []
+    for col in sample_row:
+        if col == "id":
+            continue
+        sq = squash(col)
+        field = lookup.get(sq)
+        if field is None:
+            # Second pass: allow a header that merely contains a synonym, longest
+            # synonym first so "downsidecapture" wins over "capture".
+            for s in sorted(lookup, key=len, reverse=True):
+                if len(s) >= 5 and s in sq:
+                    field = lookup[s]
+                    break
+        if field is None:
+            unmapped.append(col)
+        elif field not in mapping.values():
+            mapping[col] = field
+        else:
+            unmapped.append(col)  # a second column claiming a taken field
+    return mapping, unmapped
+
+
+# --------------------------------------------------------------------------- #
+# name normalisation - the join key across sources
 # --------------------------------------------------------------------------- #
 
-_PLAN_SUFFIX = re.compile(
-    r"\s*-\s*(dir|direct|reg|regular)\b.*$", re.IGNORECASE)
+_PLAN_SUFFIX = re.compile(r"\s*-\s*(dir|direct|reg|regular)\b.*$", re.IGNORECASE)
 _NOISE_WORDS = re.compile(
     r"\b(fund|funds|scheme|plan|growth|gr|dir|direct|regular|reg|option|"
     r"payout|idcw|dividend\s+reinvestment|and)\b", re.IGNORECASE)
 
-# Schemes the whitelist deck still calls by a former name, or spells differently
-# from the data feed. Keyed on the normalised form so the fix survives further
-# punctuation drift.
 _KEY_ALIASES = {
-    "kotakequityopportunities": "kotaklargemidcap",   # renamed to Large & Midcap
+    "kotakequityopportunities": "kotaklargemidcap",
     "trustflexicap": "trustmfflexicap",
-    "trustsmalllcap": "trustmfsmallcap",              # deck typo: 'Smalllcap'
+    "trustsmalllcap": "trustmfsmallcap",
     "trustsmallcap": "trustmfsmallcap",
     "trustmidcap": "trustmfmidcap",
     "trustmulticap": "trustmfmulticap",
@@ -91,33 +180,24 @@ _KEY_ALIASES = {
 
 
 def fund_key(name) -> str:
-    """Collapse a scheme name to a stable join key.
-
-    'Aditya Birla Sun Life Large Cap Fund - Dir - Growth' and
-    'Aditya Birla Sun Life Large Cap Fund' both collapse to
-    'adityabirlasunlifelargecap'.
-    """
-    s = str(name or "")
-    s = _PLAN_SUFFIX.sub("", s)
+    s = _PLAN_SUFFIX.sub("", str(name or ""))
     s = _NOISE_WORDS.sub(" ", s)
     s = re.sub(r"[^a-z0-9]+", "", s.lower())
     return _KEY_ALIASES.get(s, s)
 
 
 def clean_display_name(name) -> str:
-    """Strip the plan suffix for display but keep the scheme's real words."""
     return _PLAN_SUFFIX.sub("", str(name or "")).strip()
 
 
 def num(v):
-    """Coerce a spreadsheet/API cell to float, mapping '--', '' and 'N/A' to None."""
     if v is None:
         return None
     if isinstance(v, (int, float)) and not isinstance(v, bool):
         f = float(v)
-        return None if f != f else f  # drop NaN
-    s = str(v).strip().replace(",", "")
-    if s in ("", "--", "-", "N/A", "#N/A", "NA", "nan", "None"):
+        return None if f != f else f
+    s = str(v).strip().replace(",", "").replace("%", "")
+    if s in ("", "--", "-", "N/A", "#N/A", "NA", "nan", "None", "#DIV/0!", "#VALUE!"):
         return None
     try:
         return float(s)
@@ -130,396 +210,389 @@ def as_date(v):
         return None
     if isinstance(v, datetime):
         return v.strftime("%Y-%m-%d")
-    s = str(v).strip()
-    return s or None
+    return str(v).strip() or None
 
 
 # --------------------------------------------------------------------------- #
-# 1. Sheety quantitative packs
+# 1. the quantitative feed
 # --------------------------------------------------------------------------- #
 
-def fetch_api_packs(cache_dir=None):
-    """Pull the four dataPack endpoints. Falls back to a local cache when offline."""
+def fetch_pack(cache_path=None):
+    """Pull the dataPack sheet. Falls back to a local cache when the API is down,
+    so a build is never blocked by an upstream outage."""
     import urllib.request
 
-    packs = {}
-    for pack in SHEETY_PACKS:
-        cache = os.path.join(cache_dir, f"{pack}.json") if cache_dir else None
-        payload = None
-        try:
-            url = f"{SHEETY_BASE}/{pack}"
-            with urllib.request.urlopen(url, timeout=120) as resp:
-                payload = json.loads(resp.read().decode("utf-8"))
-            if cache:
-                with open(cache, "w") as fh:
-                    json.dump(payload, fh)
-            print(f"  fetched {pack}: {len(payload[pack])} rows")
-        except Exception as exc:  # noqa: BLE001 - offline rebuild is a valid mode
-            if cache and os.path.exists(cache):
-                with open(cache) as fh:
-                    payload = json.load(fh)
-                print(f"  {pack}: live fetch failed ({exc}); used cache")
-            else:
-                raise
-        packs[pack] = payload[pack]
-    return packs
+    try:
+        req = urllib.request.Request(SHEETY_URL, headers={"User-Agent": "mf-screener/3"})
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+        rows = next((v for v in payload.values() if isinstance(v, list)), None)
+        if not rows:
+            raise ValueError(f"no row array in response: {list(payload)[:5]}")
+        if cache_path:
+            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+            with open(cache_path, "w", encoding="utf-8") as fh:
+                json.dump(payload, fh)
+        print(f"  fetched {len(rows)} rows from the dataPack sheet")
+        return rows
+    except Exception as exc:  # noqa: BLE001 - an offline rebuild is a valid mode
+        print(f"  live fetch failed: {exc}")
+        if cache_path and os.path.exists(cache_path):
+            with open(cache_path, encoding="utf-8") as fh:
+                payload = json.load(fh)
+            rows = next(v for v in payload.values() if isinstance(v, list))
+            print(f"  used cache: {len(rows)} rows")
+            return rows
+        raise SystemExit(
+            f"\nCould not read the quantitative feed and there is no cache to fall "
+            f"back on.\n\n  {SHEETY_URL}\n  {exc}\n\n"
+            f"Sheety's own error text tells you which end is broken:\n"
+            f"  'No project found matching that name'  the project id in the URL is "
+            f"wrong or the project was deleted.\n"
+            f"  'No sheet found matching that name'    the project is fine, the sheet "
+            f"name at the end of the URL is not.\n"
+            f"  'Cannot read property ... of undefined' the sheet exists but Sheety "
+            f"cannot parse it, which is almost always a blank header row, a blank "
+            f"first column, or a merged cell in row 1.\n\n"
+            f"Fix the sheet or the URL, then re-run. Nothing was written, so the "
+            f"dataset already on disk is untouched.")
 
 
-def parse_api_packs(packs):
-    """Split the packs into fund records and benchmark records."""
+def parse_pack(rows):
+    """Turn API rows into fund records, splitting benchmarks out as we go."""
+    if not rows:
+        return {}, {}, []
+    mapping, unmapped = build_header_map(rows[0].keys())
+    print(f"  mapped {len(mapping)} columns; {len(unmapped)} unmapped")
+
     funds, benchmarks = {}, {}
+    for r in rows:
+        rec = {}
+        for col, field in mapping.items():
+            v = r.get(col)
+            rec[field] = as_date(v) if field in TEXT_FIELDS else num(v)
+        name = (rec.get("fundName") or "").strip()
+        if not name:
+            continue
+        category = (rec.get("category") or "").strip()
 
-    for pack, rows in packs.items():
-        for row in rows:
-            name = str(row.get("fundName") or "").strip()
-            if not name:
-                continue
-            category = str(row.get("category") or "").strip()
+        if category.lower().startswith("benchmark") or "index" in category.lower() \
+                and "fund" not in category.lower():
+            benchmarks[name] = {**rec, "name": name}
+            continue
 
-            rec = {}
-            for src, dst in API_FIELD_MAP.items():
-                if src in row:
-                    rec[dst] = num(row[src]) if dst != "asOfDate" else as_date(row[src])
+        # Most rows carry a numeric AMFI code. PMS and AIF vehicles carry a
+        # sentinel instead, and they are not SEBI mutual fund schemes, so they
+        # are kept out of the scored universe rather than ranked against it.
+        try:
+            amfi_code, vehicle = int(rec.get("amfiCode")), "MF"
+        except (TypeError, ValueError):
+            amfi_code, vehicle = None, "PMS/AIF"
 
-            if category.startswith("Benchmark"):
-                rec.update({"name": name, "category": category, "pack": pack})
-                benchmarks[name] = rec
-                continue
+        rec["key"] = fund_key(name)
+        rec["name"] = clean_display_name(name)
+        rec["rawName"] = name
+        rec["amfiCode"] = amfi_code
+        rec["vehicle"] = vehicle
+        rec["sourceCategory"] = category
+        rec["category"] = (CATEGORY_MAP.get(category.strip().lower())
+                           if vehicle == "MF" else None)
+        rec.setdefault("benchmark", None)
+        rec["benchmark"] = rec.get("benchmark") or DEFAULT_BENCHMARK
+        funds[rec["key"]] = rec
 
-            amfi = row.get("amfiCode")
-            if not amfi:
-                continue
-
-            # Most rows carry a numeric AMFI code; PMS/AIF vehicles carry a
-            # 'PMS::<name>' sentinel instead. Those are not SEBI mutual fund
-            # schemes, so they are kept out of the scored universe.
-            try:
-                amfi_code = int(amfi)
-                vehicle = "MF"
-            except (TypeError, ValueError):
-                amfi_code = None
-                vehicle = "PMS/AIF"
-
-            key = fund_key(name)
-            rec.update({
-                "key": key,
-                "name": clean_display_name(name),
-                "rawName": name,
-                "amfiCode": amfi_code,
-                "vehicle": vehicle,
-                "sourceCategory": category,
-                "category": CATEGORY_MAP.get(category) if vehicle == "MF" else None,
-                "pack": pack,
-                "benchmark": PACK_BENCHMARK.get(pack),
-            })
-            # 'largeCapPct' is the surviving column of the market-cap allocation
-            # block; mid/small are recovered from the Equity Attribute sheet.
-            funds[key] = rec
-
-    return funds, benchmarks
+    return funds, benchmarks, unmapped
 
 
 # --------------------------------------------------------------------------- #
-# 2. Avendus Automation workbook
+# 2. the workbook (AUM, manager, holdings)
 # --------------------------------------------------------------------------- #
 
 def parse_workbook(path, funds):
-    """Enrich fund records with AUM/manager/attributes and pull holdings."""
     import openpyxl
 
     print(f"  opening workbook {os.path.basename(path)} ...")
     wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
+    sheets = set(wb.sheetnames)
 
-    # -- Performance: NAV, corpus (AUM in Cr), fund manager, point-to-point ---
-    matched_perf = 0
-    ws = wb["Performance"]
-    for row in ws.iter_rows(min_row=5, max_col=13, values_only=True):
-        name = row[0]
-        if not name:
-            continue
-        # The sheet holds both direct and regular plans; the policy universe is
-        # direct-growth only (G6), so regular rows are ignored.
-        if not re.search(r"-\s*Dir\b", str(name)):
-            continue
-        key = fund_key(name)
-        fund = funds.get(key)
-        if not fund:
-            continue
-        matched_perf += 1
-        fund.update({
-            "nav": num(row[1]),
-            "navDate": as_date(row[2]),
-            "aumCr": num(row[3]),
-            "aumDate": as_date(row[4]),
-            "fundManager": str(row[5]).strip() if row[5] else None,
-            "return3M": num(row[7]),
-            "return6M": num(row[8]),
-            "return1Y": num(row[9]),
-            "return2Y": num(row[10]),
-            "return3Y": num(row[11]),
-            "return5Y": num(row[12]),
-        })
-    print(f"  Performance: enriched {matched_perf} funds")
+    if "Performance" in sheets:
+        matched = 0
+        for row in wb["Performance"].iter_rows(min_row=5, max_col=13, values_only=True):
+            name = row[0]
+            if not name or not re.search(r"-\s*Dir\b", str(name)):
+                continue
+            fund = funds.get(fund_key(name))
+            if not fund:
+                continue
+            matched += 1
+            for field, val in (("nav", num(row[1])), ("navDate", as_date(row[2])),
+                               ("aumCr", num(row[3])), ("aumDate", as_date(row[4])),
+                               ("fundManager", str(row[5]).strip() if row[5] else None),
+                               ("return3M", num(row[7])), ("return6M", num(row[8])),
+                               ("return1Y", num(row[9])), ("return2Y", num(row[10])),
+                               ("return3Y", num(row[11])), ("return5Y", num(row[12]))):
+                # The API is authoritative where it carries a value; the workbook
+                # only fills the holes.
+                if fund.get(field) is None and val is not None:
+                    fund[field] = val
+        print(f"  Performance: enriched {matched} funds")
 
-    # -- Equity Attribute: AMC, TER, market-cap split ------------------------
-    matched_attr = 0
-    ws = wb["Equity Attribute"]
-    for row in ws.iter_rows(min_row=5, max_col=10, values_only=True):
-        name = row[0]
-        if not name:
-            continue
-        # Direct plans only (G6). Rows carrying no plan suffix at all (ETFs) are
-        # kept, since they collapse to a distinct key anyway.
-        if re.search(r"-\s*Reg\b", str(name)):
-            continue
-        key = fund_key(name)
-        fund = funds.get(key)
-        if not fund:
-            continue
-        matched_attr += 1
-        ter = num(row[3])
-        fund.update({
-            "amc": str(row[1]).strip() if row[1] else None,
-            "attrDate": as_date(row[2]),
-            "largeCapPct": num(row[4]) if num(row[4]) is not None else fund.get("largeCapPct"),
-            "midCapPct": num(row[5]),
-            "smallCapPct": num(row[6]),
-            "cashPct": num(row[7]),
-        })
-        if fund.get("ter") is None and ter is not None:
-            fund["ter"] = ter
-    print(f"  Equity Attribute: enriched {matched_attr} funds")
+    if "Equity Attribute" in sheets:
+        matched = 0
+        for row in wb["Equity Attribute"].iter_rows(min_row=5, max_col=10, values_only=True):
+            name = row[0]
+            if not name or re.search(r"-\s*Reg\b", str(name)):
+                continue
+            fund = funds.get(fund_key(name))
+            if not fund:
+                continue
+            matched += 1
+            for field, val in (("amc", str(row[1]).strip() if row[1] else None),
+                               ("attrDate", as_date(row[2])), ("ter", num(row[3])),
+                               ("largeCapPct", num(row[4])), ("midCapPct", num(row[5])),
+                               ("smallCapPct", num(row[6])), ("cashPct", num(row[7]))):
+                if fund.get(field) is None and val is not None:
+                    fund[field] = val
+        print(f"  Equity Attribute: enriched {matched} funds")
 
-    # -- Underlying Portfolio: security-level holdings -----------------------
     holdings = defaultdict(list)
-    rows_seen = 0
-    ws = wb["Underlying Portfolio"]
-    # Holdings are only carried for the scored universe — the eleven SEBI equity
-    # categories. Index funds, ETFs, FoFs and hybrids are out of policy scope and
-    # their books would triple the payload for no analytical use.
-    in_scope = {k for k, f in funds.items() if f.get("category")}
-    for row in ws.iter_rows(min_row=5, max_col=15, values_only=True):
-        name = row[0]
-        if not name:
-            continue
-        key = fund_key(name)
-        if key not in in_scope:
-            continue
-        pct = num(row[9])
-        if pct is None or pct <= 0:
-            continue
-        rows_seen += 1
-        rec = {
-            "s": str(row[1]).strip() if row[1] else "",
-            "sec": str(row[3]).strip() if row[3] else "Unclassified",
-            "pct": round(pct, 3),
-        }
-        if row[2]:
-            rec["isin"] = str(row[2]).strip()
-        if row[4]:
-            rec["ins"] = str(row[4]).strip()
-        if row[10]:
-            rec["mc"] = str(row[10]).strip()
-        holdings[key].append(rec)
-    print(f"  Underlying Portfolio: {rows_seen} holding rows across {len(holdings)} funds")
-
-    # Sort each book by weight; keep the full book (needed for honest overlap maths).
-    for key in holdings:
-        holdings[key].sort(key=lambda h: -h["pct"])
+    if "Underlying Portfolio" in sheets:
+        rows_seen = 0
+        in_scope = {k for k, f in funds.items() if f.get("category") in CATEGORIES}
+        for row in wb["Underlying Portfolio"].iter_rows(min_row=5, max_col=15,
+                                                        values_only=True):
+            name = row[0]
+            if not name:
+                continue
+            key = fund_key(name)
+            if key not in in_scope:
+                continue
+            pct = num(row[9])
+            if pct is None or pct <= 0:
+                continue
+            rows_seen += 1
+            rec = {"s": str(row[1]).strip() if row[1] else "",
+                   "sec": str(row[3]).strip() if row[3] else "Unclassified",
+                   "pct": round(pct, 3)}
+            if row[2]:
+                rec["isin"] = str(row[2]).strip()
+            if row[4]:
+                rec["ins"] = str(row[4]).strip()
+            if row[10]:
+                rec["mc"] = str(row[10]).strip()
+            holdings[key].append(rec)
+        for key in holdings:
+            holdings[key].sort(key=lambda h: -h["pct"])
+        print(f"  Underlying Portfolio: {rows_seen} rows across {len(holdings)} funds")
 
     wb.close()
     return dict(holdings)
 
 
 # --------------------------------------------------------------------------- #
-# 3. Whitelist PDF
+# validation
 # --------------------------------------------------------------------------- #
 
-# Section headings in the PDF, mapped to the policy's category vocabulary.
-_WL_SECTIONS = {
-    "large cap": "Large Cap",
-    "flexicap": "Flexi Cap",
-    "large & midcap": "Large & Mid Cap",
-    "midcap": "Mid Cap",
-    "smallcap": "Small Cap",
-    "focused": "Focused",
-    "value/contra/sp situation": "Value / Contra",
-    "thematic": "Sectoral / Thematic",
-}
-_STOP_SECTIONS = {
-    "aggressive hybrid", "dynamic asset allocation / balanced advantage",
-    "benchmark", "nifty –etf/index funds", "nifty -etf/index funds",
-}
+def validate(funds, holdings, previous_meta, strict=True):
+    """Refuse to write a build that has quietly fallen apart.
 
-_NUM = r"(?:-?\d+\.\d+|--)"
-# A scheme row: name, AUM, then six return figures.
-_WL_ROW = re.compile(
-    rf"^(?P<name>[A-Za-z][A-Za-z0-9&\.\,\'\-\/\(\) ]+?)\s+"
-    rf"(?P<aum>\d[\d,]*)\s+(?P<rest>{_NUM}(?:\s+{_NUM}){{5}})\s*$")
-# Long scheme names wrap: the figures land on their own line, with the head of
-# the name on the line above (trailed by the riskometer band) and the tail on the
-# line below (trailed by the word 'Riskometer').
-_WL_NUMS_ONLY = re.compile(rf"^(?P<aum>\d[\d,]*)\s+(?P<rest>{_NUM}(?:\s+{_NUM}){{5}})\s*$")
-_RISK_BAND = re.compile(
-    r"\s*(Very\s+High|Moderately\s+High|High|Moderate|Low\s+to\s+Moderate|Low)\s*$",
-    re.IGNORECASE)
-_RISKOMETER = re.compile(r"\s*Riskometer\s*$", re.IGNORECASE)
+    Name-based joins degrade silently: a scheme gets renamed upstream, its key
+    stops matching, and the fund simply loses its holdings and its AUM without
+    anything failing. These checks turn that into a visible error.
+    """
+    problems, warnings = [], []
+    in_scope = [f for f in funds.values() if f.get("category") in CATEGORIES]
 
+    if not funds:
+        problems.append("no funds parsed at all")
+    if len(in_scope) < 50:
+        problems.append(f"only {len(in_scope)} in-scope funds; expected a few hundred")
 
-def _wl_entry(name, section, aum, rest):
-    vals = [num(v) for v in rest.split()]
-    name = re.sub(r"\s+", " ", name).strip()
-    return {
-        "name": name,
-        "key": fund_key(name),
-        "pdfSection": section,
-        "aumCr": num(aum),
-        "pdfReturns": {"3M": vals[0], "6M": vals[1], "1Y": vals[2],
-                       "2Y": vals[3], "3Y": vals[4], "5Y": vals[5]},
-    }
+    join = 100.0 * len(holdings) / max(1, len(in_scope))
+    if holdings and join < 50:
+        problems.append(f"holdings joined to only {join:.0f}% of in-scope funds")
 
+    for field, floor in (("medianRolling3Y", 40), ("sortino3Y", 40),
+                         ("downsideCapture3Y", 40), ("aumCr", 60)):
+        have = 100.0 * sum(1 for f in in_scope if f.get(field) is not None) / max(1, len(in_scope))
+        if have < floor:
+            warnings.append(f"{field} present on only {have:.0f}% of in-scope funds")
 
-def parse_whitelist_pdf(path):
-    """Read the live house whitelist out of the quarterly PDF."""
-    import pdfplumber
+    prev = (previous_meta or {}).get("inScopeFunds")
+    if prev and len(in_scope) < prev * 0.8:
+        problems.append(f"in-scope count fell from {prev} to {len(in_scope)}, "
+                        f"more than a fifth of the universe")
 
-    entries = []
-    section = None
-    with pdfplumber.open(path) as pdf:
-        for page in pdf.pages[:8]:  # the equity whitelist tables lead the deck
-            lines = [ln.strip() for ln in (page.extract_text() or "").split("\n")]
-            for i, line in enumerate(lines):
-                low = line.lower().rstrip(":")
-                if low in _WL_SECTIONS:
-                    section = _WL_SECTIONS[low]
-                    continue
-                if low in _STOP_SECTIONS:
-                    section = None
-                    continue
-                if not section:
-                    continue
-
-                m = _WL_ROW.match(line)
-                if m:
-                    entries.append(_wl_entry(m.group("name"), section,
-                                             m.group("aum"), m.group("rest")))
-                    continue
-
-                m = _WL_NUMS_ONLY.match(line)
-                if m and i > 0:
-                    head = _RISK_BAND.sub("", lines[i - 1])
-                    tail = ""
-                    if i + 1 < len(lines):
-                        cand = lines[i + 1]
-                        if _RISKOMETER.search(cand):
-                            tail = _RISKOMETER.sub("", cand)
-                    if head:
-                        entries.append(_wl_entry(f"{head} {tail}", section,
-                                                 m.group("aum"), m.group("rest")))
-
-    # De-duplicate on key, keeping the first sighting.
-    seen, unique = set(), []
-    for e in entries:
-        if e["key"] in seen:
-            continue
-        seen.add(e["key"])
-        unique.append(e)
-
-    print(f"  whitelist PDF: {len(unique)} equity schemes across "
-          f"{len({e['pdfSection'] for e in unique})} deck sections")
-    return unique
+    for w in warnings:
+        print(f"  warning: {w}")
+    for p in problems:
+        print(f"  PROBLEM: {p}")
+    if problems and strict:
+        raise SystemExit("build refused: the checks above would have written a "
+                         "silently broken dataset. Re-run with --force to override.")
+    return {"warnings": warnings, "problems": problems}
 
 
 # --------------------------------------------------------------------------- #
-# assembly
+# output
 # --------------------------------------------------------------------------- #
 
-def write(name, payload):
+def write_json(name, payload):
     os.makedirs(DATA_DIR, exist_ok=True)
     path = os.path.join(DATA_DIR, name)
-    with open(path, "w") as fh:
-        json.dump(payload, fh, separators=(",", ":"), ensure_ascii=False)
-    print(f"  wrote {name} ({os.path.getsize(path) / 1024:.0f} KB)")
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, separators=(",", ":"))
+    print(f"  wrote {name} ({os.path.getsize(path) / 1e6:.2f} MB)")
 
+
+def snapshot():
+    """Archive this build under data/history/<date>/.
+
+    Point in time snapshots cannot be reconstructed after the fact. Every refresh
+    that does not archive is a quarter of evidence permanently lost, and without
+    the archive there is no way to ever ask whether the model's ranking predicted
+    anything.
+    """
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    dest = os.path.join(HISTORY_DIR, stamp)
+    os.makedirs(dest, exist_ok=True)
+    for name in ("funds.json", "meta.json"):
+        src = os.path.join(DATA_DIR, name)
+        if os.path.exists(src):
+            shutil.copy2(src, os.path.join(dest, name))
+    # Scores, so the archive answers "what did we say at the time" directly.
+    try:
+        from mf import datastore as ds
+        state = ds.load(force=True)
+        scores = [{"key": f["key"], "name": f["name"], "category": f["category"],
+                   "composite": f.get("composite"), "band": f.get("band"),
+                   "categoryRank": f.get("categoryRank"), "tier": f.get("tier"),
+                   "evidence": f.get("evidence"),
+                   "blocks": f.get("blockScore", {})}
+                  for f in state["funds"]]
+        with open(os.path.join(dest, "scores.json"), "w", encoding="utf-8") as fh:
+            json.dump(scores, fh, separators=(",", ":"))
+        print(f"  snapshot: {len(scores)} scored funds archived at data/history/{stamp}/")
+    except Exception as exc:  # noqa: BLE001
+        print(f"  snapshot: scores not archived ({exc})")
+
+
+def diff_against_previous(funds):
+    """What changed since the last build. This is the monitoring layer: the model
+    is recomputed from scratch every time, so movement is only visible if it is
+    explicitly diffed."""
+    stamps = sorted(os.listdir(HISTORY_DIR)) if os.path.isdir(HISTORY_DIR) else []
+    prev_path = None
+    for s in reversed(stamps):
+        p = os.path.join(HISTORY_DIR, s, "scores.json")
+        if os.path.exists(p):
+            prev_path = p
+            break
+    if not prev_path:
+        return None
+    with open(prev_path, encoding="utf-8") as fh:
+        prev = {r["key"]: r for r in json.load(fh)}
+
+    from mf import datastore as ds
+    state = ds.load(force=True)
+    now = {f["key"]: f for f in state["funds"]}
+
+    added = [now[k]["name"] for k in now if k not in prev]
+    dropped = [prev[k]["name"] for k in prev if k not in now]
+    moves, band_changes = [], []
+    for k in set(now) & set(prev):
+        a, b = prev[k].get("composite"), now[k].get("composite")
+        if a is not None and b is not None and abs(b - a) >= 5:
+            moves.append({"name": now[k]["name"], "from": a, "to": b,
+                          "delta": round(b - a, 1)})
+        if prev[k].get("band") != now[k].get("band"):
+            band_changes.append({"name": now[k]["name"], "from": prev[k].get("band"),
+                                 "to": now[k].get("band")})
+    moves.sort(key=lambda m: -abs(m["delta"]))
+    return {"since": os.path.basename(os.path.dirname(prev_path)),
+            "added": added, "dropped": dropped,
+            "bandChanges": band_changes, "bigMoves": moves[:25]}
+
+
+# --------------------------------------------------------------------------- #
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--workbook", help="Avendus Automation .xlsx")
-    ap.add_argument("--whitelist-pdf", help="Mutual Fund Whitelist .pdf")
-    ap.add_argument("--cache-dir", help="directory for raw API responses")
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--workbook", help="Avendus Automation xlsx (AUM, manager, holdings)")
+    ap.add_argument("--snapshot", action="store_true",
+                    help="archive this build under data/history/<date>/")
+    ap.add_argument("--diff", action="store_true",
+                    help="report what changed against the most recent snapshot")
+    ap.add_argument("--offline", action="store_true",
+                    help="skip the API and rebuild from the cached response")
+    ap.add_argument("--force", action="store_true",
+                    help="write the dataset even if the validation checks fail")
     args = ap.parse_args()
 
-    print("[1/4] Sheety dataPack APIs")
-    packs = fetch_api_packs(args.cache_dir)
-    funds, benchmarks = parse_api_packs(packs)
-    print(f"  parsed {len(funds)} funds, {len(benchmarks)} benchmarks")
+    cache = os.path.join(ROOT, "etl", "cache", "dataPack.json")
+    prev_meta = {}
+    meta_path = os.path.join(DATA_DIR, "meta.json")
+    if os.path.exists(meta_path):
+        with open(meta_path, encoding="utf-8") as fh:
+            prev_meta = json.load(fh)
+
+    print("1. quantitative feed")
+    if args.offline:
+        with open(cache, encoding="utf-8") as fh:
+            rows = next(v for v in json.load(fh).values() if isinstance(v, list))
+        print(f"  offline: {len(rows)} cached rows")
+    else:
+        rows = fetch_pack(cache)
+    funds, benchmarks, unmapped = parse_pack(rows)
+    in_scope = [f for f in funds.values() if f.get("category") in CATEGORIES]
+    print(f"  {len(funds)} schemes, {len(in_scope)} inside the eleven equity categories")
 
     holdings = {}
     if args.workbook:
-        print("[2/4] Avendus Automation workbook")
+        print("2. workbook")
         holdings = parse_workbook(args.workbook, funds)
     else:
-        print("[2/4] workbook skipped")
+        print("2. workbook skipped; holdings left as they are on disk")
+        hp = os.path.join(DATA_DIR, "holdings.json")
+        if os.path.exists(hp):
+            with open(hp, encoding="utf-8") as fh:
+                holdings = json.load(fh)
 
-    whitelist = []
-    if args.whitelist_pdf:
-        print("[3/4] Whitelist PDF")
-        whitelist = parse_whitelist_pdf(args.whitelist_pdf)
-    else:
-        print("[3/4] whitelist PDF skipped")
+    print("3. validation")
+    checks = validate(funds, holdings, prev_meta, strict=not args.force)
 
-    print("[4/4] writing data/")
-    fund_list = sorted(funds.values(), key=lambda f: f["name"])
-
-    # Mark funds that sit on the live house whitelist, so the dashboard can show
-    # framework output against the incumbent list.
-    by_key = {f["key"]: f for f in fund_list}
-    wl_keys = {e["key"] for e in whitelist}
-    for fund in fund_list:
-        fund["onHouseWhitelist"] = fund["key"] in wl_keys
-        fund["hasHoldings"] = fund["key"] in holdings
-
-    # Resolve each whitelist row to its SEBI category. The deck groups schemes by
-    # house presentation (Multi Cap funds sit under a 'Flexicap' heading, for
-    # instance); the policy is category-relative, so the fund's own SEBI category
-    # wins and the deck section is kept only for traceability.
-    unmatched = 0
-    for entry in whitelist:
-        fund = by_key.get(entry["key"])
-        entry["matched"] = bool(fund)
-        entry["category"] = (fund or {}).get("category") or entry["pdfSection"]
-        if not fund:
-            unmatched += 1
-    if unmatched:
-        print(f"  note: {unmatched} whitelist schemes had no match in the quant feed")
-
-    in_scope = [f for f in fund_list if f["category"]]
-    as_of = next((f.get("asOfDate") for f in fund_list if f.get("asOfDate")), None)
-
-    write("funds.json", fund_list)
-    write("benchmarks.json", benchmarks)
-    write("whitelist.json", whitelist)
-    if holdings:
-        write("holdings.json", holdings)
-
-    write("meta.json", {
+    print("4. writing")
+    write_json("funds.json", list(funds.values()))
+    write_json("benchmarks.json", benchmarks)
+    if args.workbook:
+        write_json("holdings.json", holdings)
+    write_json("meta.json", {
         "builtAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "metricsAsOf": as_of,
-        "navDate": next((f.get("navDate") for f in fund_list if f.get("navDate")), None),
-        "totalFunds": len(fund_list),
+        "totalFunds": len(funds),
         "inScopeFunds": len(in_scope),
         "fundsWithHoldings": len(holdings),
-        "houseWhitelistCount": len(whitelist),
         "categories": {c: sum(1 for f in in_scope if f["category"] == c)
-                       for c in POLICY_CATEGORIES},
-        "sources": {
-            "quantitative": "Sheety dataPack (flexiCap / largeCap / smid / others)",
-            "holdings": os.path.basename(args.workbook) if args.workbook else None,
-            "whitelist": os.path.basename(args.whitelist_pdf) if args.whitelist_pdf else None,
-            "framework": "Equity MF Selection Policy v2.0 + Scorecard MASTER",
-        },
+                       for c in CATEGORIES},
+        "source": SHEETY_URL,
+        "unmappedColumns": unmapped,
+        "checks": checks,
     })
-    print("done.")
+
+    if unmapped:
+        print(f"\n  unmapped columns ({len(unmapped)}), add a synonym if any of these "
+              f"should be scored:")
+        for c in unmapped:
+            print(f"    - {c}")
+
+    if args.snapshot:
+        print("5. snapshot")
+        snapshot()
+    if args.diff:
+        d = diff_against_previous(funds)
+        print("\n" + (json.dumps(d, indent=2) if d else "  no earlier snapshot to diff against"))
+
+    print("\ndone.")
 
 
 if __name__ == "__main__":

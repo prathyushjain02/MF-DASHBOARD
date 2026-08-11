@@ -1,4 +1,4 @@
-"""Flask blueprint serving the mutual-fund selection dashboard."""
+"""Flask blueprint for the screener, served under /api/mf."""
 
 from __future__ import annotations
 
@@ -6,375 +6,201 @@ from flask import Blueprint, jsonify, request
 
 from . import datastore as ds
 from . import framework as fw
-from . import narrative
 
 bp = Blueprint("mf", __name__, url_prefix="/api/mf")
 
 
-def _num_arg(name, default=None):
-    raw = request.args.get(name)
-    if raw in (None, ""):
-        return default
+def _f(v):
     try:
-        return float(raw)
-    except ValueError:
-        return default
+        return None if v in (None, "") else float(v)
+    except (TypeError, ValueError):
+        return None
 
 
-@bp.route("/meta")
+@bp.get("/meta")
 def meta():
-    state = ds.load()
-    counts = {}
-    for record in state["funds"]:
-        counts.setdefault(record["category"], {"total": 0, "eligible": 0, "core": 0})
-        counts[record["category"]]["total"] += 1
-        if record["gatesPassed"]:
-            counts[record["category"]]["eligible"] += 1
-        if record["classification"]["tone"] == "core" and record["gatesPassed"]:
-            counts[record["category"]]["core"] += 1
-
-    return jsonify({
-        "meta": state["meta"],
-        "policy": fw.POLICY_META,
-        "categories": counts,
-        "benchmarks": state["benchmarks"],
-        "houseWhitelistCount": len(state["houseWhitelist"]),
-        "scoredFunds": len(state["funds"]),
-        "eligibleFunds": sum(1 for r in state["funds"] if r["gatesPassed"]),
-    })
+    return jsonify(ds.meta_summary())
 
 
-@bp.route("/framework")
+@bp.get("/framework")
 def framework():
-    """The policy itself, so every number on screen can be traced to its rule."""
+    """The whole model as data, so the methodology page is generated from the
+    same object the engine scores with and cannot drift away from it."""
     return jsonify({
-        "policy": fw.POLICY_META,
-        "principles": fw.PRINCIPLES,
-        "approach": fw.APPROACH,
-        "categories": fw.CATEGORY_DEFINITIONS,
-        "categoryOrder": fw.POLICY_CATEGORIES,
-        "gates": fw.GATES,
-        "aumFloors": fw.AUM_FLOOR_CR,
-        "softFlags": fw.SOFT_FLAGS,
-        "pillars": fw.PILLARS,
-        "pillarWeights": fw.PILLAR_WEIGHTS,
-        "weightRationale": fw.WEIGHT_RATIONALE,
-        "parameters": fw.PARAMETERS,
-        "effectiveWeights": {c: {k: round(v, 3) for k, v in fw.effective_weights(c).items()}
-                             for c in fw.POLICY_CATEGORIES},
-        "classificationBands": fw.CLASSIFICATION_BANDS,
-        "overlayCap": fw.OVERLAY_CAP,
-        "riskCap": {"parameter": fw.RISK_CAP_PARAM, "score": fw.RISK_CAP_SCORE,
-                    "label": fw.RISK_CAP_LABEL},
-        "quantBands": fw.QUANT_BANDS,
-        "whitelistRules": fw.WHITELIST_RULES,
-        "guardrails": fw.IPS_GUARDRAILS,
-        "cadence": fw.MONITORING_CADENCE,
-        "triggers": fw.TRIGGERS,
-        "conventions": fw.METHODOLOGY_CONVENTIONS,
-        "riskFreeRate": fw.RISK_FREE_RATE,
+        "blocks": fw.BLOCKS,
+        "categories": fw.CATEGORIES,
+        "mandate": fw.MANDATE,
+        "aumCurves": {c: fw.aum_curve(c) for c in fw.CATEGORIES},
+        "effectiveStocksBand": fw.EFFECTIVE_N_BAND,
+        "loosePeerGroups": fw.LOOSE_PEER_GROUPS,
+        "bands": fw.BANDS,
+        "meaningfulGap": fw.MEANINGFUL_GAP,
+        "minEvidence": fw.MIN_EVIDENCE,
+        "notRated": fw.NOT_RATED,
+        "contextMetrics": fw.CONTEXT_METRICS,
+        "process": fw.PROCESS,
+        "categoryAdjustments": fw.CATEGORY_ADJUSTMENTS,
+        "howToUse": fw.HOW_TO_USE,
+        "limits": fw.LIMITS,
+        "nextUp": fw.NEXT_UP,
     })
 
 
-@bp.route("/funds")
+@bp.get("/funds")
 def funds():
-    """The scored universe, filtered and sorted server-side."""
+    """All Funds, with the filters the table needs."""
     state = ds.load()
     rows = state["funds"]
 
-    category = request.args.get("category")
-    if category and category != "all":
-        rows = [r for r in rows if r["category"] == category]
-
-    classification = request.args.get("classification")
-    if classification and classification != "all":
-        rows = [r for r in rows if r["classification"]["label"] == classification]
-
-    if request.args.get("eligibleOnly") == "true":
-        rows = [r for r in rows if r["gatesPassed"]]
-    if request.args.get("whitelistOnly") == "true":
-        rows = [r for r in rows if r.get("onHouseWhitelist")]
-
-    query = (request.args.get("q") or "").strip().lower()
-    if query:
-        rows = [r for r in rows
-                if query in r["name"].lower() or query in (r.get("amc") or "").lower()]
-
-    min_score = _num_arg("minScore")
-    if min_score is not None:
-        rows = [r for r in rows if r["composite"]["final"] >= min_score]
-    min_aum = _num_arg("minAum")
+    cat = request.args.get("category")
+    if cat and cat != "All":
+        rows = [f for f in rows if f.get("category") == cat]
+    band = request.args.get("band")
+    if band and band != "All":
+        rows = [f for f in rows if f.get("band") == band]
+    q = (request.args.get("q") or "").strip().lower()
+    if q:
+        rows = [f for f in rows
+                if q in (f.get("name") or "").lower() or q in (f.get("amc") or "").lower()
+                or q in (f.get("fundManager") or "").lower()]
+    min_aum = _f(request.args.get("minAum"))
     if min_aum is not None:
-        rows = [r for r in rows if (r.get("aumCr") or 0) >= min_aum]
-    max_dc = _num_arg("maxDownsideCapture")
-    if max_dc is not None:
-        rows = [r for r in rows
-                if r.get("downsideCapture3Y") is not None
-                and r["downsideCapture3Y"] <= max_dc]
+        rows = [f for f in rows if (_f(f.get("aumCr")) or 0) >= min_aum]
+    max_dn = _f(request.args.get("maxDownside"))
+    if max_dn is not None:
+        rows = [f for f in rows
+                if _f(f.get("downsideCapture3Y")) is not None
+                and _f(f["downsideCapture3Y"]) <= max_dn]
+    if request.args.get("hasHoldings") == "1":
+        rows = [f for f in rows if f.get("holdingCount")]
 
-    sort = request.args.get("sort", "score")
-    reverse = request.args.get("order", "desc") == "desc"
-
-    def sort_key(r):
-        if sort == "score":
-            return r["composite"]["final"]
-        if sort == "name":
-            return r["name"].lower()
-        if sort in ("aumCr", "ter"):
-            return r.get(sort) if r.get(sort) is not None else (-1e18 if reverse else 1e18)
-        value = r.get(sort)
-        if value is None:
-            return -1e18 if reverse else 1e18
-        return value
-
-    rows = sorted(rows, key=sort_key, reverse=reverse)
-
-    limit = int(_num_arg("limit", 0) or 0)
+    sort = request.args.get("sort") or "composite"
+    reverse = request.args.get("dir", "desc") != "asc"
+    rows = sorted(rows, key=lambda f: (f.get(sort) is None,
+                                       -(_f(f.get(sort)) or 0) if reverse else (_f(f.get(sort)) or 0)))
+    limit = int(request.args.get("limit") or 0)
     total = len(rows)
     if limit:
         rows = rows[:limit]
-
-    return jsonify({"total": total, "count": len(rows),
-                    "funds": [ds._slim(r) for r in rows]})
+    return jsonify({"total": total, "funds": [ds.row(f) for f in rows]})
 
 
-@bp.route("/fund/<key>")
+@bp.get("/fund/<key>")
 def fund(key):
-    """Full scorecard for one fund — every parameter, its band and its evidence."""
     state = ds.load()
-    record = state["byKey"].get(key)
-    if not record:
-        return jsonify({"error": f"No scored fund with key '{key}'"}), 404
-
-    overlay = _num_arg("overlay")
-    if overlay is not None:
-        from . import scoring
-        comp = scoring.composite(record["scores"], record["category"], overlay)
-        classification = scoring.classify_fund(
-            comp, record["scores"], record["gatesPassed"], record["failedGates"])
-        record = {**record, "composite": comp, "classification": classification}
-
-    weights = fw.effective_weights(record["category"])
-    detail = []
-    for param in fw.PARAMETERS:
-        scored = record["scores"].get(param["code"], {})
-        detail.append({
-            **param,
-            "score": scored.get("score"),
-            "sourceType": scored.get("source"),
-            "note": scored.get("note"),
-            "effectiveWeight": round(weights[param["code"]], 3),
-            "earned": round((scored.get("score") or 3) / 5 * weights[param["code"]], 3),
-        })
-
-    peers = [r for r in state["funds"]
-             if r["category"] == record["category"] and r["gatesPassed"]]
-    peers.sort(key=lambda r: -r["composite"]["final"])
-
-    bench = state["benchmarks"].get(record.get("benchmark"))
-    return jsonify({
-        "fund": ds._slim(record),
-        "remark": narrative.build_remark(record, peers, bench),
-        "raw": {k: v for k, v in record.items()
-                if k not in ("gates", "scores", "composite", "classification",
-                             "triggers", "portfolio")},
-        "gates": record["gates"],
-        "parameters": detail,
-        "composite": record["composite"],
-        "classification": record["classification"],
-        "triggers": record["triggers"],
-        "portfolio": record["portfolio"],
-        "categoryDefinition": fw.CATEGORY_DEFINITIONS.get(record["category"]),
-        "weightRationale": fw.WEIGHT_RATIONALE.get(record["category"]),
-        "peers": [{"key": p["key"], "name": p["name"], "amc": p.get("amc"),
-                   "score": p["composite"]["final"],
-                   "classification": p["classification"]["label"],
-                   "downsideCapture3Y": p.get("downsideCapture3Y"),
-                   "upsideCapture3Y": p.get("upsideCapture3Y"),
-                   "medianRolling3Y": p.get("medianRolling3Y"),
-                   "sortino3Y": p.get("sortino3Y"),
-                   "maxDrawdown3Y": p.get("maxDrawdown3Y"),
-                   "stdDev3Y": p.get("stdDev3Y"), "ter": p.get("ter"),
-                   "aumCr": p.get("aumCr"),
-                   "isSelf": p["key"] == record["key"]}
-                  for p in peers],
-        "benchmark": bench,
-        "pillarComparison": _pillar_comparison(record, peers),
-        "holdingsOverlap": _peer_overlap(state, record, peers),
-    })
+    f = state["byKey"].get(key)
+    if not f:
+        return jsonify({"error": "unknown fund", "key": key}), 404
+    return jsonify(ds.detail(f, state))
 
 
-def _pillar_comparison(record, peers):
-    """This fund's pillar scores against the category's median pillar scores."""
-    out = {}
-    for key in fw.PILLARS:
-        mine = record["composite"]["pillars"][key]["pct"]
-        vals = sorted(p["composite"]["pillars"][key]["pct"] for p in peers
-                      if p["composite"]["pillars"][key]["pct"] is not None)
-        out[key] = {
-            "name": fw.PILLARS[key]["name"],
-            "weight": fw.PILLAR_WEIGHTS[record["category"]][key],
-            "fund": mine,
-            "categoryMedian": vals[len(vals) // 2] if vals else None,
-            "best": vals[-1] if vals else None,
-        }
-    return out
+@bp.get("/category/<path:name>")
+def category(name):
+    state = ds.load()
+    if name not in state["byCategory"] and name not in fw.CATEGORIES:
+        return jsonify({"error": "unknown category", "category": name}), 404
+    return jsonify(ds.category_dossier(name, state))
 
 
-def _peer_overlap(state, record, peers, top=6):
-    """Overlap against the highest-scoring peers — the substitution question.
-
-    Two funds a client could hold together are only diversifying if their books
-    differ; this answers that before the allocation is made rather than after.
-    """
-    if not state["holdings"].get(record["key"]):
-        return None
-    rows = []
-    for peer in peers[:top + 1]:
-        if peer["key"] == record["key"] or not state["holdings"].get(peer["key"]):
+@bp.get("/shortlists")
+def shortlists():
+    """Category Top Funds: the shortlist for every category in one payload."""
+    state = ds.load()
+    out = []
+    for c in fw.CATEGORIES:
+        group = state["byCategory"].get(c, [])
+        if not group:
             continue
-        result = ds.overlap(record["key"], peer["key"], state)
-        if result:
-            rows.append({"key": peer["key"], "name": peer["name"],
-                         "score": peer["composite"]["final"],
-                         "overlapPct": result["overlapPct"],
-                         "commonHoldings": result["commonHoldings"]})
-    rows.sort(key=lambda r: -r["overlapPct"])
-    return rows[:top]
+        out.append({
+            "category": c,
+            "mandate": fw.MANDATE.get(c, {}).get("note"),
+            "caveat": fw.loose_peer_group(c),
+            "count": len(group),
+            "funds": [ds.row(f) for f in ds.shortlist(c, state)],
+        })
+    return jsonify({"categories": out})
 
 
-@bp.route("/whitelist")
-def whitelist():
-    depth = _num_arg("depth")
-    result = ds.build_whitelist(depth_override=int(depth) if depth else None)
-    result["house"] = ds.load()["houseWhitelist"]
-    return jsonify(result)
-
-
-@bp.route("/holdings/<key>")
+@bp.get("/holdings/<key>")
 def holdings(key):
     state = ds.load()
-    book = state["holdings"].get(key)
-    if book is None:
-        return jsonify({"error": f"No holdings disclosed for '{key}'"}), 404
-    record = state["byKey"].get(key, {})
+    f = state["byKey"].get(key)
+    if not f:
+        return jsonify({"error": "unknown fund", "key": key}), 404
+    book = f.get("_book") or []
     return jsonify({
-        "key": key,
-        "name": record.get("name", key),
-        "holdings": [{"security": h.get("s"), "sector": h.get("sec"),
-                      "pct": h.get("pct"), "isin": h.get("isin"),
-                      "instrument": h.get("ins"), "marketCap": h.get("mc")}
-                     for h in book],
-        "stats": record.get("portfolio"),
+        "key": key, "name": f["name"], "category": f["category"],
+        "stats": {k: f.get(k) for k in
+                  ("holdingCount", "effectiveStocks", "top10", "largestPosition",
+                   "capMix", "topSectors", "mandateFit", "differentiation",
+                   "categoryOverlap")},
+        "mandate": fw.MANDATE.get(f["category"], {}),
+        "holdings": [{"name": b["name"], "sector": b["sector"], "cap": b["cap"],
+                      "weight": round(b["weight"], 2)} for b in book],
     })
 
 
-@bp.route("/overlap")
+@bp.get("/overlap")
 def overlap():
-    keys = [k for k in (request.args.get("keys") or "").split(",") if k]
+    """Pairwise overlap across an arbitrary set of funds."""
+    keys = [k for k in (request.args.get("keys") or "").split(",") if k.strip()]
     if len(keys) < 2:
-        return jsonify({"error": "Pass at least two fund keys as ?keys=a,b,c"}), 400
-    state = ds.load()
-    result = ds.overlap_matrix(keys, state)
-    if len(keys) == 2:
-        result["pair"] = ds.overlap(keys[0], keys[1], state)
-    return jsonify(result)
+        return jsonify({"error": "pass at least two keys"}), 400
+    weights = {k: 1.0 for k in keys}
+    lt = ds.look_through(weights)
+    return jsonify({"pairs": lt["pairs"], "missing": lt["missing"],
+                    "funds": lt["funds"]})
 
 
-@bp.route("/portfolio", methods=["POST"])
+@bp.post("/portfolio")
 def portfolio():
-    """Test a proposed client portfolio against the §10 IPS guardrails."""
-    payload = request.get_json(silent=True) or {}
-    weights = payload.get("weights") or {}
+    """Look-through for a weighted portfolio: {"weights": {"<key>": pct}}."""
+    body = request.get_json(silent=True) or {}
+    weights = {k: _f(v) or 0 for k, v in (body.get("weights") or {}).items()}
+    weights = {k: v for k, v in weights.items() if v > 0}
     if not weights:
-        return jsonify({"error": "Post {\"weights\": {\"<fundKey>\": <pct>}}"}), 400
-    try:
-        weights = {k: float(v) for k, v in weights.items() if float(v) > 0}
-    except (TypeError, ValueError):
-        return jsonify({"error": "Weights must be numeric"}), 400
-    return jsonify(ds.check_guardrails(weights))
+        return jsonify({"error": "pass weights"}), 400
+    lt = ds.look_through(weights)
+
+    # Observations rather than pass/fail rules. This model orders a shortlist, it
+    # does not run an IPS, so it reports what the combination looks like and
+    # leaves the limits to whoever owns the mandate.
+    notes = []
+    heavy = [p for p in lt["pairs"] if p["overlap"] >= 55]
+    if heavy:
+        p = heavy[0]
+        notes.append(f"{len(heavy)} pair(s) overlap 55 percent or more. The heaviest is "
+                     f"{p['aName']} and {p['bName']} at {p['overlap']} percent. Holding "
+                     f"both buys one exposure twice.")
+    if lt["topTen"] >= 35:
+        notes.append(f"The top ten stocks are {lt['topTen']} percent of the combined "
+                     f"book. Read the concentration at the portfolio level, not the "
+                     f"fund level.")
+    if len(lt["funds"]) > 10:
+        notes.append(f"{len(lt['funds'])} schemes in one portfolio. Beyond roughly ten, "
+                     f"overlap tends to make the whole an expensive index fund.")
+    bands = [f["band"] for f in lt["funds"]]
+    weak = sum(1 for b in bands if b in ("C", "Review"))
+    if weak:
+        notes.append(f"{weak} of {len(bands)} schemes sit in band C or Review.")
+    lt["notes"] = notes
+    return jsonify(lt)
 
 
-@bp.route("/monitoring")
-def monitoring():
-    """The exception log: every automatable trigger currently firing."""
+@bp.get("/compare")
+def compare():
+    """Side by side on blocks and headline metrics."""
     state = ds.load()
-    scope = request.args.get("scope", "eligible")
-
-    rows = state["funds"]
-    if scope == "whitelist":
-        rows = [r for r in rows if r.get("onHouseWhitelist")]
-    elif scope == "eligible":
-        rows = [r for r in rows if r["gatesPassed"]]
-
-    firing = []
-    for record in rows:
-        for trigger in record["triggers"]:
-            firing.append({
-                "key": record["key"], "name": record["name"],
-                "amc": record.get("amc"), "category": record["category"],
-                "score": record["composite"]["final"],
-                "classification": record["classification"]["label"],
-                "onHouseWhitelist": record.get("onHouseWhitelist", False),
-                **trigger,
-            })
-
-    order = {"exit": 0, "watch": 1, "review": 2}
-    firing.sort(key=lambda t: (order.get(t["severity"], 3), t["score"]))
-
+    keys = [k for k in (request.args.get("keys") or "").split(",") if k.strip()]
+    funds_ = [state["byKey"][k] for k in keys if k in state["byKey"]]
+    if not funds_:
+        return jsonify({"error": "no known keys"}), 400
     return jsonify({
-        "scope": scope,
-        "count": len(firing),
-        "fundsAffected": len({t["key"] for t in firing}),
-        "bySeverity": {s: sum(1 for t in firing if t["severity"] == s)
-                       for s in ("exit", "watch", "review")},
-        "byTrigger": {t["code"]: sum(1 for x in firing if x["code"] == t["code"])
-                      for t in fw.TRIGGERS},
-        "triggers": firing,
-        "cadence": fw.MONITORING_CADENCE,
-        "catalogue": fw.TRIGGERS,
+        "blocks": [{"code": b["code"], "name": b["name"], "weight": b["weight"]}
+                   for b in fw.BLOCKS],
+        "funds": [{**ds.row(f),
+                   "blocks": [{"code": b["code"], "score": b["score"],
+                               "coverage": b["coverage"]} for b in f["blocks"]],
+                   "whatToWatch": ds.narrative.what_to_watch(f)}
+                  for f in funds_],
     })
-
-
-@bp.route("/category/<path:category>")
-def category(category):
-    """Category dossier: definition, weights, peer distribution, league table."""
-    state = ds.load()
-    if category not in fw.CATEGORY_DEFINITIONS:
-        return jsonify({"error": f"'{category}' is not a policy category"}), 404
-
-    members = [r for r in state["funds"] if r["category"] == category]
-    eligible = [r for r in members if r["gatesPassed"]]
-
-    def spread(field):
-        vals = sorted(r[field] for r in eligible if r.get(field) is not None)
-        if not vals:
-            return None
-        n = len(vals)
-        return {"min": vals[0], "p25": vals[n // 4], "median": vals[n // 2],
-                "p75": vals[(3 * n) // 4], "max": vals[-1], "n": n}
-
-    return jsonify({
-        "category": category,
-        "definition": fw.CATEGORY_DEFINITIONS[category],
-        "pillarWeights": fw.PILLAR_WEIGHTS[category],
-        "weightRationale": fw.WEIGHT_RATIONALE.get(category),
-        "effectiveWeights": {k: round(v, 3) for k, v in fw.effective_weights(category).items()},
-        "aumFloor": fw.AUM_FLOOR_CR.get(category),
-        "universe": len(members),
-        "eligible": len(eligible),
-        "gateFailures": {g["code"]: sum(1 for r in members if g["code"] in r["failedGates"])
-                         for g in fw.GATES},
-        "spreads": {f: spread(f) for f in
-                    ("medianRolling3Y", "downsideCapture3Y", "stdDev3Y",
-                     "sortino3Y", "maxDrawdown3Y", "ter", "aumCr")},
-        "funds": [ds._slim(r) for r in members],
-        "benchmark": state["benchmarks"].get(
-            (members[0].get("benchmark") if members else None)),
-    })
-
-
-@bp.route("/reload", methods=["POST"])
-def reload_data():
-    state = ds.load(force=True)
-    return jsonify({"reloaded": True, "funds": len(state["funds"])})
