@@ -199,9 +199,14 @@ function drawStairs() {
        runs. Tracking the step exactly put the first caption down at the foot of
        the diagram with a stub of a leader; this keeps the row of headings close
        to level while still rising left to right. */
+    /* Every caption shares one top edge, so the six headings read as a row
+       rather than a ragged stagger. The leader then does the work of tying each
+       one to its own tread: the lower the step, the longer its leader runs. The
+       edge is measured off the highest tread, which is the only one the text
+       could otherwise land on. */
     const lx = x + depth + 10;
     const topY = baseY - (n - 1) * rise;          // the highest tread
-    const capBottom = (topY - depth - 22) - (n - 1 - i) * (rise * 0.18);
+    const capBottom = topY - depth - 20;
     g.appendChild(mk('line', { x1: lx, y1: y - depth - 4, x2: lx, y2: capBottom + 4,
                                stroke: FACTOR_INK[i], 'stroke-width': 1.5,
                                'stroke-dasharray': '3 3' }));
@@ -358,7 +363,6 @@ async function renderShortlists(host) {
                   data-cat="${esc(c.category)}" aria-pressed="${c.category === openCat}">
             <span class="tile-open">&rsaquo;</span>
             <h3>${esc(c.category)}</h3>
-            <span class="tile-count">${c.count} schemes</span>
           </button>`).join('')}
       </div>
       <div id="catpanel" class="catpanel"></div>
@@ -380,8 +384,7 @@ function drawCategoryPanel(category) {
   panel.innerHTML = `
     <div class="catpanel-head">
       <h3>${esc(c.category)}</h3>
-      <span class="muted">top ${c.funds.length} of ${c.count} schemes${
-        c.mandate ? ' · ' + esc(c.mandate) : ''}</span>
+      <span class="muted">top ${c.funds.length} of ${c.count} schemes</span>
     </div>
     ${c.caveat ? `<div class="caveat">${esc(c.caveat)}</div>` : ''}
     <div class="tablewrap">

@@ -238,19 +238,18 @@ section { margin-bottom: 32px; }
 /* Eight categories, so the grid is pinned to four across and fills two rows
    exactly. Auto-fill sized them to whatever the viewport allowed and left a row
    of four empty slots next to the last two tiles. */
-.tiles { display: grid; gap: 12px; grid-template-columns: repeat(4, 1fr); }
+.tiles { display: grid; gap: 8px; grid-template-columns: repeat(4, 1fr); }
 @media (max-width: 1180px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 860px)  { .tiles { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 560px)  { .tiles { grid-template-columns: 1fr; } }
-.tile { text-align: left; font: inherit; cursor: pointer; padding: 11px 14px 11px;
+.tile { text-align: left; font: inherit; cursor: pointer; padding: 9px 13px 9px;
   background: var(--surface-2); border: 1px solid var(--border);
   border-top: 3px solid var(--border-strong); position: relative;
   display: flex; flex-direction: column; gap: 7px; }
 .tile:hover { border-color: var(--border-strong); background: var(--zebra); }
 .tile.on { border-top-color: var(--red); background: var(--wash); }
-.tile h3 { font-size: 15px; font-weight: 500; }
-.tile .tile-count { font-size: 11.5px; color: var(--text-muted); }
-.tile-open { position: absolute; right: 13px; top: 12px; color: var(--red);
+.tile h3 { font-size: 13.5px; font-weight: 500; }
+.tile-open { position: absolute; right: 12px; top: 8px; color: var(--red);
   font-size: 13px; opacity: 0; }
 .tile:hover .tile-open, .tile.on .tile-open { opacity: 1; }
 
@@ -475,8 +474,11 @@ th.sortable.on .arrow { opacity: 1; }
   filter: brightness(1.06); }
 .step:hover .stepcap b, .step:focus .stepcap b { color: var(--red); }
 
+/* Top aligned, not bottom: bottom alignment let a two line heading push its body
+   text down while a one line heading sat higher, so no two captions started on
+   the same line. */
 .stepcap { display: flex; flex-direction: column; gap: 3px; height: 100%;
-  justify-content: flex-end; font-family: var(--sans); }
+  justify-content: flex-start; font-family: var(--sans); }
 .stepcap b { font-family: var(--title); font-size: 13.5px; font-weight: 500;
   color: var(--text-primary); line-height: 1.25; }
 .stepcap span { font-size: 11.5px; color: var(--text-muted); line-height: 1.4; }
