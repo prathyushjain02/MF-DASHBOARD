@@ -654,172 +654,328 @@ function openFund(key) {
 const VIEW_LABEL = { shortlist: 'category top funds', all: 'all funds',
                      portfolio: 'portfolio', approach: 'how we look at funds' };
 
+/* The fund page is a one page snapshot: a card per question, each showing the
+   headline and nothing more. The detail behind every card is a click away in a
+   modal, so the page stays readable at a glance and nothing is buried. */
+
+let fundRec = null;
+
 async function renderFundPage(host) {
   host.innerHTML = '<div class="loading">Scoring…</div>';
-  const key = state.fund;
-  const f = await get('/fund/' + encodeURIComponent(key));
-  const r = f.remark;
+  const f = await get('/fund/' + encodeURIComponent(state.fund));
+  fundRec = f;
   const analyst = isAnalyst();
-
-  const groups = numberGroups(f);
-
   const back = state.returnView || 'shortlist';
+  const bm = f.benchmark || {};
+  const mgrs = f.managers || [];
+  const lead = mgrs.reduce((a, m) =>
+    (m.tenureYears || 0) > (a?.tenureYears || 0) ? m : a, null);
+
   host.innerHTML = `
     <button class="backlink" id="fund-back">&lsaquo; Back to ${
       esc(VIEW_LABEL[back] || 'the list')}</button>
-    <div class="detail fundpage">
-    <div class="detail-head">
+
+    <div class="fundhead">
       <div>
-        <h3>${esc(f.name)}</h3>
-        <p class="muted">${esc(f.category)} · ${esc(f.amc || '')}${
-          f.fundManager ? ' · ' + esc(f.fundManager) : ''}</p>
+        <h2>${esc(f.name)}</h2>
+        <p class="muted">${esc(f.category)} · ${esc(f.amc || '')}</p>
       </div>
-      ${analyst ? `<div class="detail-score">
+      ${analyst ? `<div class="fundhead-score">
         ${bandPill(f.band)}
-        <div class="big">${num(f.composite, 1)}</div>
-        <div class="muted sm">${f.categoryRank
-          ? `rank ${f.categoryRank} of ${f.categoryCount}` : 'unranked'}</div>
+        <span class="big">${num(f.composite, 1)}</span>
+        <span class="muted sm">${f.categoryRank
+          ? `rank ${f.categoryRank} of ${f.categoryCount}` : 'unranked'}</span>
       </div>` : ''}
     </div>
 
-    ${analyst ? `<p class="verdict">${esc(r.verdict)}</p>
-      ${f.loosePeerGroup ? `<div class="caveat">${esc(f.loosePeerGroup)}</div>` : ''}` : ''}
+    <div class="snapshot">
+      ${card('done', 'How it has done', `against ${esc(bm.name || 'its benchmark')}`,
+             '<div id="c-returns"></div>' +
+             `<p class="cardnote" id="c-returns-note"></p>`)}
 
-    <div class="two">
-      <div class="panel">
-        <h4>Why we like it</h4>
-        <p class="rationale big-rationale">${esc(r.whyWeLikeIt)}</p>
-      </div>
-      <div class="panel">
-        <h4>What to watch</h4>
-        <p class="rationale">${esc(r.whatToWatch)}</p>
-      </div>
+      ${card('rolling', 'What a holding period gave',
+             'median of every window of that length',
+             '<div id="c-rolling"></div>')}
+
+      ${card('risk', 'How it behaves in a fall', 'capture against the benchmark at 100',
+             '<div id="c-capture"></div>' +
+             `<div class="cardfoot"><span>${term('Maximum drawdown')}</span>
+                <b>${num(f.maxDrawdown3Y, 1)}%</b></div>`)}
+
+      ${card('holds', 'What it holds', `${f.holdingCount || 0} names`,
+             '<div id="c-caps"></div>' +
+             `<div class="cardfoot">
+                <span>${term('Top 10 weight')}</span><b>${num(f.top10, 0)}%</b>
+                <span>${term('Effective number of stocks')}</span>
+                  <b>${num(f.effectiveStocks, 0)}</b></div>`)}
+
+      ${card('who', 'Who runs it', mgrs.length === 1 ? 'one manager'
+              : `${mgrs.length} managers`,
+             `<div class="bigstat">
+                <span class="v">${lead && lead.tenureYears != null
+                  ? num(lead.tenureYears, 1) : '—'}<em>yrs</em></span>
+                <span class="k">longest tenure on this scheme</span>
+              </div>
+              <div class="cardfoot">
+                <span>${esc(lead ? lead.name : 'not on file')}</span>
+                <span>${term('Market cycles run')}</span>
+                  <b>${num(f.managerCycles, 0)}</b></div>`)}
+
+      ${card('size', 'Size and cost', esc(f.vintageBasis || ''),
+             `<div class="bigstat">
+                <span class="v">${cr(f.aumCr)}</span>
+                <span class="k">assets under management</span>
+              </div>
+              <div class="cardfoot">
+                <span>${term('Net flow over 1Y')}</span>
+                  <b>${f.netFlow1YPct == null ? '—'
+                       : (f.netFlow1YPct > 0 ? '+' : '') + num(f.netFlow1YPct, 0) + '%'}</b>
+                <span>${term('Expense ratio')}</span>
+                  <b>${f.ter == null ? '—' : num(f.ter, 2) + '%'}</b></div>`)}
+
+      ${analyst ? card('score', 'The score', 'seven blocks, weighted',
+             '<div id="c-blocks"></div>') : ''}
     </div>
 
     ${analyst && f.flags.length ? `<div class="flagrow">${f.flags.map((x) => `
       <div class="flagcard ${esc(x.tone)}"><strong>${esc(x.label)}</strong>
-      <span>${esc(x.why)}</span></div>`).join('')}</div>` : ''}
+      <span>${esc(x.why)}</span></div>`).join('')}</div>` : ''}`;
 
-    ${(f.managers || []).length ? `
-    <h4>Who runs it</h4>
-    <table class="grid dense">
-      <thead><tr><th>Manager</th><th class="r">${term('Tenure on this scheme')}</th>
-        <th class="r">Industry experience</th><th>Since</th></tr></thead>
-      <tbody>${f.managers.map((m) => `
-        <tr><td>${esc(m.name)}</td>
-          <td class="r mono">${m.tenureYears == null ? '—' : num(m.tenureYears, 1) + ' yrs'}</td>
-          <td class="r mono dim">${m.experienceYears == null ? '—'
-            : num(m.experienceYears, 0) + ' yrs'}</td>
-          <td class="muted">${esc(m.sinceBasis || 'not stated')}</td></tr>`).join('')}
-      </tbody>
-    </table>
-    <p class="muted sm">${term('Market cycles run')}: ${num(f.managerCycles, 0)}.
-      ${term('Live track record')}: ${esc(f.vintageBasis || '—')}.</p>` : ''}
+  // --- the visuals -------------------------------------------------------
+  const periods = [['3M', 'return3M'], ['6M', 'return6M'], ['1Y', 'return1Y'],
+                   ['3Y', 'return3Y'], ['5Y', 'return5Y']];
+  Chart.barsRef($('#c-returns'),
+    periods.map(([lab, k]) => ({ label: lab, value: f[k], ref: bm[k] })),
+    { refLabel: bm.name || 'benchmark' });
+  $('#c-returns-note').innerHTML = leadNote(f, bm);
 
-    ${analyst ? `
-    <h4>Block scores <span class="muted sm">bar height is the score, bar width is the
-      weight in the composite, hatched means not scored</span></h4>
-    <div id="blockbar" class="chart-host"></div>
-    <table class="grid dense">
-      <thead><tr><th>Block</th><th class="r">Weight</th><th class="r">Score</th>
-        <th class="r">Category median</th><th class="r">${term('Coverage')}</th></tr></thead>
-      <tbody>${f.peers.map((p) => `
-        <tr><td>${esc(p.name)}</td><td class="r mono">${p.weight}%</td>
-          <td class="r mono"><strong>${p.score == null ? 'not scored' : num(p.score, 0)}</strong></td>
-          <td class="r mono dim">${p.categoryMedian == null ? '—' : num(p.categoryMedian, 0)}</td>
-          <td class="r mono dim">${num(p.coverage, 0)}%</td></tr>`).join('')}
-      </tbody>
-    </table>` : ''}
+  Chart.barsRef($('#c-rolling'),
+    [['1Y', 'medianRolling1Y'], ['3Y', 'medianRolling3Y'], ['5Y', 'medianRolling5Y'],
+     ['7Y', 'medianRolling7Y'], ['10Y', 'medianRolling10Y']]
+      .map(([lab, k]) => ({ label: lab, value: f[k] })), {});
 
-    <h4>The numbers</h4>
-    <div class="numgrid">
-      ${groups.map((g) => `
-        <div class="numgroup">
-          <h5>${esc(g.title)}${g.why ? `<span class="muted sm">${esc(g.why)}</span>` : ''}</h5>
-          <table class="grid dense kv">
-            <tbody>${g.rows.map((row) => `
-              <tr><td>${term(row.label, row.extra)}</td>
-                <td class="r mono">${num(row.value, Math.abs(row.value) < 10 ? 2 : 1)}${
-                  esc(row.unit || '')}</td>
-                ${analyst ? `<td class="r mono dim pctile">${row.score == null ? ''
-                  : num(row.score, 0)}</td>` : ''}</tr>`).join('')}
-            </tbody>
-          </table>
-        </div>`).join('')}
-    </div>
-    ${analyst ? `<p class="muted sm">The third column is the fund's ${term('percentile')}
-      within its category on that measure.</p>` : ''}
+  Chart.barsRef($('#c-capture'), [
+    { label: 'Upside', value: f.upsideCapture3Y, ref: 100 },
+    { label: 'Downside', value: f.downsideCapture3Y, ref: 100 },
+  ], { refLabel: 'market', decimals: 0 });
 
-    ${analyst ? `
-    <h4>Where the points are</h4>
-    <p class="muted sm">Ordered by composite points still available, so the top row is
-    what would actually change the answer.</p>
-    <table class="grid dense">
-      <thead><tr><th>Block</th><th class="r">Score</th>
-        <th class="r">Points on the table</th><th>Note</th></tr></thead>
-      <tbody>${r.movers.map((m) => `
-        <tr><td>${esc(m.block)}</td>
-          <td class="r mono">${m.score == null ? '—' : num(m.score, 0)}</td>
-          <td class="r mono">${m.available == null ? '—' : num(m.available, 1)}</td>
-          <td class="muted">${esc(m.note)}</td></tr>`).join('')}
-      </tbody>
-    </table>` : ''}
+  /* The feed's allocation, not the holdings-derived cap mix. Both exist and they
+     are on different denominators: capMix is a share of the equity sleeve and
+     sums to less than 100, while these four are shares of the whole fund and sum
+     to exactly 100, which is the only basis on which cash belongs beside them. */
+  Chart.bars($('#c-caps'), [
+    { label: 'Large cap', value: f.largeCapPct || 0 },
+    { label: 'Mid cap', value: f.midCapPct || 0 },
+    { label: 'Small cap', value: f.smallCapPct || 0 },
+    { label: 'Cash and others', value: f.cashPct || 0, cash: true },
+  ], { suffix: '%', decimals: 0, max: 100,
+       // Parts of one book, not magnitudes to rank against each other: a
+       // sequential ramp made the 3% slice almost invisible while saying nothing
+       // the bar length was not already saying.
+       colorFor: (x) => x.cash ? 'var(--axis)' : 'var(--seq-450)' });
 
-    <div class="two">
-      <div class="panel">
-        <h4>What it holds <span class="muted sm">top 15 of ${f.holdingCount ?? 0}</span></h4>
-        <div id="holdbars" class="chart-host"></div>
-        <div class="holdfoot">
-          <span>${term('Cash and others')} <b>${num(f.cashPct, 1)}%</b></span>
-          <span>${term('Top 10 weight')} <b>${num(f.top10, 0)}%</b></span>
-          <span>${term('Effective number of stocks')} <b>${num(f.effectiveStocks, 0)}</b></span>
-        </div>
-        <p class="muted sm">${esc(f.mandate.note || '')}</p>
-      </div>
-      <div class="panel">
-        <h4>Closest books in the category</h4>
-        <p class="muted sm">If this fund were dropped, this is what already holds the
-        same exposure.</p>
-        <table class="grid dense">
-          <thead><tr><th>Fund</th><th class="r">Overlap</th>
-            <th class="r analyst-only">Composite</th></tr></thead>
-          <tbody>${f.closest.map((c) => `
-            <tr data-fund="${esc(c.key)}" tabindex="0"><td>${esc(c.name)}</td>
-              <td class="r mono">${num(c.overlap, 0)}%</td>
-              <td class="r mono analyst-only">${num(c.composite, 1)}</td></tr>`).join('')
-            || '<tr><td colspan="3" class="muted">No disclosed book to compare.</td></tr>'}
-          </tbody>
-        </table>
-      </div>
-    </div>
-    </div>`;
+  if (analyst) Chart.blockBar($('#c-blocks'), f.blocks);
 
-  if (analyst) Chart.blockBar($('#blockbar'), f.blocks);
-
-  /* Cash sits outside the equity book everywhere else in the model, so it is
-     drawn here as an explicit final bar rather than mixed into the holdings. */
-  const bars = f.holdings.map((h) => ({ label: h.name, value: h.weight, cash: false }));
-  if (f.cashPct != null) bars.push({ label: 'Cash and others', value: f.cashPct, cash: true });
-  Chart.bars($('#holdbars'), bars, {
-    suffix: '%', decimals: 2,
-    colorFor: (x) => x.cash ? 'var(--axis)' : Chart.seqColor(x.value / 10),
-    tipFor: (x) => {
-      if (x.cash) return `<strong>Cash and others</strong>
-        <div class="tt-note">${esc(glossFor('cash and others') || '')}</div>`;
-      const h = f.holdings.find((z) => z.name === x.label) || {};
-      return `<strong>${esc(x.label)}</strong>
-        <div class="tt-row"><span>Weight</span><span>${num(x.value, 2)}%</span></div>
-        <div class="tt-row"><span>Sector</span><span>${esc(h.sector || '—')}</span></div>
-        <div class="tt-row"><span>Cap</span><span>${esc(h.cap || '—')}</span></div>`;
-    },
-  });
-  $('#fund-back').onclick = () => {
-    state.fund = null;
-    setView(back);
-  };
-  host.querySelectorAll('[data-fund]').forEach((el) =>
-    el.onclick = () => openFund(el.dataset.fund));
+  // --- wiring ------------------------------------------------------------
+  $('#fund-back').onclick = () => { state.fund = null; setView(back); };
+  host.querySelectorAll('[data-card]').forEach((el) =>
+    el.onclick = (e) => {
+      if (e.target.closest('.term')) return;   // a glossary hover is not a click
+      openCardModal(el.dataset.card);
+    });
   wireGlossary(host);
+}
+
+function card(code, title, sub, body) {
+  return `
+    <button class="snapcard" data-card="${esc(code)}">
+      <span class="snapcard-head">
+        <span class="snapcard-title">${esc(title)}</span>
+        <span class="snapcard-sub">${sub}</span>
+        <span class="snapcard-go" aria-hidden="true">&rsaquo;</span>
+      </span>
+      <span class="snapcard-body">${body}</span>
+    </button>`;
+}
+
+/* The one sentence a reader wants under a returns chart: the longest period
+   where both the fund and the benchmark have a figure, and the gap. */
+function leadNote(f, bm) {
+  for (const [lab, k] of [['5Y', 'return5Y'], ['3Y', 'return3Y'], ['1Y', 'return1Y']]) {
+    if (f[k] != null && bm[k] != null) {
+      const d = f[k] - bm[k];
+      return `<b>${lab}</b> — fund ${num(f[k], 1)}% against ${esc(bm.name)}
+        ${num(bm[k], 1)}%. <b>${d >= 0 ? 'Ahead' : 'Behind'} by
+        ${num(Math.abs(d), 1)} points.</b>`;
+    }
+  }
+  return '';
+}
+
+/* ---------------------------------------------------- the card modals */
+
+function kvTable(rows) {
+  return `<table class="grid dense kv"><tbody>${rows.filter(Boolean).map(([k, v]) => `
+    <tr><td>${k}</td><td class="r mono">${v}</td></tr>`).join('')}</tbody></table>`;
+}
+
+function openCardModal(code) {
+  const f = fundRec;
+  if (!f) return;
+  const bm = f.benchmark || {};
+  const analyst = isAnalyst();
+  const head = (t, s) => `<div class="np-head"><h3>${esc(t)}</h3></div>
+    ${s ? `<p class="np-means">${s}</p>` : ''}`;
+
+  if (code === 'done') {
+    const cy = Object.keys(f).filter((k) => /^returnCY\d\d$/.test(k))
+      .sort().reverse().filter((k) => f[k] != null);
+    return openModal(head('How it has done',
+      `Point to point, annualised beyond one year. Against ${esc(bm.name || 'the benchmark')}.`) +
+      `<div class="np-grid">
+        <div class="np-col"><h5>Every period</h5>
+          ${kvTable([['3M', num(f.return3M, 2) + '%'], ['6M', num(f.return6M, 2) + '%'],
+                     ['1Y', num(f.return1Y, 2) + '%'], ['2Y', num(f.return2Y, 2) + '%'],
+                     ['3Y', num(f.return3Y, 2) + '%'], ['5Y', num(f.return5Y, 2) + '%'],
+                     ['7Y', num(f.return7Y, 2) + '%'],
+                     ['Calendar year to date', num(f.returnCYTD, 2) + '%']])}</div>
+        <div class="np-col"><h5>Calendar years</h5>
+          ${cy.length ? kvTable(cy.map((k) =>
+            ['20' + k.slice(-2), num(f[k], 1) + '%'])) : '<p class="muted">Not published.</p>'}
+          ${f.cyBeatPct != null ? `<p class="muted sm">Beat the benchmark in
+            ${num(f.cyBeatPct, 0)}% of completed calendar years.</p>` : ''}</div>
+      </div>`);
+  }
+
+  if (code === 'rolling') {
+    return openModal(head('What a holding period gave',
+      'Every window of that length in the fund\'s life, and the middle one. ' +
+      'It answers what a typical holding period delivered rather than what one ' +
+      'lucky pair of dates did.') +
+      `<div class="np-grid">
+        <div class="np-col"><h5>Median rolling return</h5>
+          ${kvTable([['1Y', num(f.medianRolling1Y, 2) + '%'],
+                     ['3Y', num(f.medianRolling3Y, 2) + '%'],
+                     ['5Y', num(f.medianRolling5Y, 2) + '%'],
+                     ['7Y', num(f.medianRolling7Y, 2) + '%'],
+                     ['10Y', num(f.medianRolling10Y, 2) + '%']])}</div>
+        <div class="np-col"><h5>Consistency</h5>
+          ${kvTable([['Share of 3Y windows beating the benchmark',
+                      f.rollingHitRate3Y == null ? '—' : num(f.rollingHitRate3Y, 1) + '%'],
+                     ['Windows measured', num(f.rollingWindows3Y, 0)],
+                     ['Category decile 3Y', num(f.decile3Y, 0)],
+                     ['Category decile 5Y', num(f.decile5Y, 0)]])}</div>
+      </div>`);
+  }
+
+  if (code === 'risk') {
+    const row = (label, base) => [label,
+      [3, 5, 7, 10].map((y) => f[base + y + 'Y'] == null ? null
+        : `${y}Y ${num(f[base + y + 'Y'], 0)}`).filter(Boolean).join(' · ') || '—'];
+    return openModal(head('How it behaves in a fall',
+      'Capture is measured against the benchmark at 100. Downside below 100 means ' +
+      'it fell less than the market; upside below 100 means it also rose less.') +
+      `<div class="np-grid">
+        <div class="np-col"><h5>Across every horizon</h5>
+          ${kvTable([row('Downside capture', 'downsideCapture'),
+                     row('Upside capture', 'upsideCapture'),
+                     row('Maximum drawdown', 'maxDrawdown')])}</div>
+        <div class="np-col"><h5>Volatility, shown not scored</h5>
+          ${kvTable([['Standard deviation 3Y', num(f.stdDev3Y, 2) + '%'],
+                     ['Semi standard deviation 3Y', num(f.semiStdDev3Y, 2) + '%'],
+                     ['Beta 3Y', num(f.beta3Y, 2)],
+                     ['Sortino 3Y', num(f.sortino3Y, 2)],
+                     ['Sharpe 3Y', num(f.sharpe3Y, 2)],
+                     ['Information Ratio 3Y', num(f.informationRatio3Y, 2)]])}</div>
+      </div>`);
+  }
+
+  if (code === 'holds') {
+    return openModal(head('What it holds',
+      esc(f.mandate?.note || '') + ' Cash sits outside the equity book, so ' +
+      'concentration is read on the money at work.') +
+      `<div class="np-grid">
+        <div class="np-col"><h5>Top holdings</h5>
+          ${kvTable((f.holdings || []).map((h) =>
+            [esc(h.name), num(h.weight, 2) + '%']))}</div>
+        <div class="np-col"><h5>Allocation, share of the fund</h5>
+          ${kvTable([['Large cap', num(f.largeCapPct, 1) + '%'],
+                     ['Mid cap', num(f.midCapPct, 1) + '%'],
+                     ['Small cap', num(f.smallCapPct, 1) + '%'],
+                     ['Cash and others', num(f.cashPct, 1) + '%']])}
+          <h5 style="margin-top:14px">Shape of the equity book</h5>
+          ${kvTable([['Holdings', num(f.holdingCount, 0)],
+                     ['Effective number of stocks', num(f.effectiveStocks, 0)],
+                     ['Top 10 weight', num(f.top10, 0) + '%'],
+                     ['Largest position', num(f.largestPosition, 2) + '%'],
+                     ['Cap mix fit to mandate', num(f.mandateFit, 0) + '%'],
+                     ['Overlap with the category book', num(f.categoryOverlap, 0) + '%']])}
+          ${(f.topSectors || []).length ? `<h5 style="margin-top:14px">Largest sectors</h5>
+            ${kvTable(f.topSectors.map((x) => [esc(x.sector), num(x.weight, 1) + '%']))}` : ''}
+        </div>
+      </div>`);
+  }
+
+  if (code === 'who') {
+    return openModal(head('Who runs it',
+      'Tenure is time on this scheme, not years in the industry. The manager view ' +
+      'takes the longest serving name, because the question is how long this money ' +
+      'has been run by the people running it now.') +
+      `<table class="grid dense">
+        <thead><tr><th>Manager</th><th class="r">Tenure on this scheme</th>
+          <th class="r">Industry experience</th><th>Since</th></tr></thead>
+        <tbody>${(f.managers || []).map((m) => `
+          <tr><td>${esc(m.name)}</td>
+            <td class="r mono">${m.tenureYears == null ? '—' : num(m.tenureYears, 1) + ' yrs'}</td>
+            <td class="r mono dim">${m.experienceYears == null ? '—'
+              : num(m.experienceYears, 0) + ' yrs'}</td>
+            <td class="muted">${esc(m.sinceBasis || 'not stated')}</td></tr>`).join('')
+          || '<tr><td colspan="4" class="muted">No manager record on file.</td></tr>'}
+        </tbody></table>
+      <p class="muted sm">Market cycles run: ${num(f.managerCycles, 0)}.
+        Live record: ${esc(f.vintageBasis || '—')}.</p>`);
+  }
+
+  if (code === 'size') {
+    return openModal(head('Size and cost',
+      'Size is read against the mandate: what is nimble in one category is ' +
+      'sub-scale in another.') +
+      `<div class="np-grid">
+        <div class="np-col"><h5>Size</h5>
+          ${kvTable([['Assets under management', cr(f.aumCr)],
+                     ['A year earlier', cr(f.aum1YAgoCr)],
+                     ['Net flow over 1Y', f.netFlow1YPct == null ? '—'
+                       : num(f.netFlow1YPct, 1) + '%'],
+                     ['Live track record', esc(f.vintageBasis || '—')]])}</div>
+        <div class="np-col"><h5>Cost</h5>
+          ${kvTable([['Expense ratio, direct', f.ter == null ? 'not published'
+                       : num(f.ter, 2) + '%'],
+                     ['NAV', f.nav == null ? '—' : num(f.nav, 2)],
+                     ['NAV date', esc(f.navDate || '—')]])}
+          ${analyst ? `<p class="muted sm">${esc(f.aumCurve?.note || '')}</p>` : ''}</div>
+      </div>`);
+  }
+
+  if (code === 'score') {
+    return openModal(head('The score', 'Seven blocks, weighted, every metric ' +
+      'percentiled inside this fund\'s own category.') +
+      `<table class="grid dense">
+        <thead><tr><th>Block</th><th class="r">Weight</th><th class="r">Score</th>
+          <th class="r">Category median</th><th class="r">Coverage</th>
+          <th class="r">Points on the table</th></tr></thead>
+        <tbody>${f.peers.map((p) => {
+          const m = f.remark.movers.find((x) => x.block === p.name) || {};
+          return `<tr><td>${esc(p.name)}</td><td class="r mono">${p.weight}%</td>
+            <td class="r mono"><strong>${p.score == null ? 'not scored'
+              : num(p.score, 0)}</strong></td>
+            <td class="r mono dim">${p.categoryMedian == null ? '—'
+              : num(p.categoryMedian, 0)}</td>
+            <td class="r mono dim">${num(p.coverage, 0)}%</td>
+            <td class="r mono">${m.available == null ? '—' : num(m.available, 1)}</td>
+          </tr>`; }).join('')}
+        </tbody></table>
+      <p class="muted sm">${esc(f.remark.verdict)}</p>`);
+  }
 }
 
 /* ------------------------------------------------------------ 4. portfolio */

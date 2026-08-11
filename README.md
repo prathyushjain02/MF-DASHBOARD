@@ -140,7 +140,7 @@ in them.
 | How we look at funds | The six-factor diamond: basic requirements 1 to 3, performance drivers 4 to 6. Click any factor for a modal explaining what it means, with live figures from the current universe. |
 | Category top funds | A tile per category. Click one for its shortlist as a table: 3M, 6M, 1Y, 3Y and 5Y returns, median rolling 3Y and 5Y, AUM and the named managers. Click a fund name for its own page. |
 | All funds | Every scheme. Filter by search, category, AMC, band, minimum AUM, maximum downside capture, holdings and rated-only; sort on any column. Click a row for the fund page. |
-| Fund | One fund in full, as its own page. The back link returns to whichever list you came from. |
+| Fund | A one-page snapshot: how it has done against its benchmark, what a holding period gave, how it behaves in a fall, what it holds, who runs it, size and cost. Every card opens its full detail in a modal. |
 | Portfolio | Look-through of a weighted set: combined book, sector exposure, pairwise overlap. |
 
 The **Client / Analyst toggle** decides what the page is for, not just how much of
@@ -148,9 +148,7 @@ it shows.
 
 | | Client | Analyst |
 |---|---|---|
-| Why we like it, What to watch | yes | yes |
-| Who runs it | yes | yes |
-| The numbers, grouped by block | yes | yes, plus each metric's category percentile |
+| The snapshot cards and their modals | yes | yes |
 | Filter by band, rated-only, and the rank column | no | yes |
 | What it holds, with cash | yes | yes |
 | Composite, band, rank, tier | no | yes |

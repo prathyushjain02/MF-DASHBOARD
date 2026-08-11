@@ -147,6 +147,64 @@ const Chart = (() => {
     host.appendChild(svg);
   }
 
+  /* ------------------------------------------------- bars with a reference */
+  /* A bar per period with a tick marking the benchmark on the same scale, so
+     "ahead or behind" is read off the picture rather than worked out from two
+     numbers. Negative values run left of a zero line. */
+  function barsRef(host, rows, opts = {}) {
+    const { suffix = '%', decimals = 1, refLabel = 'benchmark' } = opts;
+    host.innerHTML = '';
+    if (!rows.length) { host.innerHTML = '<div class="empty">No record yet</div>'; return; }
+    const vals = rows.flatMap((r) => [r.value, r.ref].filter((v) => v != null));
+    const lo = Math.min(0, ...vals), hi = Math.max(0, ...vals);
+    const span = (hi - lo) || 1;
+    const zero = (0 - lo) / span * 100;
+
+    rows.forEach((r) => {
+      const row = document.createElement('div');
+      row.className = 'refrow';
+      const lab = document.createElement('div');
+      lab.className = 'lab';
+      lab.textContent = r.label;
+      const track = document.createElement('div');
+      track.className = 'track';
+      if (r.value == null) {
+        track.innerHTML = '<span class="norec">no record yet</span>';
+      } else {
+        const x0 = Math.min(r.value, 0), x1 = Math.max(r.value, 0);
+        const fill = document.createElement('div');
+        fill.className = 'fill' + (r.value < 0 ? ' neg' : '');
+        fill.style.left = ((x0 - lo) / span * 100) + '%';
+        fill.style.width = Math.max(0.6, (x1 - x0) / span * 100) + '%';
+        track.appendChild(fill);
+        const z = document.createElement('div');
+        z.className = 'zero';
+        z.style.left = zero + '%';
+        track.appendChild(z);
+        if (r.ref != null) {
+          const tick = document.createElement('div');
+          tick.className = 'ref';
+          tick.style.left = ((r.ref - lo) / span * 100) + '%';
+          hoverable(tick, `<strong>${refLabel}</strong>
+            <div class="tt-row"><span>${r.label}</span><span>${fmt(r.ref, decimals)}${suffix}</span></div>`);
+          track.appendChild(tick);
+        }
+      }
+      const val = document.createElement('div');
+      val.className = 'val';
+      val.textContent = r.value == null ? '' : fmt(r.value, decimals) + suffix;
+      row.append(lab, track, val);
+      if (r.value != null) {
+        hoverable(row, `<strong>${r.label}</strong>
+          <div class="tt-row"><span>Fund</span><span>${fmt(r.value, decimals)}${suffix}</span></div>
+          ${r.ref != null ? `<div class="tt-row"><span>${refLabel}</span><span>${fmt(r.ref, decimals)}${suffix}</span></div>
+          <div class="tt-row"><span>Difference</span><span>${
+            (r.value - r.ref >= 0 ? '+' : '') + fmt(r.value - r.ref, decimals)} pts</span></div>` : ''}`);
+      }
+      host.appendChild(row);
+    });
+  }
+
   /* ------------------------------------------------------------- scatter */
   /* Two colours only (population + the highlighted fund), so the all-pairs
      series cap is never in play. */
@@ -402,6 +460,6 @@ const Chart = (() => {
   }
   function seqInk(t) { return t > 0.6 ? '#ffffff' : 'var(--text-primary)'; }
 
-  return { bars, blockBar, scatter, histogram, rangeStrip, funnel,
+  return { bars, barsRef, blockBar, scatter, histogram, rangeStrip, funnel,
            seqColor, seqInk, hoverable, showTip, hideTip, fmt };
 })();

@@ -595,3 +595,79 @@ body.modal-open { overflow: hidden; }
     background: #23303c; }
 }
 :root[data-theme="dark"] .grid tbody tr:nth-child(odd) td.roll { background: #23303c; }
+
+/* ====================================================== fund snapshot ==== */
+.fundhead { display: flex; justify-content: space-between; align-items: flex-end;
+  gap: 20px; flex-wrap: wrap; padding-bottom: 10px; margin-bottom: 18px;
+  position: relative; }
+.fundhead::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0;
+  height: 1px; background: linear-gradient(to right, var(--red) 0 46px, var(--border) 46px); }
+.fundhead h2 { font-size: 24px; }
+.fundhead p { margin: 3px 0 0; font-size: 13px; }
+.fundhead-score { display: flex; align-items: baseline; gap: 10px; }
+.fundhead-score .big { font-family: var(--mono); font-size: 26px; font-weight: 600; }
+
+.snapshot { display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); align-items: start; }
+.snapcard { display: flex; flex-direction: column; gap: 10px; text-align: left;
+  font: inherit; cursor: pointer; padding: 14px 16px 16px; width: 100%;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-top: 2px solid var(--slate); }
+.snapcard:hover, .snapcard:focus-visible { border-top-color: var(--red);
+  background: var(--zebra); outline: none; }
+/* Title, then sub-title, with the affordance arrow held to the right edge.
+   Grid auto-placement had put the arrow first and pushed the title right. */
+.snapcard-head { display: grid; grid-template-columns: 1fr auto;
+  grid-template-areas: "title go" "sub go"; gap: 1px 10px; align-items: start; }
+.snapcard-title { grid-area: title; font-family: var(--title); font-weight: 500;
+  font-size: 14px; color: var(--ink-strong); }
+.snapcard-sub { grid-area: sub; font-size: 11.5px; color: var(--text-muted);
+  line-height: 1.35; }
+.snapcard-go { grid-area: go; align-self: center; color: var(--text-muted);
+  font-size: 16px; }
+.snapcard:hover .snapcard-go { color: var(--red); }
+.snapcard-body { display: block; }
+.cardnote { font-size: 12px; color: var(--text-primary); margin: 8px 0 0; }
+.cardfoot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 14px;
+  margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--grid);
+  font-size: 11.5px; color: var(--text-muted); }
+.cardfoot b { font-family: var(--mono); color: var(--text-primary); font-weight: 600; }
+.bigstat { display: flex; flex-direction: column; gap: 1px; padding: 6px 0 2px; }
+.bigstat .v { font-family: var(--mono); font-size: 30px; font-weight: 600;
+  color: var(--seq-550); line-height: 1; }
+.bigstat .v em { font-style: normal; font-size: 14px; margin-left: 4px;
+  color: var(--text-muted); }
+.bigstat .k { font-size: 11.5px; color: var(--text-muted); }
+
+/* The shared bar row lets its label column grow to 200px, which is right in a
+   full-width panel and wrong in a 340px card: "Cash and others" pushed the label
+   column wide enough to leave the track about 26px, so a 64% bar drew as a stub.
+   Inside a snapshot card the label is capped and the track keeps the room. */
+.snapcard .barrow { grid-template-columns: minmax(64px, 104px) 1fr 44px; gap: 8px; }
+.snapcard .barrow .lab { font-size: 11.5px; }
+.snapcard .barrow .val { font-size: 11.5px; font-weight: 600; }
+
+/* bar with a benchmark tick */
+/* The label column sizes to its content: period labels are three characters,
+   but "Downside" is eight and a fixed 34px clipped it. */
+.refrow { display: grid; grid-template-columns: auto 1fr 54px; gap: 9px;
+  align-items: center; padding: 3px 0; font-size: 12px; }
+.refrow .lab { color: var(--text-secondary); font-family: var(--mono);
+  font-size: 11px; min-width: 26px; white-space: nowrap; }
+.refrow .track { position: relative; height: 14px; background: var(--grid); }
+/* One step short of the darkest ramp value, which is body ink: a stack of
+   full-length bars at seq-700 reads as a black block, not a chart. */
+.refrow .fill { position: absolute; top: 0; bottom: 0; background: var(--seq-550); }
+.refrow .fill.neg { background: var(--serious); }
+.refrow .zero { position: absolute; top: -2px; bottom: -2px; width: 1px;
+  background: var(--axis); }
+.refrow .ref { position: absolute; top: -3px; bottom: -3px; width: 2px;
+  background: var(--red); }
+.refrow .val { text-align: right; font-family: var(--mono); font-size: 12px;
+  font-weight: 600; }
+.refrow .norec { font-size: 11px; color: var(--text-muted); padding-left: 4px;
+  line-height: 14px; }
+
+@media (max-width: 760px) {
+  .snapshot { grid-template-columns: 1fr; }
+}

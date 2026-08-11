@@ -40,6 +40,7 @@ def load(force=False):
         funds = _read("funds.json", [])
         holdings = _read("holdings.json", {})
         meta = _read("meta.json", {})
+        benchmarks = _read("benchmarks.json", {})
 
         scored = score_universe(funds, holdings)
 
@@ -55,6 +56,7 @@ def load(force=False):
             "byKey": by_key,
             "byCategory": dict(by_cat),
             "holdings": holdings,
+            "benchmarks": benchmarks,
             "meta": meta,
             "universeCount": len(funds),
         }
@@ -115,6 +117,13 @@ def detail(fund, state=None):
     # Cash sits outside the equity book by design, so it is reported next to the
     # holdings rather than folded into them.
     rec["cashPct"] = fund.get("cashPct")
+    # The benchmark the feed quotes this fund against, so the page can put the
+    # two side by side instead of asking the reader to hold one in their head.
+    bm = (state.get("benchmarks") or {}).get(fund.get("benchmark"))
+    rec["benchmark"] = {"name": fund.get("benchmark"),
+                        **{k: bm.get(k) for k in
+                           ("return3M", "return6M", "return1Y", "return3Y",
+                            "return5Y", "return7Y", "returnCYTD")}} if bm else None
     rec["peers"] = category_comparison(fund, state)
     rec["closest"] = closest_books(fund, state, limit=5)
     rec["holdings"] = top_holdings(fund, limit=15)
