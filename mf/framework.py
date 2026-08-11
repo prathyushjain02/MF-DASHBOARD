@@ -128,6 +128,8 @@ EXCLUDED_AMCS = {
     "Capitalmind Mutual Fund",
     "Samco Mutual Fund",
     "Quantum Mutual Fund",
+    "Jio BlackRock Mutual Fund",
+    "Taurus Mutual Fund",
 }
 
 

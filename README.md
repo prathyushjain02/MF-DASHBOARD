@@ -5,7 +5,7 @@ with two jobs: rank the funds in each category and surface the shortlist, then
 present that shortlist the way a client should see it, with a written rationale
 and the number kept behind an analyst toggle.
 
-246 actively managed equity schemes, scored on seven weighted blocks, every metric
+240 actively managed equity schemes, scored on seven weighted blocks, every metric
 percentiled inside its own category.
 
 ## Running it
@@ -112,7 +112,7 @@ weight that was evidenced. The median fund now evidences 100%: every block score
 *Not rated*, keeps its block scores and all its data, and is excluded from ranking.
 Without this floor a fund with no return history at all tops its category on
 portfolio shape and size alone, because renormalising over two minor blocks
-produces a number that looks exactly like a real one. 17 of 246 schemes are Not
+produces a number that looks exactly like a real one. 15 of 240 schemes are Not
 rated on the current feed, almost all of them for having no quantitative history.
 
 ## Scope
@@ -122,9 +122,9 @@ SEBI label and nothing else, so a percentile inside that bucket compares a pharm
 fund with a Taiwan equity fund, and the differentiation metric degenerates because
 no two books overlap.
 
-Thirteen fund houses are held out of the scored universe — LIC, Groww, Shriram,
-The Wealth Company, Unifi, Union, UTI, ITI, NJ, Navi, Capitalmind, Samco and
-Quantum. That is a coverage decision taken outside the model, so it is applied
+Fifteen fund houses are held out of the scored universe — LIC, Groww, Shriram,
+The Wealth Company, Unifi, Union, UTI, ITI, NJ, Navi, Capitalmind, Samco,
+Quantum, Jio BlackRock and Taurus. That is a coverage decision taken outside the model, so it is applied
 when the universe is assembled rather than expressed as a score anywhere, and it
 is reversible by editing `EXCLUDED_AMCS` without rebuilding the data. Note that
 Quant and Quantum are different houses; only Quantum is held out.
