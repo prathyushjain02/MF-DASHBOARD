@@ -115,6 +115,26 @@ portfolio shape and size alone, because renormalising over two minor blocks
 produces a number that looks exactly like a real one. 15 of 240 schemes are Not
 rated on the current feed, almost all of them for having no quantitative history.
 
+## Benchmarks
+
+The feed publishes no benchmark column, so every fund was defaulting to one broad
+index and a small cap fund was being read against the Nifty 500. Each category now
+names its own series in `mf/framework.py`.
+
+Only three index series are published. Six categories have their natural benchmark
+among them; three do not and are read against the closest available series
+instead. Those are labelled **index** rather than benchmark everywhere they
+appear, because a proxy that is not named as one is worse than no comparison:
+
+| Category | Read against | |
+|---|---|---|
+| Flexicap, Multicap, Focused, Value / Contra, ELSS, Large & Midcap | Nifty 500 TRI | benchmark |
+| Largecap | Nifty 50 TRI | index — 50 names against a mandate that runs to 100 |
+| Midcap, Smallcap | BSE MidSmallCap TRI | index — spans both mid and small |
+
+This feeds the rolling hit rate as well as the display, so the consistency figure
+now measures each fund against something it can actually be compared to.
+
 ## Scope
 
 Nine SEBI equity categories. **Sectoral and thematic funds are out**: they share a

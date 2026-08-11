@@ -34,7 +34,7 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mf.framework import CATEGORY_MAP, CATEGORIES  # noqa: E402
+from mf.framework import CATEGORY_MAP, CATEGORIES, benchmark_for  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(ROOT, "data")
@@ -300,7 +300,12 @@ def parse_pack(rows):
         rec["sourceCategory"] = category
         rec["category"] = (CATEGORY_MAP.get(category.strip().lower())
                            if vehicle == "MF" else None)
-        rec["benchmark"] = rec.get("benchmark") or DEFAULT_BENCHMARK
+        # The feed publishes no benchmark column, so it comes from the category
+        # rather than from a blanket default that would read every small cap
+        # fund against a broad market index.
+        bm, kind = benchmark_for(rec["category"])
+        rec["benchmark"] = rec.get("benchmark") or bm
+        rec["benchmarkKind"] = kind
 
         # Net flow as a share of the opening book says more than the rupee figure.
         prev, flow = rec.get("aum1YAgoCr"), rec.get("netFlowCr1Y")

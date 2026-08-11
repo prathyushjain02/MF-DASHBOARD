@@ -689,7 +689,9 @@ async function renderFundPage(host) {
     </div>
 
     <div class="snapshot">
-      ${card('done', 'How it has done', `against ${esc(bm.name || 'its benchmark')}`,
+      ${card('done', 'How it has done',
+             `against ${esc(bm.name || 'its benchmark')}${
+               bm.kind === 'index' ? ' (index)' : ''}`,
              '<div id="c-returns"></div>' +
              `<p class="cardnote" id="c-returns-note"></p>`)}
 
@@ -711,20 +713,21 @@ async function renderFundPage(host) {
 
       ${card('who', 'Who runs it', mgrs.length === 1 ? 'one manager'
               : `${mgrs.length} managers`,
-             `<div class="bigstat">
-                <span class="v">${lead && lead.tenureYears != null
-                  ? num(lead.tenureYears, 1) : '—'}<em>yrs</em></span>
-                <span class="k">longest tenure on this scheme</span>
+             `<div class="bigstat name">
+                <span class="v">${esc(lead ? lead.name : 'Not on file')}</span>
+                <span class="k">${lead && lead.tenureYears != null
+                  ? num(lead.tenureYears, 1) + ' yrs on this scheme'
+                  : 'tenure not stated'}</span>
               </div>
               <div class="cardfoot">
-                <span>${esc(lead ? lead.name : 'not on file')}</span>
                 <span>${term('Market cycles run')}</span>
-                  <b>${num(f.managerCycles, 0)}</b></div>`)}
+                  <b>${num(f.managerCycles, 0)}</b>
+                ${mgrs.length > 1 ? `<span>and ${mgrs.length - 1} more</span>` : ''}</div>`)}
 
       ${card('size', 'Size and cost', esc(f.vintageBasis || ''),
-             `<div class="bigstat">
+             `<div class="bigstat label-first">
+                <span class="k">${term('AUM')}</span>
                 <span class="v">${cr(f.aumCr)}</span>
-                <span class="k">assets under management</span>
               </div>
               <div class="cardfoot">
                 <span>${term('Net flow over 1Y')}</span>
@@ -744,20 +747,23 @@ async function renderFundPage(host) {
   // --- the visuals -------------------------------------------------------
   const periods = [['3M', 'return3M'], ['6M', 'return6M'], ['1Y', 'return1Y'],
                    ['3Y', 'return3Y'], ['5Y', 'return5Y']];
-  Chart.barsRef($('#c-returns'),
-    periods.map(([lab, k]) => ({ label: lab, value: f[k], ref: bm[k] })),
-    { refLabel: bm.name || 'benchmark' });
+  Chart.barsPaired($('#c-returns'),
+    periods.map(([lab, k]) => ({ label: lab, a: f[k], b: bm[k] })),
+    { aLabel: 'Fund', bLabel: bm.name || 'Index' });
   $('#c-returns-note').innerHTML = leadNote(f, bm);
 
-  Chart.barsRef($('#c-rolling'),
+  Chart.bars($('#c-rolling'),
     [['1Y', 'medianRolling1Y'], ['3Y', 'medianRolling3Y'], ['5Y', 'medianRolling5Y'],
      ['7Y', 'medianRolling7Y'], ['10Y', 'medianRolling10Y']]
-      .map(([lab, k]) => ({ label: lab, value: f[k] })), {});
+      .map(([lab, k]) => ({ label: lab, value: f[k] })),
+    { suffix: '%', decimals: 1, colorFor: () => 'var(--seq-550)' });
 
-  Chart.barsRef($('#c-capture'), [
-    { label: 'Upside', value: f.upsideCapture3Y, ref: 100 },
-    { label: 'Downside', value: f.downsideCapture3Y, ref: 100 },
-  ], { refLabel: 'market', decimals: 0 });
+  Chart.bars($('#c-capture'), [
+    { label: 'Upside', value: f.upsideCapture3Y || 0 },
+    { label: 'Downside', value: f.downsideCapture3Y || 0 },
+  ], { suffix: '', decimals: 0, max: Math.max(100, f.upsideCapture3Y || 0,
+       f.downsideCapture3Y || 0),
+       colorFor: (x) => x.label === 'Downside' ? 'var(--serious)' : 'var(--seq-550)' });
 
   /* The feed's allocation, not the holdings-derived cap mix. Both exist and they
      are on different denominators: capMix is a share of the equity sleeve and
@@ -831,7 +837,9 @@ function openCardModal(code) {
     const cy = Object.keys(f).filter((k) => /^returnCY\d\d$/.test(k))
       .sort().reverse().filter((k) => f[k] != null);
     return openModal(head('How it has done',
-      `Point to point, annualised beyond one year. Against ${esc(bm.name || 'the benchmark')}.`) +
+      `Point to point, annualised beyond one year. Against ${esc(bm.name || 'the benchmark')}` +
+      (bm.kind === 'index' ? ', the closest index the feed publishes for this category ' +
+       'rather than the category\'s own benchmark.' : '.')) +
       `<div class="np-grid">
         <div class="np-col"><h5>Every period</h5>
           ${kvTable([['3M', num(f.return3M, 2) + '%'], ['6M', num(f.return6M, 2) + '%'],

@@ -147,62 +147,71 @@ const Chart = (() => {
     host.appendChild(svg);
   }
 
-  /* ------------------------------------------------- bars with a reference */
-  /* A bar per period with a tick marking the benchmark on the same scale, so
-     "ahead or behind" is read off the picture rather than worked out from two
-     numbers. Negative values run left of a zero line. */
-  function barsRef(host, rows, opts = {}) {
-    const { suffix = '%', decimals = 1, refLabel = 'benchmark' } = opts;
+  /* --------------------------------------------------------- paired bars */
+  /* Two bars per period, fund and index, on one scale. A grouped bar rather than
+     a tick because the question is "how do these two compare", and two marks of
+     the same kind compare more directly than a bar against a rule.
+
+     Two series, so identity is carried by a legend and by fixed hues that never
+     move between periods. Negatives run left of a zero line. */
+  function barsPaired(host, rows, opts = {}) {
+    const { suffix = '%', decimals = 1, aLabel = 'Fund', bLabel = 'Index' } = opts;
     host.innerHTML = '';
     if (!rows.length) { host.innerHTML = '<div class="empty">No record yet</div>'; return; }
-    const vals = rows.flatMap((r) => [r.value, r.ref].filter((v) => v != null));
+    const vals = rows.flatMap((r) => [r.a, r.b]).filter((v) => v != null);
+    if (!vals.length) { host.innerHTML = '<div class="empty">No record yet</div>'; return; }
     const lo = Math.min(0, ...vals), hi = Math.max(0, ...vals);
     const span = (hi - lo) || 1;
-    const zero = (0 - lo) / span * 100;
+    const pos = (v) => ({
+      left: ((Math.min(v, 0) - lo) / span * 100) + '%',
+      width: Math.max(0.8, Math.abs(v) / span * 100) + '%',
+    });
 
     rows.forEach((r) => {
       const row = document.createElement('div');
-      row.className = 'refrow';
+      row.className = 'pairrow';
       const lab = document.createElement('div');
       lab.className = 'lab';
       lab.textContent = r.label;
-      const track = document.createElement('div');
-      track.className = 'track';
-      if (r.value == null) {
-        track.innerHTML = '<span class="norec">no record yet</span>';
-      } else {
-        const x0 = Math.min(r.value, 0), x1 = Math.max(r.value, 0);
-        const fill = document.createElement('div');
-        fill.className = 'fill' + (r.value < 0 ? ' neg' : '');
-        fill.style.left = ((x0 - lo) / span * 100) + '%';
-        fill.style.width = Math.max(0.6, (x1 - x0) / span * 100) + '%';
-        track.appendChild(fill);
-        const z = document.createElement('div');
-        z.className = 'zero';
-        z.style.left = zero + '%';
-        track.appendChild(z);
-        if (r.ref != null) {
-          const tick = document.createElement('div');
-          tick.className = 'ref';
-          tick.style.left = ((r.ref - lo) / span * 100) + '%';
-          hoverable(tick, `<strong>${refLabel}</strong>
-            <div class="tt-row"><span>${r.label}</span><span>${fmt(r.ref, decimals)}${suffix}</span></div>`);
-          track.appendChild(tick);
+      const stack = document.createElement('div');
+      stack.className = 'stack';
+      [['a', r.a], ['b', r.b]].forEach(([which, v]) => {
+        const track = document.createElement('div');
+        track.className = 'track';
+        if (v == null) {
+          track.innerHTML = '<span class="norec">no record yet</span>';
+        } else {
+          const bar = document.createElement('div');
+          bar.className = 'bar ' + which + (v < 0 ? ' neg' : '');
+          const p = pos(v);
+          bar.style.left = p.left; bar.style.width = p.width;
+          track.appendChild(bar);
+          const z = document.createElement('div');
+          z.className = 'zero';
+          z.style.left = ((0 - lo) / span * 100) + '%';
+          track.appendChild(z);
         }
-      }
-      const val = document.createElement('div');
-      val.className = 'val';
-      val.textContent = r.value == null ? '' : fmt(r.value, decimals) + suffix;
-      row.append(lab, track, val);
-      if (r.value != null) {
-        hoverable(row, `<strong>${r.label}</strong>
-          <div class="tt-row"><span>Fund</span><span>${fmt(r.value, decimals)}${suffix}</span></div>
-          ${r.ref != null ? `<div class="tt-row"><span>${refLabel}</span><span>${fmt(r.ref, decimals)}${suffix}</span></div>
-          <div class="tt-row"><span>Difference</span><span>${
-            (r.value - r.ref >= 0 ? '+' : '') + fmt(r.value - r.ref, decimals)} pts</span></div>` : ''}`);
-      }
+        const val = document.createElement('div');
+        val.className = 'val ' + which;
+        val.textContent = v == null ? '' : fmt(v, decimals) + suffix;
+        const line = document.createElement('div');
+        line.className = 'line';
+        line.append(track, val);
+        stack.appendChild(line);
+      });
+      const gap = (r.a != null && r.b != null) ? r.a - r.b : null;
+      hoverable(row, `<strong>${r.label}</strong>
+        <div class="tt-row"><span>${aLabel}</span><span>${fmt(r.a, decimals)}${suffix}</span></div>
+        <div class="tt-row"><span>${bLabel}</span><span>${fmt(r.b, decimals)}${suffix}</span></div>
+        ${gap == null ? '' : `<div class="tt-row"><span>Difference</span><span>${
+          (gap >= 0 ? '+' : '') + fmt(gap, decimals)} pts</span></div>`}`);
+      row.append(lab, stack);
       host.appendChild(row);
     });
+
+    host.insertAdjacentHTML('beforeend',
+      `<div class="pairkey"><span><i class="a"></i>${aLabel}</span>
+        <span><i class="b"></i>${bLabel}</span></div>`);
   }
 
   /* ------------------------------------------------------------- scatter */
@@ -460,6 +469,6 @@ const Chart = (() => {
   }
   function seqInk(t) { return t > 0.6 ? '#ffffff' : 'var(--text-primary)'; }
 
-  return { bars, barsRef, blockBar, scatter, histogram, rangeStrip, funnel,
+  return { bars, barsPaired, blockBar, scatter, histogram, rangeStrip, funnel,
            seqColor, seqInk, hoverable, showTip, hideTip, fmt };
 })();

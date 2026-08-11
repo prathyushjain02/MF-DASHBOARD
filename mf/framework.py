@@ -108,6 +108,38 @@ def loose_peer_group(category):
     return LOOSE_PEER_GROUPS.get(category)
 
 
+# What each category is read against. The feed carries no benchmark column, so
+# without this every fund defaults to one broad index and a small cap fund gets
+# compared to the Nifty 500.
+#
+# Only three index series are published in the feed. Six categories have their
+# natural benchmark among them; three do not and are read against the closest
+# available series instead. Those are labelled "index" rather than "benchmark"
+# wherever they appear, because a proxy that is not named as one is worse than
+# no comparison at all: Nifty 50 is 50 names against a large cap mandate that
+# runs to 100, and BSE MidSmallCap spans both mid and small.
+BENCHMARKS = {
+    "Flexicap":       ("Nifty 500 TRI", "benchmark"),
+    "Multicap":       ("Nifty 500 TRI", "benchmark"),
+    "Focused":        ("Nifty 500 TRI", "benchmark"),
+    "Value / Contra": ("Nifty 500 TRI", "benchmark"),
+    "ELSS":           ("Nifty 500 TRI", "benchmark"),
+    "Large & Midcap": ("Nifty 500 TRI", "benchmark"),
+    "Dividend Yield": ("Nifty 500 TRI", "benchmark"),
+    "Largecap":       ("Nifty 50 TRI", "index"),
+    "Midcap":         ("BSE MidSmallCap TRI", "index"),
+    "Smallcap":       ("BSE MidSmallCap TRI", "index"),
+}
+
+DEFAULT_BENCHMARK = ("Nifty 500 TRI", "benchmark")
+
+
+def benchmark_for(category):
+    """(name, kind) for a category. kind is 'benchmark' where the series is the
+    category's own, 'index' where it is the closest available stand-in."""
+    return BENCHMARKS.get(category, DEFAULT_BENCHMARK)
+
+
 # Fund houses held out of the scored universe. This is a coverage decision made
 # outside the model, not a judgement the model reached, so it is applied when the
 # universe is assembled rather than expressed as a score anywhere.

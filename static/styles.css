@@ -638,6 +638,13 @@ body.modal-open { overflow: hidden; }
 .bigstat .v em { font-style: normal; font-size: 14px; margin-left: 4px;
   color: var(--text-muted); }
 .bigstat .k { font-size: 11.5px; color: var(--text-muted); }
+/* Label first, then the figure, where the label is the thing being asked for. */
+.bigstat.label-first { flex-direction: column; }
+.bigstat.label-first .k { order: -1; margin-bottom: 2px; }
+/* A name is not a number: it takes the title face and wraps rather than being
+   set in a monospace slot sized for digits. */
+.bigstat.name .v { font-family: var(--title); font-size: 19px; font-weight: 500;
+  color: var(--text-primary); line-height: 1.2; }
 
 /* The shared bar row lets its label column grow to 200px, which is right in a
    full-width panel and wrong in a 340px card: "Cash and others" pushed the label
@@ -646,6 +653,34 @@ body.modal-open { overflow: hidden; }
 .snapcard .barrow { grid-template-columns: minmax(64px, 104px) 1fr 44px; gap: 8px; }
 .snapcard .barrow .lab { font-size: 11.5px; }
 .snapcard .barrow .val { font-size: 11.5px; font-weight: 600; }
+
+/* paired bars: fund against its index */
+.pairrow { display: grid; grid-template-columns: auto 1fr; gap: 9px;
+  align-items: center; padding: 4px 0; }
+.pairrow .lab { color: var(--text-secondary); font-family: var(--mono);
+  font-size: 11px; min-width: 24px; }
+.pairrow .stack { display: flex; flex-direction: column; gap: 2px; }
+.pairrow .line { display: grid; grid-template-columns: 1fr 46px; gap: 7px;
+  align-items: center; }
+.pairrow .track { position: relative; height: 9px; background: var(--grid); }
+.pairrow .bar { position: absolute; top: 0; bottom: 0; }
+.pairrow .bar.a { background: var(--seq-550); }
+.pairrow .bar.b { background: var(--seq-200); }
+.pairrow .bar.neg.a { background: var(--critical); }
+.pairrow .bar.neg.b { background: var(--serious); }
+.pairrow .zero { position: absolute; top: -2px; bottom: -2px; width: 1px;
+  background: var(--axis); }
+.pairrow .val { text-align: right; font-family: var(--mono); font-size: 11px; }
+.pairrow .val.a { font-weight: 600; color: var(--text-primary); }
+.pairrow .val.b { color: var(--text-muted); }
+.pairrow .norec { font-size: 10px; color: var(--text-muted); padding-left: 4px;
+  line-height: 9px; }
+.pairkey { display: flex; gap: 14px; margin-top: 7px; font-size: 11px;
+  color: var(--text-muted); }
+.pairkey span { display: inline-flex; align-items: center; gap: 5px; }
+.pairkey i { width: 10px; height: 9px; display: inline-block; }
+.pairkey i.a { background: var(--seq-550); }
+.pairkey i.b { background: var(--seq-200); }
 
 /* bar with a benchmark tick */
 /* The label column sizes to its content: period labels are three characters,

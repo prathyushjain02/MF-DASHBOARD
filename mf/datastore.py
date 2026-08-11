@@ -83,6 +83,7 @@ _ROW_FIELDS = (
     "decile3Y", "decile5Y", "vintageYears", "managerYears", "managerCycles",
     "effectiveStocks", "top10", "holdingCount", "mandateFit", "differentiation",
     "categoryOverlap", "capMix", "hasHoldings", "loosePeerGroup", "cashPct",
+    "benchmark", "benchmarkKind",
     "netFlow1YPct", "cyBeatPct", "rated", "upsideCapture3Y",
     "managerExperienceYears", "vintageBasis", "rollingHitRate3Y",
 )
@@ -121,6 +122,8 @@ def detail(fund, state=None):
     # two side by side instead of asking the reader to hold one in their head.
     bm = (state.get("benchmarks") or {}).get(fund.get("benchmark"))
     rec["benchmark"] = {"name": fund.get("benchmark"),
+                        "kind": fund.get("benchmarkKind")
+                                or fw.benchmark_for(fund.get("category"))[1],
                         **{k: bm.get(k) for k in
                            ("return3M", "return6M", "return1Y", "return3Y",
                             "return5Y", "return7Y", "returnCYTD")}} if bm else None
