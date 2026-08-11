@@ -253,94 +253,93 @@ def _coverage(funds, field):
 
 
 def process_stats(state=None):
-    """Live figures for each node of the selection process.
+    """Live figures for each factor of the selection process.
 
-    The page states what this build actually knows rather than what the process
-    aspires to, so the numbers are read off the scored universe every request
-    instead of being written into the copy.
+    Descriptive facts about the universe as it stands, read fresh each request so
+    the page reports the current build rather than a claim written into the copy.
     """
     state = state or load()
     funds = state["funds"]
     rated = [f for f in funds if f.get("rated")]
     n = len(funds)
 
-    def block_median(code):
-        return _median([f["blockScore"].get(code) for f in rated])
-
     caps = sum(1 for f in funds
                if any(x["code"] == "capacity" for x in f.get("flags", [])))
     new_mgr = sum(1 for f in funds
                   if any(x["code"] == "new-manager" for x in f.get("flags", [])))
-    no_mgr = sum(1 for f in funds if f.get("managerYears") is None)
+    seasoned = sum(1 for f in funds if (f.get("managerYears") or 0) >= 10)
     mgr_count = _median([len(f.get("managers") or []) or None for f in funds])
+    aum_med = _median([f.get("aumCr") for f in rated])
 
     return {
         "performance": {
-            "headline": f"{_coverage(funds, 'medianRolling3Y')}%",
-            "caption": "of the universe carries a three year rolling record",
+            "headline": f"{_median([f.get('rollingHitRate3Y') for f in rated]):.0f}%",
+            "caption": "of three year windows beat the benchmark, for the median fund",
             "rows": [
-                ["Funds with a 10 year rolling record",
-                 f"{sum(1 for f in funds if f.get('medianRolling10Y') is not None)} of {n}"],
-                ["Median rolling 3Y across rated funds",
+                ["Median rolling 3Y return",
                  f"{_median([f.get('medianRolling3Y') for f in rated])}%"],
-                ["Median share of 3Y windows beating the benchmark",
-                 f"{_median([f.get('rollingHitRate3Y') for f in rated])}%"],
+                ["Median rolling 10Y return",
+                 f"{_median([f.get('medianRolling10Y') for f in rated])}%"],
                 ["Median downside capture",
                  f"{_median([f.get('downsideCapture3Y') for f in rated])}"],
+                ["Median maximum drawdown",
+                 f"{_median([f.get('maxDrawdown3Y') for f in rated])}%"],
             ],
         },
         "aum": {
             "headline": f"{caps}",
-            "caption": "funds carry a size or capacity flag on their category curve",
+            "caption": "funds sit where size starts to work against the mandate",
             "rows": [
-                ["Median AUM across rated funds",
-                 f"INR {_median([f.get('aumCr') for f in rated]):,.0f} cr"
-                 if _median([f.get('aumCr') for f in rated]) else "n/a"],
-                ["Largest fund in the universe",
+                ["Median fund size", f"INR {aum_med:,.0f} cr" if aum_med else "n/a"],
+                ["Largest fund",
                  f"INR {max((f.get('aumCr') or 0) for f in funds):,.0f} cr"],
-                ["Distinct AUM curves in use", "6, one per category shape"],
-                ["Median AUM block score", f"{block_median('aum')} of 100"],
+                ["Smallest rated fund",
+                 f"INR {min((f.get('aumCr') or 0) for f in rated):,.0f} cr" if rated else "n/a"],
+                ["Size curves in use", "Six, one per category shape"],
             ],
         },
         "quant": {
-            "headline": f"{state and len([m for b in fw.BLOCKS for m in b['metrics'] if m['weight']])}",
-            "caption": "weighted metrics behind the score",
+            "headline": f"{_median([f.get('informationRatio3Y') for f in rated])}",
+            "caption": "median Information Ratio over three years",
             "rows": [
-                ["Horizons scored", "3Y, 5Y, 7Y and 10Y wherever published"],
-                ["Median Information Ratio 3Y",
-                 f"{_median([f.get('informationRatio3Y') for f in rated])}"],
-                ["Funds with a disclosed book",
-                 f"{sum(1 for f in funds if f.get('holdingCount'))} of {n}"],
+                ["Horizons read", "3Y, 5Y, 7Y and 10Y wherever published"],
+                ["Median Sortino 3Y", f"{_median([f.get('sortino3Y') for f in rated])}"],
+                ["Median holdings per book",
+                 f"{_median([f.get('holdingCount') for f in funds]):.0f}"
+                 if _median([f.get('holdingCount') for f in funds]) else "n/a"],
                 ["Median overlap with the category book",
                  f"{_median([f.get('categoryOverlap') for f in rated])}%"],
             ],
         },
         "fmType": {
-            "headline": f"{_coverage(funds, 'managerYears')}%",
-            "caption": "of the universe has named managers with dated tenure on file",
+            "headline": f"{mgr_count:.0f}" if mgr_count else "n/a",
+            "caption": "named managers on the median scheme",
             "rows": [
-                ["Median managers per scheme", f"{mgr_count:.0f}" if mgr_count else "n/a"],
-                ["Funds with no manager record", f"{no_mgr} of {n}"],
-                ["In-house against bought-in research", "Not in any feed"],
+                ["Schemes run by a single manager",
+                 f"{sum(1 for f in funds if len(f.get('managers') or []) == 1)} of {n}"],
+                ["Largest named team",
+                 f"{max(len(f.get('managers') or []) for f in funds)} managers"],
+                ["Distinct fund houses", f"{len({f.get('amc') for f in funds if f.get('amc')})}"],
             ],
         },
         "attitude": {
-            "headline": "0%",
-            "caption": "of the score rests on this, because none of it is measurable",
+            "headline": "\u2014",
+            "caption": "this is what the written view is for",
             "rows": [
-                ["Weight carried in the composite", "None"],
-                ["Where it belongs", "The written view, and the meeting note behind it"],
+                ["Where it is read", "Manager meetings, not a return series"],
+                ["Where it appears here", "Why we like it, and What to watch"],
             ],
         },
         "stability": {
             "headline": f"{new_mgr}",
-            "caption": "funds flagged New Manager, under three years on the scheme",
+            "caption": "funds where the longest serving manager is under three years in",
             "rows": [
-                ["Median tenure of the longest serving manager",
+                ["Median tenure, longest serving manager",
                  f"{_median([f.get('managerYears') for f in funds])} yrs"],
+                ["Funds with a manager past ten years", f"{seasoned} of {n}"],
                 ["Median market cycles run",
                  f"{_median([f.get('managerCycles') for f in funds])}"],
-                ["Team exits and incentive structure", "An analyst's call"],
+                ["Cycles in the window", "Three falls of 12% or more since 2018"],
             ],
         },
     }

@@ -24,7 +24,7 @@
 const API = '/api/mf';
 const $ = (s, r = document) => r.querySelector(s);
 const state = { mode: 'client', view: 'shortlist', fw: null, meta: null, fund: null,
-                category: null, node: null, asset: null, gloss: {} };
+                category: null, gloss: {} };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
   (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -110,22 +110,19 @@ function setView(v) {
 
 /* ------------------------------------------- 1. how we look at funds */
 
-/* A single page, driven entirely by clicking. The six factor diamond from the
-   deck is the hero: pick a node and the panel beneath it says what the factor
-   is, what the model does about it, and what the current universe actually
-   looks like on it. Below that, the three tier screen across equity, debt and
-   international, one asset class at a time.
+/* One page, driven by clicking. The six factor diamond from the deck, then the
+   three tier screen. Everything opens in a modal over the page rather than
+   expanding underneath it, so the reader never loses their place in the diagram,
+   and the backdrop or Escape closes it.
  *
- * Every number on this page is read off the live universe rather than written
- * into the copy, so the page cannot claim coverage the build does not have. */
+ * Figures come from the live universe each request rather than being written
+ * into the copy. */
 
 let processStats = null;
 
 async function renderApproach(host) {
   const fw = state.fw;
   if (!processStats) processStats = await get('/process');
-  if (!state.node) state.node = fw.selectionNodes[0].code;
-  if (!state.asset) state.asset = fw.coveredAsset;
 
   const basic = fw.selectionNodes.filter((n) => n.group === 'basic');
   const drivers = fw.selectionNodes.filter((n) => n.group === 'driver');
@@ -135,89 +132,65 @@ async function renderApproach(host) {
       <div class="section-head">
         <h2>Fund selection process: mutual funds</h2>
         <p class="lede">Six factors. Three a fund has to clear, three that explain
-        whether the record repeats. Pick one to see what we measure and what the
-        universe looks like on it today.</p>
+        whether the record repeats. Click any of them.</p>
       </div>
 
       <div class="diamond">
         <div class="diamond-side">
-          <h3 class="grp-basic">${esc(fw.selectionGroups.basic.label)}</h3>
+          <h3>${esc(fw.selectionGroups.basic.label)}</h3>
           <span class="grp-range">(${esc(fw.selectionGroups.basic.range)})</span>
           <p class="muted">${esc(fw.selectionGroups.basic.note)}</p>
-          <div class="grp-list">${basic.map(nodeLine).join('')}</div>
+          <div class="grp-list">${basic.map(nodeCard).join('')}</div>
         </div>
 
         <div class="diamond-mid" id="diamond-mid"></div>
 
         <div class="diamond-side right">
-          <h3 class="grp-driver">${esc(fw.selectionGroups.driver.label)}</h3>
+          <h3>${esc(fw.selectionGroups.driver.label)}</h3>
           <span class="grp-range">(${esc(fw.selectionGroups.driver.range)})</span>
           <p class="muted">${esc(fw.selectionGroups.driver.note)}</p>
-          <div class="grp-list">${drivers.map(nodeLine).join('')}</div>
+          <div class="grp-list">${drivers.map(nodeCard).join('')}</div>
         </div>
       </div>
 
-      <div id="nodepanel" class="nodepanel"></div>
-
-      <div class="section-head" style="margin-top:38px">
+      <div class="section-head" style="margin-top:40px">
         <h2>Fund selection process</h2>
-        <p class="lede">The same screen across asset classes. This build covers the
-        equity leg; the others are shown so the whole process is visible, not because
-        the model scores them.</p>
+        <p class="lede">The three tier screen every fund goes through. Click a tier
+        for what it means.</p>
       </div>
-
-      <div class="assettabs">
+      <div class="tierflow">
         ${fw.processTiers.map((t) => `
-          <button class="assettab${t.code === state.asset ? ' on' : ''}"
-                  data-asset="${esc(t.code)}">
-            ${esc(t.asset)}
-            ${t.code === fw.coveredAsset
-              ? '<span class="tag live">scored here</span>'
-              : '<span class="tag">process only</span>'}
+          <button class="tier" data-tier="${esc(t.code)}">
+            <span class="tier-label">${esc(t.name)}</span>
+            <span class="tier-arrow" aria-hidden="true">&rsaquo;</span>
+            <span class="tier-points">
+              ${t.points.map((pt) => `<span>${esc(pt)}</span>`).join('')}
+            </span>
           </button>`).join('')}
       </div>
-      <div id="tierflow" class="tierflow"></div>
     </section>`;
 
-  host.querySelectorAll('[data-node]').forEach((el) => el.onclick = () => {
-    state.node = el.dataset.node;
-    renderApproach(host);
-  });
-  host.querySelectorAll('[data-asset]').forEach((el) => el.onclick = () => {
-    state.asset = el.dataset.asset;
-    drawTierFlow();
-  });
+  host.querySelectorAll('[data-node]').forEach((el) =>
+    el.onclick = () => openNodeModal(el.dataset.node));
+  host.querySelectorAll('[data-tier]').forEach((el) =>
+    el.onclick = () => openTierModal(el.dataset.tier));
 
   drawDiamond();
-  drawNodePanel();
-  drawTierFlow();
   wireGlossary(host);
 }
 
-function nodeLine(n) {
-  const on = n.code === state.node;
+function nodeCard(n) {
   return `
-    <button class="nodeline${on ? ' on' : ''}" data-node="${esc(n.code)}"
-            aria-pressed="${on}">
+    <button class="nodeline" data-node="${esc(n.code)}">
       <span class="nodeline-n">${n.n}</span>
-      <span class="nodeline-body">
-        <span class="nodeline-name">${esc(n.name)}</span>
-        <span class="nodeline-meta">${measureTag(n.measured)}</span>
-      </span>
+      <span class="nodeline-name">${esc(n.name)}</span>
+      <span class="nodeline-go" aria-hidden="true">&rsaquo;</span>
     </button>`;
 }
 
-/* Measurability is a three-state fact about the data, not a quality judgement,
-   so it gets its own neutral vocabulary rather than a status colour. */
-function measureTag(m) {
-  if (m === true) return '<span class="tag live">measured</span>';
-  if (m === 'partial') return '<span class="tag part">partly measured</span>';
-  return '<span class="tag off">analyst call</span>';
-}
-
-/* The diamond. Two chevron arms of three nodes each meeting at a centre mark,
-   drawn as SVG so the arms scale with the panel. Position carries nothing but
-   sequence: this is a process diagram, not a chart. */
+/* The diamond. Two chevron arms of three nodes meeting at a centre mark, drawn
+   as SVG so the arms scale with the panel. Position carries sequence only: this
+   is a process diagram, not a chart. */
 function drawDiamond() {
   const fw = state.fw;
   const host = $('#diamond-mid');
@@ -234,7 +207,6 @@ function drawDiamond() {
     4: [cx + 74, cy - 96], 5: [cx + 116, cy], 6: [cx + 74, cy + 96],
   };
 
-  // The arms, drawn once and kept recessive.
   [[1, 2, 3], [4, 5, 6]].forEach((arm) => {
     const d = arm.map((n, i) => `${i ? 'L' : 'M'}${pos[n][0]},${pos[n][1]}`).join(' ');
     svg.appendChild(mk('path', { d, fill: 'none', stroke: 'var(--grid)',
@@ -242,37 +214,27 @@ function drawDiamond() {
                                  'stroke-linejoin': 'round' }));
   });
 
-  // Centre mark: the point where a number stops answering the question.
-  svg.appendChild(mk('rect', { x: cx - 17, y: cy - 17, width: 34, height: 34,
+  svg.appendChild(mk('rect', { x: cx - 30, y: cy - 15, width: 60, height: 30,
                                fill: 'var(--zebra)', stroke: 'var(--border-strong)' }));
-  const warn = mk('text', { x: cx, y: cy + 5, 'text-anchor': 'middle',
-                            class: 'diamond-warn' }, '!');
-  svg.appendChild(warn);
-  const centre = mk('rect', { x: cx - 17, y: cy - 17, width: 34, height: 34,
-                              fill: 'transparent' });
-  Chart.hoverable(centre, `<strong>Where the number stops</strong>
-    <div class="tt-note">Factors 1 to 3 are measured. Factors 4 to 6 are mostly
-    judgement. The model scores the left arm and reports the right arm rather than
-    inventing it.</div>`);
-  svg.appendChild(centre);
+  svg.appendChild(mk('text', { x: cx, y: cy + 4, 'text-anchor': 'middle',
+                               class: 'diamond-centre' }, 'FUND'));
 
   fw.selectionNodes.forEach((n) => {
     const [x, y] = pos[n.n];
-    const on = n.code === state.node;
-    const g = mk('g', { class: 'dnode' + (on ? ' on' : ''), tabindex: 0,
-                        role: 'button', 'aria-label': n.name });
+    const g = mk('g', { class: 'dnode', tabindex: 0, role: 'button',
+                        'aria-label': n.name });
     g.appendChild(mk('circle', {
-      cx: x, cy: y, r: on ? 26 : 23,
+      cx: x, cy: y, r: 24,
       fill: n.group === 'basic' ? 'var(--seq-450)' : 'var(--serious)',
-      stroke: on ? 'var(--red)' : 'var(--surface-2)', 'stroke-width': on ? 3 : 2,
+      stroke: 'var(--surface-2)', 'stroke-width': 2,
     }));
     g.appendChild(mk('text', { x, y: y + 6, 'text-anchor': 'middle',
                                class: 'dnode-n' }, n.n));
     Chart.hoverable(g, `<strong>${esc(n.n + '. ' + n.name)}</strong>
-      <div class="tt-note">${esc(n.how)}</div>`);
-    g.onclick = () => { state.node = n.code; renderApproach($('#main')); };
+      <div class="tt-note">Click to open</div>`);
+    g.onclick = () => openNodeModal(n.code);
     g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault(); g.onclick(); } };
+      e.preventDefault(); openNodeModal(n.code); } };
     svg.appendChild(g);
   });
 
@@ -280,64 +242,107 @@ function drawDiamond() {
   host.appendChild(svg);
 }
 
-function drawNodePanel() {
-  const n = state.fw.selectionNodes.find((x) => x.code === state.node);
-  const stat = (processStats || {})[n.stat] || { rows: [] };
-  const blocks = (n.blocks || []).map((code) =>
-    state.fw.blocks.find((b) => b.code === code)).filter(Boolean);
+/* ------------------------------------------------------------------ modal */
 
-  $('#nodepanel').innerHTML = `
+/* One modal for the whole app. The backdrop and Escape both close it, focus
+   moves in on open and returns to whatever opened it on close. */
+function openModal(html, opener) {
+  closeModal();
+  const wrap = document.createElement('div');
+  wrap.className = 'modal-backdrop';
+  wrap.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true" tabindex="-1">
+      <button class="modal-close" aria-label="Close">&times;</button>
+      ${html}
+    </div>`;
+  document.body.appendChild(wrap);
+  document.body.classList.add('modal-open');
+
+  const box = wrap.querySelector('.modal');
+  box.focus();
+  // A click that starts inside the panel and ends on the backdrop, which is what
+  // a text selection drag does, must not count as a click outside.
+  let downOnBackdrop = false;
+  wrap.addEventListener('mousedown', (e) => { downOnBackdrop = e.target === wrap; });
+  wrap.addEventListener('click', (e) => {
+    if (e.target === wrap && downOnBackdrop) closeModal();
+  });
+  wrap.querySelector('.modal-close').onclick = closeModal;
+  wrap._opener = opener || null;
+  document.addEventListener('keydown', escClose);
+  wireGlossary(box);
+}
+
+function escClose(e) { if (e.key === 'Escape') closeModal(); }
+
+function closeModal() {
+  const wrap = document.querySelector('.modal-backdrop');
+  if (!wrap) return;
+  const opener = wrap._opener;
+  wrap.remove();
+  document.body.classList.remove('modal-open');
+  document.removeEventListener('keydown', escClose);
+  if (opener && opener.focus) opener.focus();
+}
+
+function statTable(stat) {
+  if (!stat) return '';
+  // Not every factor has a number to lead with. An em dash in a 36px slot reads
+  // as a broken element, so the headline is dropped and the caption carries it.
+  const hasNumber = stat.headline && stat.headline !== '\u2014';
+  return `
+    <div class="np-live">
+      ${hasNumber ? `<div class="np-headline">${esc(stat.headline)}</div>` : ''}
+      <div class="np-caption${hasNumber ? '' : ' lead'}">${esc(stat.caption || '')}</div>
+      <table class="grid dense kv">
+        <tbody>${(stat.rows || []).map(([k, v]) => `
+          <tr><td class="np-k">${esc(k)}</td>
+            <td class="r mono np-v">${esc(String(v))}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function openNodeModal(code) {
+  const n = state.fw.selectionNodes.find((x) => x.code === code);
+  if (!n) return;
+  const stat = (processStats || {})[n.stat];
+  const blocks = (n.blocks || []).map((c) =>
+    state.fw.blocks.find((b) => b.code === c)).filter(Boolean);
+
+  openModal(`
     <div class="np-head">
       <span class="np-n">${n.n}</span>
-      <div>
-        <h3>${esc(n.name)}</h3>
-        <span class="np-tag">${measureTag(n.measured)}</span>
-      </div>
+      <h3>${esc(n.name)}</h3>
     </div>
+    <p class="np-means">${esc(n.means)}</p>
     <div class="np-grid">
       <div class="np-col">
         <h5>What it covers</h5>
         <ul class="ticks">${n.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>
+        ${blocks.length ? `
+          <h5 class="analyst-only" style="margin-top:14px">Where it lands in the score</h5>
+          <div class="np-blocks analyst-only">${blocks.map((b) => `
+            <span class="chip">${esc(b.name)} <em>${b.weight}%</em></span>`).join('')}
+            <span class="np-total">${blocks.reduce((s, b) => s + b.weight, 0)}% of the
+            composite</span></div>` : ''}
       </div>
       <div class="np-col">
-        <h5>What the model does about it</h5>
-        <p>${esc(n.how)}</p>
-        ${blocks.length ? `<div class="np-blocks">${blocks.map((b) => `
-          <span class="chip">${esc(b.name)} <em>${b.weight}%</em></span>`).join('')}
-          <span class="np-total">${blocks.reduce((s, b) => s + b.weight, 0)}% of the
-          composite</span></div>` : '<div class="np-blocks"><span class="np-total">No weight in the composite</span></div>'}
-      </div>
-      <div class="np-col np-live">
         <h5>The universe today</h5>
-        <div class="np-headline">${esc(stat.headline || '')}</div>
-        <div class="np-caption">${esc(stat.caption || '')}</div>
-        <table class="grid dense kv">
-          <tbody>${(stat.rows || []).map(([k, v]) => `
-            <tr><td class="np-k">${esc(k)}</td>
-              <td class="r mono np-v">${esc(String(v))}</td></tr>`).join('')}
-          </tbody>
-        </table>
+        ${statTable(stat)}
       </div>
-    </div>`;
-  wireGlossary($('#nodepanel'));
+    </div>`, document.activeElement);
 }
 
-function drawTierFlow() {
-  const fw = state.fw;
-  const t = fw.processTiers.find((x) => x.code === state.asset) || fw.processTiers[0];
-  $('.assettabs') && $('.assettabs').querySelectorAll('.assettab').forEach((el) =>
-    el.classList.toggle('on', el.dataset.asset === state.asset));
-  $('#tierflow').innerHTML = t.tiers.map((tier) => `
-    <div class="tier">
-      <div class="tier-label">
-        <span>${esc(tier.name)}</span>
-        ${measureTag(tier.measured)}
-      </div>
-      <div class="tier-arrow" aria-hidden="true">&rsaquo;</div>
-      <ul class="tier-points">
-        ${tier.points.map((p) => `<li>${esc(p)}</li>`).join('')}
-      </ul>
-    </div>`).join('');
+function openTierModal(code) {
+  const t = state.fw.processTiers.find((x) => x.code === code);
+  if (!t) return;
+  openModal(`
+    <div class="np-head"><h3>${esc(t.name)}</h3></div>
+    <p class="np-means">${esc(t.means)}</p>
+    <h5>What it covers</h5>
+    <ul class="ticks">${t.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>`,
+    document.activeElement);
 }
 
 function labelForField(f) {

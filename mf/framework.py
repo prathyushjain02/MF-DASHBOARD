@@ -592,22 +592,22 @@ SELECTION_NODES = [
         "name": "Past performance and risk analytics",
         "points": ["Long term consistent performance",
                    "Drawdowns and volatility in line with or lower than the market"],
-        "measured": True,
         "blocks": ["return", "capture"],
-        "how": "Scored from every median rolling return the feed carries, 1 through "
-               "10 years, plus the share of three year windows that actually beat the "
-               "benchmark, upside and downside capture, and maximum drawdown.",
+        "means": "Whether the fund has delivered over holding periods rather than "
+                 "between two flattering dates, and what that cost on the way down. "
+                 "We read every rolling window in the fund's life and ask how often "
+                 "it beat the benchmark, not just by how much on average.",
         "stat": "performance",
     },
     {
         "n": 2, "group": "basic", "code": "aum",
         "name": "Assets under management",
         "points": ["Alpha reduces non-linearly as AUM rises"],
-        "measured": True,
         "blocks": ["aum"],
-        "how": "Scored on a different curve per category. Small cap rewards nimble "
-               "size and marks down capacity risk; large cap and flexi reward scale "
-               "with a floor for viability.",
+        "means": "Size changes what a manager can do. A small cap fund that doubles "
+                 "cannot hold the same names in the same weights, so the same process "
+                 "produces a different result. Size is read against the mandate: what "
+                 "is nimble for one category is sub-scale for another.",
         "stat": "aum",
     },
     {
@@ -618,12 +618,11 @@ SELECTION_NODES = [
                    "Risk adjusted returns: Sharpe ratio, Information ratio",
                    "Market capitalisation, deviations from the benchmark",
                    "Portfolio turnover ratio"],
-        "measured": True,
         "blocks": ["riskAdj", "portfolio", "vintage"],
-        "how": "Sharpe, Sortino and Information Ratio at every horizon published, "
-               "with Information Ratio weighted heaviest. Deviation from the "
-               "benchmark is read from the disclosed book as overlap against the "
-               "category's average portfolio.",
+        "means": "Whether the return was earned or simply bought with risk. "
+                 "Information Ratio carries the most weight of the three ratios, "
+                 "because it is return per unit of risk taken away from the "
+                 "benchmark, which is the thing an active fee is charged for.",
         "stat": "quant",
     },
     {
@@ -631,11 +630,11 @@ SELECTION_NODES = [
         "name": "Type of fund manager",
         "points": ["Number of people in the investment team",
                    "Dependence on third party brokers against in-house analysis"],
-        "measured": "partial",
         "blocks": ["manager"],
-        "how": "The named managers on each scheme and their tenure are on file. "
-               "Whether the research is in-house or bought in is a meeting note, "
-               "not a feed field.",
+        "means": "Who is actually doing the work. A large team running one book "
+                 "behaves differently from a single manager, and a house that "
+                 "underwrites its own ideas behaves differently from one that buys "
+                 "them in.",
         "stat": "fmType",
     },
     {
@@ -643,11 +642,11 @@ SELECTION_NODES = [
         "name": "Attitude of investment team",
         "points": ["Hunger", "Age", "Ability to learn from mistakes",
                    "Personal investment in equities"],
-        "measured": False,
         "blocks": [],
-        "how": "None of this is in any feed, and the model does not pretend "
-               "otherwise. It carries no weight in the score and is the reason the "
-               "written view sits above the number rather than beneath it.",
+        "means": "The part of a process that never shows up in a return series. "
+                 "Whether the team still has something to prove, whether it revisits "
+                 "its own mistakes, and whether the people running the money own it "
+                 "themselves. This is what the written view is for.",
         "stat": "attitude",
     },
     {
@@ -655,11 +654,11 @@ SELECTION_NODES = [
         "name": "Stability of investment team",
         "points": ["Number of exits", "Years of working together",
                    "Incentive structure"],
-        "measured": "partial",
         "blocks": ["manager"],
-        "how": "Tenure on this scheme is measured from the manager master and drives "
-               "the manager block, taken from the longest serving name. Exits and "
-               "incentive structure are an analyst's call.",
+        "means": "A track record belongs to the people who produced it. Tenure on "
+                 "this scheme, years the team has worked together and how they are "
+                 "paid decide whether the record still describes the fund you would "
+                 "be buying.",
         "stat": "stability",
     },
 ]
@@ -671,78 +670,38 @@ SELECTION_GROUPS = {
                "note": "What explains whether the record repeats."},
 }
 
-# The three tier screen, per asset class, exactly as the deck sets it out.
+# The three tier screen. One framework, not one per asset class.
 PROCESS_TIERS = [
     {
-        "asset": "Equity",
-        "code": "equity",
-        "tiers": [
-            {"name": "AMCs", "points": ["AUM and flows"], "measured": True},
-            {"name": "Investment team",
-             "points": ["Stability of team: number of exits",
-                        "Number of people in the investment team"],
-             "measured": "partial"},
-            {"name": "Quantitative factors",
-             "points": ["Portfolio strategy, attributes",
-                        "Long term consistent performance, peer group comparison",
-                        "Volatility, drawdowns",
-                        "Risk adjusted returns: Sharpe ratio, Information ratio, "
-                        "excess returns",
-                        "Tracking error, expense ratios",
-                        "Portfolio turnover ratio"],
-             "measured": True},
-        ],
+        "code": "amc", "name": "AMCs",
+        "points": ["AUM and flows", "Parent group support",
+                   "Ability to come out of difficult situations"],
+        "means": "The house behind the fund. Flows tell you whether the AMC is "
+                 "gathering or bleeding assets, and how it behaved through a bad "
+                 "cycle tells you what it will do in the next one.",
     },
     {
-        "asset": "Debt",
-        "code": "debt",
-        "tiers": [
-            {"name": "AMCs",
-             "points": ["AUM and flows", "Parent group support",
-                        "Ability to come out of difficult situations"],
-             "measured": False},
-            {"name": "Investment team",
-             "points": ["Stability of team", "Number of people",
-                        "Understanding of credit and duration"],
-             "measured": False},
-            {"name": "Quantitative factors",
-             "points": ["Return, risk and credit analytics, with a large focus on "
-                        "past credit events",
-                        "Exposure to sensitive issuers (30+ issuers tracked by "
-                        "Avendus Wealth)",
-                        "Consistency of the investment objective",
-                        "Expense ratios", "Peer group comparison"],
-             "measured": False},
-        ],
+        "code": "team", "name": "Investment team",
+        "points": ["Stability of team: number of exits",
+                   "Number of people in the investment team",
+                   "Years the team has worked together"],
+        "means": "Depth and continuity. A record produced by people who have since "
+                 "left is a record of a fund that no longer exists in the same form.",
     },
     {
-        "asset": "International",
-        "code": "international",
-        "tiers": [
-            {"name": "Preference for funds feeding into established global "
-                     "funds/indices",
-             "points": ["Funds feeding into major global stock market indices",
-                        "Funds where the underlying is managed offshore by leading "
-                        "global asset managers"],
-             "measured": False},
-            {"name": "Underlying fund characteristics",
-             "points": ["AUM, vintage, parent group",
-                        "Track record of three years or more",
-                        "Quality and stability of investment team",
-                        "Research bench strength"],
-             "measured": "partial"},
-            {"name": "Quantitative factors",
-             "points": ["Return and risk analytics: return consistency, volatility "
-                        "and return/risk",
-                        "Performance comparison with benchmark and peer groups",
-                        "Correlation with Indian indices", "Expense ratios"],
-             "measured": "partial"},
-        ],
+        "code": "quant", "name": "Quantitative factors",
+        "points": ["Portfolio strategy, attributes",
+                   "Long term consistent performance, peer group comparison",
+                   "Volatility, drawdowns",
+                   "Risk adjusted returns: Sharpe ratio, Information ratio, "
+                   "excess returns",
+                   "Tracking error, expense ratios",
+                   "Portfolio turnover ratio"],
+        "means": "Everything the numbers can settle. Read against the fund's own "
+                 "category throughout, because a peer comparison only means something "
+                 "when the peers are doing the same job.",
     },
 ]
-
-# This build covers the equity screen only.
-COVERED_ASSET = "equity"
 
 CATEGORY_ADJUSTMENTS = [
     {"name": "Vintage is weighted, not gated",
