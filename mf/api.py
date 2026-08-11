@@ -38,12 +38,21 @@ def framework():
         "minEvidence": fw.MIN_EVIDENCE,
         "notRated": fw.NOT_RATED,
         "contextMetrics": fw.CONTEXT_METRICS,
-        "process": fw.PROCESS,
+        "selectionNodes": fw.SELECTION_NODES,
+        "selectionGroups": fw.SELECTION_GROUPS,
+        "processTiers": fw.PROCESS_TIERS,
+        "coveredAsset": fw.COVERED_ASSET,
         "categoryAdjustments": fw.CATEGORY_ADJUSTMENTS,
         "howToUse": fw.HOW_TO_USE,
         "glossary": fw.GLOSSARY,
         "notScoredWhy": fw.NOT_SCORED_WHY,
     })
+
+
+@bp.get("/process")
+def process():
+    """Live figures behind each node of the selection process."""
+    return jsonify(ds.process_stats())
 
 
 @bp.get("/funds")

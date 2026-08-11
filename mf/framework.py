@@ -571,19 +571,178 @@ GLOSSARY = {
 # Methodology copy (Tab 1 of the workbook)
 # ---------------------------------------------------------------------------
 
-PROCESS = [
-    {"name": "AMC",
-     "text": "AUM and flows. Parent group and franchise stability. Track record of "
-             "coming through difficult periods."},
-    {"name": "Investment Team",
-     "text": "Stability of the team and number of exits. Size and bench strength. Years "
-             "the team has worked together. Incentives aligned to fund outperformance "
-             "against the benchmark."},
-    {"name": "Quantitative Factors",
-     "text": "Portfolio strategy and attributes. Long term consistent performance versus "
-             "peer group. Volatility and drawdowns. Risk adjusted returns (Sharpe, "
-             "Sortino, Information Ratio). Capture ratios and the shape of the book."},
+# ---------------------------------------------------------------------------
+# The selection process, as shown to clients
+# ---------------------------------------------------------------------------
+#
+# Two views of the same process, both taken from the Avendus deck.
+#
+#   SELECTION_NODES  the six factor diamond: three basic requirements and three
+#                    performance drivers.
+#   PROCESS_TIERS    the three tier screen (AMC, investment team, quantitative
+#                    factors) across equity, debt and international.
+#
+# Each node names what the model can measure and what stays an analyst's call.
+# `stat` keys are resolved against live universe figures at request time, so the
+# page reports what the current build actually knows rather than a fixed claim.
+
+SELECTION_NODES = [
+    {
+        "n": 1, "group": "basic", "code": "performance",
+        "name": "Past performance and risk analytics",
+        "points": ["Long term consistent performance",
+                   "Drawdowns and volatility in line with or lower than the market"],
+        "measured": True,
+        "blocks": ["return", "capture"],
+        "how": "Scored from every median rolling return the feed carries, 1 through "
+               "10 years, plus the share of three year windows that actually beat the "
+               "benchmark, upside and downside capture, and maximum drawdown.",
+        "stat": "performance",
+    },
+    {
+        "n": 2, "group": "basic", "code": "aum",
+        "name": "Assets under management",
+        "points": ["Alpha reduces non-linearly as AUM rises"],
+        "measured": True,
+        "blocks": ["aum"],
+        "how": "Scored on a different curve per category. Small cap rewards nimble "
+               "size and marks down capacity risk; large cap and flexi reward scale "
+               "with a floor for viability.",
+        "stat": "aum",
+    },
+    {
+        "n": 3, "group": "basic", "code": "quant",
+        "name": "Detailed quant factors",
+        "points": ["Historical track record",
+                   "Volatility and drawdowns",
+                   "Risk adjusted returns: Sharpe ratio, Information ratio",
+                   "Market capitalisation, deviations from the benchmark",
+                   "Portfolio turnover ratio"],
+        "measured": True,
+        "blocks": ["riskAdj", "portfolio", "vintage"],
+        "how": "Sharpe, Sortino and Information Ratio at every horizon published, "
+               "with Information Ratio weighted heaviest. Deviation from the "
+               "benchmark is read from the disclosed book as overlap against the "
+               "category's average portfolio.",
+        "stat": "quant",
+    },
+    {
+        "n": 4, "group": "driver", "code": "fmType",
+        "name": "Type of fund manager",
+        "points": ["Number of people in the investment team",
+                   "Dependence on third party brokers against in-house analysis"],
+        "measured": "partial",
+        "blocks": ["manager"],
+        "how": "The named managers on each scheme and their tenure are on file. "
+               "Whether the research is in-house or bought in is a meeting note, "
+               "not a feed field.",
+        "stat": "fmType",
+    },
+    {
+        "n": 5, "group": "driver", "code": "attitude",
+        "name": "Attitude of investment team",
+        "points": ["Hunger", "Age", "Ability to learn from mistakes",
+                   "Personal investment in equities"],
+        "measured": False,
+        "blocks": [],
+        "how": "None of this is in any feed, and the model does not pretend "
+               "otherwise. It carries no weight in the score and is the reason the "
+               "written view sits above the number rather than beneath it.",
+        "stat": "attitude",
+    },
+    {
+        "n": 6, "group": "driver", "code": "stability",
+        "name": "Stability of investment team",
+        "points": ["Number of exits", "Years of working together",
+                   "Incentive structure"],
+        "measured": "partial",
+        "blocks": ["manager"],
+        "how": "Tenure on this scheme is measured from the manager master and drives "
+               "the manager block, taken from the longest serving name. Exits and "
+               "incentive structure are an analyst's call.",
+        "stat": "stability",
+    },
 ]
+
+SELECTION_GROUPS = {
+    "basic": {"label": "Basic requirement", "range": "1 to 3",
+              "note": "What a fund has to clear before the discussion starts."},
+    "driver": {"label": "Performance drivers", "range": "4 to 6",
+               "note": "What explains whether the record repeats."},
+}
+
+# The three tier screen, per asset class, exactly as the deck sets it out.
+PROCESS_TIERS = [
+    {
+        "asset": "Equity",
+        "code": "equity",
+        "tiers": [
+            {"name": "AMCs", "points": ["AUM and flows"], "measured": True},
+            {"name": "Investment team",
+             "points": ["Stability of team: number of exits",
+                        "Number of people in the investment team"],
+             "measured": "partial"},
+            {"name": "Quantitative factors",
+             "points": ["Portfolio strategy, attributes",
+                        "Long term consistent performance, peer group comparison",
+                        "Volatility, drawdowns",
+                        "Risk adjusted returns: Sharpe ratio, Information ratio, "
+                        "excess returns",
+                        "Tracking error, expense ratios",
+                        "Portfolio turnover ratio"],
+             "measured": True},
+        ],
+    },
+    {
+        "asset": "Debt",
+        "code": "debt",
+        "tiers": [
+            {"name": "AMCs",
+             "points": ["AUM and flows", "Parent group support",
+                        "Ability to come out of difficult situations"],
+             "measured": False},
+            {"name": "Investment team",
+             "points": ["Stability of team", "Number of people",
+                        "Understanding of credit and duration"],
+             "measured": False},
+            {"name": "Quantitative factors",
+             "points": ["Return, risk and credit analytics, with a large focus on "
+                        "past credit events",
+                        "Exposure to sensitive issuers (30+ issuers tracked by "
+                        "Avendus Wealth)",
+                        "Consistency of the investment objective",
+                        "Expense ratios", "Peer group comparison"],
+             "measured": False},
+        ],
+    },
+    {
+        "asset": "International",
+        "code": "international",
+        "tiers": [
+            {"name": "Preference for funds feeding into established global "
+                     "funds/indices",
+             "points": ["Funds feeding into major global stock market indices",
+                        "Funds where the underlying is managed offshore by leading "
+                        "global asset managers"],
+             "measured": False},
+            {"name": "Underlying fund characteristics",
+             "points": ["AUM, vintage, parent group",
+                        "Track record of three years or more",
+                        "Quality and stability of investment team",
+                        "Research bench strength"],
+             "measured": "partial"},
+            {"name": "Quantitative factors",
+             "points": ["Return and risk analytics: return consistency, volatility "
+                        "and return/risk",
+                        "Performance comparison with benchmark and peer groups",
+                        "Correlation with Indian indices", "Expense ratios"],
+             "measured": "partial"},
+        ],
+    },
+]
+
+# This build covers the equity screen only.
+COVERED_ASSET = "equity"
 
 CATEGORY_ADJUSTMENTS = [
     {"name": "Vintage is weighted, not gated",

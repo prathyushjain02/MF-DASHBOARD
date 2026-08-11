@@ -129,7 +129,7 @@ trivially have no overlap.
 
 | Page | What it is |
 |---|---|
-| How we look at funds | The methodology, generated from the same object the engine scores with, so it cannot drift from the code. |
+| How we look at funds | The selection process as a single click-driven page: the six-factor diamond from the deck, and the three-tier screen across equity, debt and international. Every figure is read off the live universe. |
 | Category top funds | A tile per category. Click one to open its shortlist below, click a fund to open its full card in place. |
 | All funds | Every scheme. Filter by search, category, AMC, band, minimum AUM, maximum downside capture, holdings and rated-only; sort on any column. |
 | Portfolio | Look-through of a weighted set: combined book, sector exposure, pairwise overlap. |

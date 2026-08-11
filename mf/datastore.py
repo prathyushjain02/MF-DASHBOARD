@@ -241,6 +241,111 @@ def look_through(weights, state=None):
     }
 
 
+def _median(vals):
+    vals = sorted(v for v in vals if v is not None)
+    return round(vals[len(vals) // 2], 2) if vals else None
+
+
+def _coverage(funds, field):
+    if not funds:
+        return 0
+    return round(100.0 * sum(1 for f in funds if f.get(field) is not None) / len(funds))
+
+
+def process_stats(state=None):
+    """Live figures for each node of the selection process.
+
+    The page states what this build actually knows rather than what the process
+    aspires to, so the numbers are read off the scored universe every request
+    instead of being written into the copy.
+    """
+    state = state or load()
+    funds = state["funds"]
+    rated = [f for f in funds if f.get("rated")]
+    n = len(funds)
+
+    def block_median(code):
+        return _median([f["blockScore"].get(code) for f in rated])
+
+    caps = sum(1 for f in funds
+               if any(x["code"] == "capacity" for x in f.get("flags", [])))
+    new_mgr = sum(1 for f in funds
+                  if any(x["code"] == "new-manager" for x in f.get("flags", [])))
+    no_mgr = sum(1 for f in funds if f.get("managerYears") is None)
+    mgr_count = _median([len(f.get("managers") or []) or None for f in funds])
+
+    return {
+        "performance": {
+            "headline": f"{_coverage(funds, 'medianRolling3Y')}%",
+            "caption": "of the universe carries a three year rolling record",
+            "rows": [
+                ["Funds with a 10 year rolling record",
+                 f"{sum(1 for f in funds if f.get('medianRolling10Y') is not None)} of {n}"],
+                ["Median rolling 3Y across rated funds",
+                 f"{_median([f.get('medianRolling3Y') for f in rated])}%"],
+                ["Median share of 3Y windows beating the benchmark",
+                 f"{_median([f.get('rollingHitRate3Y') for f in rated])}%"],
+                ["Median downside capture",
+                 f"{_median([f.get('downsideCapture3Y') for f in rated])}"],
+            ],
+        },
+        "aum": {
+            "headline": f"{caps}",
+            "caption": "funds carry a size or capacity flag on their category curve",
+            "rows": [
+                ["Median AUM across rated funds",
+                 f"INR {_median([f.get('aumCr') for f in rated]):,.0f} cr"
+                 if _median([f.get('aumCr') for f in rated]) else "n/a"],
+                ["Largest fund in the universe",
+                 f"INR {max((f.get('aumCr') or 0) for f in funds):,.0f} cr"],
+                ["Distinct AUM curves in use", "6, one per category shape"],
+                ["Median AUM block score", f"{block_median('aum')} of 100"],
+            ],
+        },
+        "quant": {
+            "headline": f"{state and len([m for b in fw.BLOCKS for m in b['metrics'] if m['weight']])}",
+            "caption": "weighted metrics behind the score",
+            "rows": [
+                ["Horizons scored", "3Y, 5Y, 7Y and 10Y wherever published"],
+                ["Median Information Ratio 3Y",
+                 f"{_median([f.get('informationRatio3Y') for f in rated])}"],
+                ["Funds with a disclosed book",
+                 f"{sum(1 for f in funds if f.get('holdingCount'))} of {n}"],
+                ["Median overlap with the category book",
+                 f"{_median([f.get('categoryOverlap') for f in rated])}%"],
+            ],
+        },
+        "fmType": {
+            "headline": f"{_coverage(funds, 'managerYears')}%",
+            "caption": "of the universe has named managers with dated tenure on file",
+            "rows": [
+                ["Median managers per scheme", f"{mgr_count:.0f}" if mgr_count else "n/a"],
+                ["Funds with no manager record", f"{no_mgr} of {n}"],
+                ["In-house against bought-in research", "Not in any feed"],
+            ],
+        },
+        "attitude": {
+            "headline": "0%",
+            "caption": "of the score rests on this, because none of it is measurable",
+            "rows": [
+                ["Weight carried in the composite", "None"],
+                ["Where it belongs", "The written view, and the meeting note behind it"],
+            ],
+        },
+        "stability": {
+            "headline": f"{new_mgr}",
+            "caption": "funds flagged New Manager, under three years on the scheme",
+            "rows": [
+                ["Median tenure of the longest serving manager",
+                 f"{_median([f.get('managerYears') for f in funds])} yrs"],
+                ["Median market cycles run",
+                 f"{_median([f.get('managerCycles') for f in funds])}"],
+                ["Team exits and incentive structure", "An analyst's call"],
+            ],
+        },
+    }
+
+
 def meta_summary(state=None):
     state = state or load()
     scored = [f for f in state["funds"] if f.get("composite") is not None]
