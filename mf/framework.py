@@ -39,7 +39,6 @@ CATEGORIES = [
     "Value / Contra",
     "Dividend Yield",
     "ELSS",
-    "Sectoral / Thematic",
 ]
 
 # Feed category label -> screener category. Anything not listed is out of scope.
@@ -74,14 +73,6 @@ CATEGORY_MAP = {
     "elss funds": "ELSS",
     "equity linked savings scheme": "ELSS",
     "tax saver": "ELSS",
-    "sectoral / thematic": "Sectoral / Thematic",
-    "sectoral/thematic": "Sectoral / Thematic",
-    "sectoral": "Sectoral / Thematic",
-    "thematic": "Sectoral / Thematic",
-    "sectoral funds": "Sectoral / Thematic",
-    "thematic funds": "Sectoral / Thematic",
-    "thematic fund": "Sectoral / Thematic",
-    "sector fund": "Sectoral / Thematic",
 }
 
 # Mandate shape by category, used by the portfolio block to test cap-mix fit.
@@ -104,30 +95,44 @@ MANDATE = {
                             "bands": {}},
     "Dividend Yield":      {"note": "Minimum 65% in dividend yielding stocks.", "bands": {}},
     "ELSS":                {"note": "Minimum 80% equity, three year lock in.", "bands": {}},
-    "Sectoral / Thematic": {"note": "Minimum 80% in the stated sector or theme.", "bands": {}},
 }
 
 # Categories that are a SEBI label rather than a peer group. Everything in the
 # model is scored relative to category peers, and that only means something when
-# the peers are doing the same job. Sectoral and thematic funds share a label and
-# nothing else: a Taiwan equity fund, a pharma fund and a defence fund sit in one
-# bucket, so a percentile inside it compares unlike things and the differentiation
-# metric degenerates because no two books overlap.
-#
-# They are still scored, because execution within a theme is a fair question, but
-# the caveat travels with the number everywhere it is shown.
-LOOSE_PEER_GROUPS = {
-    "Sectoral / Thematic":
-        "A SEBI label, not a peer group. These funds hold unrelated universes, so a "
-        "percentile inside the category compares a pharma fund with a Taiwan equity "
-        "fund. Read the rank as execution within a theme, never as a reason to prefer "
-        "one theme over another. Differentiation is not scored here, because two funds "
-        "on different themes trivially have no overlap.",
-}
+# the peers are doing the same job. Nothing in the current scope trips this, but
+# the mechanism stays: the caveat travels with the number wherever it applies.
+LOOSE_PEER_GROUPS = {}
 
 
 def loose_peer_group(category):
     return LOOSE_PEER_GROUPS.get(category)
+
+
+# Fund houses held out of the scored universe. This is a coverage decision made
+# outside the model, not a judgement the model reached, so it is applied when the
+# universe is assembled rather than expressed as a score anywhere.
+#
+# Matched on the AMC name as the feed spells it. Note that Quant and Quantum are
+# two different houses; only Quantum is held out.
+EXCLUDED_AMCS = {
+    "LIC Mutual Fund",
+    "Groww Mutual Fund",
+    "Shriram Mutual Fund",
+    "The Wealth Company Mutual Fund",
+    "Unifi Mutual Fund",
+    "Union Mutual Fund",
+    "UTI Mutual Fund",
+    "ITI Mutual Fund",
+    "NJ Mutual Fund",
+    "Navi Mutual Fund",
+    "Capitalmind Mutual Fund",
+    "Samco Mutual Fund",
+    "Quantum Mutual Fund",
+}
+
+
+def excluded_amc(amc):
+    return (amc or "").strip() in EXCLUDED_AMCS
 
 
 # Effective number of stocks: the band a faithful book for this category sits in.
@@ -144,7 +149,6 @@ EFFECTIVE_N_BAND = {
     "Value / Contra": (20, 50),
     "Dividend Yield": (20, 45),
     "ELSS": (20, 50),
-    "Sectoral / Thematic": (15, 45),
 }
 
 # ---------------------------------------------------------------------------

@@ -5,7 +5,7 @@ with two jobs: rank the funds in each category and surface the shortlist, then
 present that shortlist the way a client should see it, with a written rationale
 and the number kept behind an analyst toggle.
 
-559 actively managed equity schemes, scored on seven weighted blocks, every metric
+246 actively managed equity schemes, scored on seven weighted blocks, every metric
 percentiled inside its own category.
 
 ## Running it
@@ -112,18 +112,26 @@ weight that was evidenced. The median fund now evidences 100%: every block score
 *Not rated*, keeps its block scores and all its data, and is excluded from ranking.
 Without this floor a fund with no return history at all tops its category on
 portfolio shape and size alone, because renormalising over two minor blocks
-produces a number that looks exactly like a real one. 61 of 559 schemes are Not
+produces a number that looks exactly like a real one. 17 of 246 schemes are Not
 rated on the current feed, almost all of them for having no quantitative history.
 
-## Where a category is not a peer group
+## Scope
 
-Everything is scored against category peers, which only means something when the
-peers do the same job. **Sectoral / Thematic is a SEBI label, not a peer group**: a
-Taiwan equity fund, a pharma fund and a defence fund share a bucket and nothing
-else. Those funds are still scored, because execution within a theme is a fair
-question, but the caveat travels with the number everywhere it appears, and
-differentiation is left unscored there because two funds on different themes
-trivially have no overlap.
+Nine SEBI equity categories. **Sectoral and thematic funds are out**: they share a
+SEBI label and nothing else, so a percentile inside that bucket compares a pharma
+fund with a Taiwan equity fund, and the differentiation metric degenerates because
+no two books overlap.
+
+Thirteen fund houses are held out of the scored universe — LIC, Groww, Shriram,
+The Wealth Company, Unifi, Union, UTI, ITI, NJ, Navi, Capitalmind, Samco and
+Quantum. That is a coverage decision taken outside the model, so it is applied
+when the universe is assembled rather than expressed as a score anywhere, and it
+is reversible by editing `EXCLUDED_AMCS` without rebuilding the data. Note that
+Quant and Quantum are different houses; only Quantum is held out.
+
+Dividend Yield stays in the framework but the current feed carries no scheme in
+it, so it does not appear. The category filter offers only categories with funds
+in them.
 
 ## The pages
 

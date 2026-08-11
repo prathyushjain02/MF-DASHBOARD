@@ -60,7 +60,9 @@ def health():
         "service": "NSE Portfolio Backend + Equity MF selection framework",
         "scoredFunds": len(_state["funds"]),
         "builtAt": _state["meta"].get("builtAt"),
-        "inScope": _state["meta"].get("inScopeFunds"),
+        # The dataset holds every scheme the feed carries; the scored universe is
+        # what survives the framework's scope rules, so report that.
+        "universeInFile": _state["meta"].get("inScopeFunds"),
         "yfinance": yf is not None,
     })
 

@@ -274,7 +274,9 @@ def add_deciles(funds):
 
 def score_universe(funds, holdings):
     """Score every fund. Mutates and returns the list."""
-    in_scope = [f for f in funds if f.get("category") in fw.CATEGORIES]
+    in_scope = [f for f in funds
+                if f.get("category") in fw.CATEGORIES
+                and not fw.excluded_amc(f.get("amc"))]
 
     # Derived inputs first: the category book needs every fund's book in hand
     # before differentiation can be measured for any of them.

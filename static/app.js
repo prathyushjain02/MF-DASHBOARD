@@ -463,6 +463,14 @@ const COLUMNS = [
   { field: 'evidence', label: 'Evidence', analyst: true, dir: 'desc', d: 0 },
 ];
 
+/* Only categories with funds in them. The framework defines eleven; the current
+   feed carries no Dividend Yield scheme at all, and a filter option that can
+   never return a row is a dead end rather than a choice. */
+function liveCategories() {
+  return (state.meta.categories || [])
+    .filter((c) => c.count > 0).map((c) => c.name);
+}
+
 const filters = { category: 'All', band: 'All', amc: 'All', q: '',
                   minAum: '', maxDownside: '', hasHoldings: false, ratedOnly: false,
                   sort: 'medianRolling3Y', dir: 'desc' };
@@ -478,7 +486,7 @@ async function renderAll(host) {
                  value="${esc(filters.q)}" autocomplete="off">
         </label>
         <label>Category
-          <select id="f-cat">${['All', ...state.fw.categories].map((c) =>
+          <select id="f-cat">${['All', ...liveCategories()].map((c) =>
             `<option${c === filters.category ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>
         </label>
         <label>AMC
