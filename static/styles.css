@@ -206,6 +206,9 @@ section { margin-bottom: 32px; }
   white-space: nowrap; }
 .grid td { padding: 8px 11px; border-bottom: 1px solid var(--grid);
   vertical-align: top; }
+/* `.grid th` sets text-align left and outranks a bare `.r`, which left every
+   numeric header sitting over the wrong edge of its column. */
+.grid th.r { text-align: right; }
 .grid tbody tr:nth-child(odd) { background: var(--zebra); }
 .grid tbody tr:last-child td { border-bottom: 0; }
 .grid tbody tr[data-fund] { cursor: pointer; }
@@ -566,3 +569,29 @@ body.modal-open { overflow: hidden; }
 .np-live .np-k { width: 48%; }
 .np-caption.lead { font-size: 14px; color: var(--text-primary); max-width: 40ch;
   margin-top: 0; }
+
+/* ------------------------------------------------- category fund table */
+.grid th.grouped { text-align: center; border-bottom: 1px solid var(--border);
+  font-size: 11px; color: var(--text-secondary); font-weight: 400; }
+.grid th.sub2 { border-bottom: 1px solid var(--red); font-size: 11px; }
+.grid td.roll { background: var(--wash); }
+.grid tbody tr:nth-child(odd) td.roll { background: #e8f0f8; }
+.grid td.mgr { font-size: 11.5px; color: var(--text-secondary); max-width: 210px;
+  white-space: normal; }
+.fundlink { display: block; font: inherit; font-family: var(--title);
+  font-weight: 500; font-size: 13px; color: var(--text-primary); text-align: left;
+  background: none; border: 0; padding: 0; cursor: pointer; }
+.fundlink:hover { color: var(--red); text-decoration: underline; }
+.grid td.fundcell .muted { display: block; }
+
+/* ------------------------------------------------------------ fund page */
+.backlink { font: inherit; font-size: 12.5px; color: var(--text-secondary);
+  background: none; border: 0; padding: 0 0 12px; cursor: pointer; }
+.backlink:hover { color: var(--red); }
+.detail.fundpage { padding-top: 16px; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .grid tbody tr:nth-child(odd) td.roll {
+    background: #23303c; }
+}
+:root[data-theme="dark"] .grid tbody tr:nth-child(odd) td.roll { background: #23303c; }

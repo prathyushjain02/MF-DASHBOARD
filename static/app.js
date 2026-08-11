@@ -24,7 +24,7 @@
 const API = '/api/mf';
 const $ = (s, r = document) => r.querySelector(s);
 const state = { mode: 'client', view: 'shortlist', fw: null, meta: null, fund: null,
-                category: null, gloss: {} };
+                category: null, returnView: null, gloss: {} };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
   (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -345,8 +345,8 @@ async function renderShortlists(host) {
     <section>
       <div class="section-head">
         <h2>Category top funds</h2>
-        <p class="lede">Pick a category to see its shortlist and the reason each
-        fund is on it.</p>
+        <p class="lede">Pick a category to see its shortlist. Click a fund for the
+        full view.</p>
       </div>
       <div class="tiles">
         ${catData.categories.map((c) => `
@@ -368,9 +368,6 @@ async function renderShortlists(host) {
   });
   drawCategoryPanel(openCat);
   wireGlossary(host);
-  // A mode switch re-renders the page; without this the open fund would close
-  // every time somebody toggled between client and analyst.
-  if (state.fund) openFund(state.fund, '#cat-detail');
 }
 
 function drawCategoryPanel(category) {
@@ -380,43 +377,54 @@ function drawCategoryPanel(category) {
   panel.innerHTML = `
     <div class="catpanel-head">
       <h3>${esc(c.category)}</h3>
-      <span class="muted">${c.count} schemes${c.mandate ? ' · ' + esc(c.mandate) : ''}</span>
+      <span class="muted">top ${c.funds.length} of ${c.count} schemes${
+        c.mandate ? ' · ' + esc(c.mandate) : ''}</span>
     </div>
     ${c.caveat ? `<div class="caveat">${esc(c.caveat)}</div>` : ''}
-    <div id="cat-detail" class="detail" hidden></div>
-    <div class="picks">
-      ${c.funds.map((f, i) => `
-        <article class="pick" data-fund="${esc(f.key)}" tabindex="0">
-          <div class="pick-rank">${String(i + 1).padStart(2, '0')}</div>
-          <div class="pick-id">
-            <h4>${esc(f.name)}</h4>
-            <span class="pick-house">${esc(f.amc || '')}${
-              f.fundManager ? ' · ' + esc(f.fundManager) : ''}</span>
-            <p class="rationale">${esc(f.whyWeLikeIt)}</p>
-            ${f.flags.length ? `<div class="flags analyst-only">${f.flags.map((x) =>
-              `<span class="flag">${esc(x)}</span>`).join('')}</div>` : ''}
-          </div>
-          <div>
-            <div class="pick-band analyst-only">${bandPill(f.band)}
-              <span class="composite">${num(f.composite, 1)}</span></div>
-            <div class="pick-stats">
-              <span>${term('Median rolling 3Y')}</span><b>${num(f.medianRolling3Y, 1)}%</b>
-              <span>${term('Downside capture')}</span><b>${num(f.downsideCapture3Y, 0)}</b>
-              <span>${term('Sortino')}</span><b>${num(f.sortino3Y, 2)}</b>
-              <span>${term('AUM')}</span><b>${cr(f.aumCr)}</b>
-            </div>
-          </div>
-        </article>`).join('') || '<p class="muted">No scored funds in this category.</p>'}
-    </div>`;
+    <div class="tablewrap">
+      <table class="grid dense">
+        <thead>
+          <tr>
+            <th rowspan="2">Fund</th>
+            <th class="r grouped" colspan="5">Returns</th>
+            <th class="r grouped" colspan="2">${term('Median rolling return')}</th>
+            <th class="r" rowspan="2">${term('AUM')}</th>
+            <th rowspan="2">Fund manager</th>
+          </tr>
+          <tr>
+            <th class="r sub2">3M</th><th class="r sub2">6M</th>
+            <th class="r sub2">1Y</th><th class="r sub2">3Y</th>
+            <th class="r sub2">5Y</th>
+            <th class="r sub2">3Y</th><th class="r sub2">5Y</th>
+          </tr>
+        </thead>
+        <tbody>${c.funds.map((f) => `
+          <tr>
+            <td class="fundcell">
+              <button class="fundlink" data-fund="${esc(f.key)}">${esc(f.name)}</button>
+              <span class="muted sm">${esc(f.amc || '')}</span>
+            </td>
+            <td class="r mono">${num(f.return3M, 1)}</td>
+            <td class="r mono">${num(f.return6M, 1)}</td>
+            <td class="r mono">${num(f.return1Y, 1)}</td>
+            <td class="r mono">${num(f.return3Y, 1)}</td>
+            <td class="r mono">${num(f.return5Y, 1)}</td>
+            <td class="r mono roll">${num(f.medianRolling3Y, 1)}</td>
+            <td class="r mono roll">${num(f.medianRolling5Y, 1)}</td>
+            <td class="r mono">${cr(f.aumCr)}</td>
+            <td class="mgr">${esc(f.fundManager || '—')}</td>
+          </tr>`).join('') || '<tr><td colspan="10" class="muted">No scored funds in this category.</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+    <p class="muted sm">Returns are point to point and annualised beyond one year.
+    Rolling figures are the median of every window of that length in the fund's
+    life. Click a fund for the full view.</p>`;
   panel.querySelectorAll('[data-fund]').forEach((el) =>
-    el.onclick = () => openFund(el.dataset.fund, '#cat-detail'));
+    el.onclick = () => openFund(el.dataset.fund));
   wireGlossary(panel);
 }
 
-/* The lead line quotes whichever headline the top fund actually has. Several
-   thematic funds are too young to carry a rolling three year figure, and
-   printing "-%" beside a house name reads as a data fault rather than a young
-   fund. */
 function tileLead(c) {
   const f = c.funds[0];
   if (!f) return '<span class="muted">Nothing rated yet</span>';
@@ -510,7 +518,6 @@ async function renderAll(host) {
         <span class="spacer"></span>
         <button id="f-reset" class="ghost">Reset</button>
       </div>
-      <div id="detail" class="detail" hidden></div>
       <div id="tablewrap" class="tablewrap"></div>
     </section>`;
 
@@ -530,7 +537,6 @@ async function renderAll(host) {
   };
 
   await loadTable();
-  if (state.fund) openFund(state.fund);
 }
 
 function debounce(fn, ms) {
@@ -633,21 +639,35 @@ function numberGroups(f) {
   ].filter((g) => g.rows.length);
 }
 
-async function openFund(key, hostSel = '#detail') {
+/* A fund is a page of its own, not a panel inside a list. Opening one records
+   where the reader came from so the way back lands them on the same category or
+   the same filtered table rather than at the top of the app. */
+function openFund(key) {
   state.fund = key;
-  const host = $(hostSel);
-  if (!host) { setView('all'); return; }
-  host.hidden = false;
+  if (state.view !== 'fund') state.returnView = state.view;
+  state.view = 'fund';
+  $('#tabs').querySelectorAll('button').forEach((b) => b.classList.remove('on'));
+  render();
+  window.scrollTo({ top: 0 });
+}
+
+const VIEW_LABEL = { shortlist: 'category top funds', all: 'all funds',
+                     portfolio: 'portfolio', approach: 'how we look at funds' };
+
+async function renderFundPage(host) {
   host.innerHTML = '<div class="loading">Scoring…</div>';
-  host.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const key = state.fund;
   const f = await get('/fund/' + encodeURIComponent(key));
   const r = f.remark;
   const analyst = isAnalyst();
 
   const groups = numberGroups(f);
 
+  const back = state.returnView || 'shortlist';
   host.innerHTML = `
-    <button class="close" aria-label="Close">×</button>
+    <button class="backlink" id="fund-back">&lsaquo; Back to ${
+      esc(VIEW_LABEL[back] || 'the list')}</button>
+    <div class="detail fundpage">
     <div class="detail-head">
       <div>
         <h3>${esc(f.name)}</h3>
@@ -771,6 +791,7 @@ async function openFund(key, hostSel = '#detail') {
           </tbody>
         </table>
       </div>
+    </div>
     </div>`;
 
   if (analyst) Chart.blockBar($('#blockbar'), f.blocks);
@@ -792,7 +813,10 @@ async function openFund(key, hostSel = '#detail') {
         <div class="tt-row"><span>Cap</span><span>${esc(h.cap || '—')}</span></div>`;
     },
   });
-  host.querySelector('.close').onclick = () => { host.hidden = true; state.fund = null; };
+  $('#fund-back').onclick = () => {
+    state.fund = null;
+    setView(back);
+  };
   host.querySelectorAll('[data-fund]').forEach((el) =>
     el.onclick = () => openFund(el.dataset.fund));
   wireGlossary(host);
@@ -900,7 +924,8 @@ async function render() {
   const host = $('#main');
   host.innerHTML = '<div class="loading">Loading…</div>';
   try {
-    if (state.view === 'approach') await renderApproach(host);
+    if (state.view === 'fund') await renderFundPage(host);
+    else if (state.view === 'approach') await renderApproach(host);
     else if (state.view === 'shortlist') await renderShortlists(host);
     else if (state.view === 'all') await renderAll(host);
     else await renderPortfolio(host);

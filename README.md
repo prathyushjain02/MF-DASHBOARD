@@ -138,8 +138,9 @@ in them.
 | Page | What it is |
 |---|---|
 | How we look at funds | The six-factor diamond: basic requirements 1 to 3, performance drivers 4 to 6. Click any factor for a modal explaining what it means, with live figures from the current universe. |
-| Category top funds | A tile per category. Click one to open its shortlist below, click a fund to open its full card in place. |
-| All funds | Every scheme. Filter by search, category, AMC, band, minimum AUM, maximum downside capture, holdings and rated-only; sort on any column. |
+| Category top funds | A tile per category. Click one for its shortlist as a table: 3M, 6M, 1Y, 3Y and 5Y returns, median rolling 3Y and 5Y, AUM and the named managers. Click a fund name for its own page. |
+| All funds | Every scheme. Filter by search, category, AMC, band, minimum AUM, maximum downside capture, holdings and rated-only; sort on any column. Click a row for the fund page. |
+| Fund | One fund in full, as its own page. The back link returns to whichever list you came from. |
 | Portfolio | Look-through of a weighted set: combined book, sector exposure, pairwise overlap. |
 
 The **Client / Analyst toggle** decides what the page is for, not just how much of
