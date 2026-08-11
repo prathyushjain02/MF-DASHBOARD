@@ -223,7 +223,7 @@ const Chart = (() => {
   function barsPairedV(host, rows, opts = {}) {
     const {
       suffix = '%', decimals = 1, aLabel = 'Fund', bLabel = 'Index',
-      height = 210, aColor = 'var(--seq-550)', bColor = 'var(--seq-200)',
+      height = 158, aColor = 'var(--seq-550)', bColor = 'var(--seq-200)',
     } = opts;
     host.innerHTML = '';
     if (!rows.length) { host.innerHTML = '<div class="empty">No record yet</div>'; return; }
@@ -231,7 +231,7 @@ const Chart = (() => {
     if (!vals.length) { host.innerHTML = '<div class="empty">No record yet</div>'; return; }
 
     const w = host.clientWidth || 520;
-    const m = { t: 24, r: 12, b: 34, l: 40 };
+    const m = { t: 18, r: 10, b: 32, l: 34 };
     const iw = w - m.l - m.r, ih = height - m.t - m.b;
 
     // Scale runs from a rounded floor to a rounded ceiling, always through zero.
@@ -285,8 +285,8 @@ const Chart = (() => {
           class: 'tick-label', fill: which === 'a' ? 'var(--seq-700)' : 'var(--text-muted)',
         }, fmt(v, decimals)));
       });
-      // Period label under the baseline.
-      svg.appendChild(el('text', { x: cx, y: height - 12, class: 'axis-label',
+      // Period label pinned to the very bottom, clear of any negative reading.
+      svg.appendChild(el('text', { x: cx, y: height - 6, class: 'axis-label',
                                    'text-anchor': 'middle' }, r.label));
     });
 

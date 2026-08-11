@@ -377,10 +377,10 @@ body[data-mode="client"] .analyst-only { display: none !important; }
 .legend i { width: 11px; height: 11px; display: inline-block; flex: none; }
 
 .barrow { display: grid; grid-template-columns: minmax(90px, 200px) 1fr 62px;
-  gap: 10px; align-items: center; padding: 2px 0; font-size: 12px; }
+  gap: 10px; align-items: center; padding: 1px 0; font-size: 12px; }
 .barrow .lab { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   color: var(--text-primary); }
-.barrow .track { background: var(--grid); height: 12px; overflow: hidden; }
+.barrow .track { background: var(--grid); height: 10px; overflow: hidden; }
 .barrow .fill { height: 100%; }
 .barrow .val { text-align: right; font-family: var(--mono); font-size: 11.5px; }
 
@@ -598,19 +598,19 @@ body.modal-open { overflow: hidden; }
 
 /* ====================================================== fund snapshot ==== */
 .fundhead { display: flex; justify-content: space-between; align-items: flex-end;
-  gap: 20px; flex-wrap: wrap; padding-bottom: 10px; margin-bottom: 18px;
+  gap: 20px; flex-wrap: wrap; padding-bottom: 6px; margin-bottom: 11px;
   position: relative; }
 .fundhead::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0;
   height: 1px; background: linear-gradient(to right, var(--red) 0 46px, var(--border) 46px); }
-.fundhead h2 { font-size: 24px; }
-.fundhead p { margin: 3px 0 0; font-size: 13px; }
+.fundhead h2 { font-size: 20px; }
+.fundhead p { margin: 2px 0 0; font-size: 12.5px; }
 .fundhead-score { display: flex; align-items: baseline; gap: 10px; }
-.fundhead-score .big { font-family: var(--mono); font-size: 26px; font-weight: 600; }
+.fundhead-score .big { font-family: var(--mono); font-size: 22px; font-weight: 600; }
 
-.snapshot { display: grid; gap: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); align-items: start; }
-.snapcard { display: flex; flex-direction: column; gap: 10px; text-align: left;
-  font: inherit; cursor: pointer; padding: 14px 16px 16px; width: 100%;
+.snapshot { display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); align-items: start; }
+.snapcard { display: flex; flex-direction: column; gap: 6px; text-align: left;
+  font: inherit; cursor: pointer; padding: 10px 13px 11px; width: 100%;
   background: var(--surface-2); border: 1px solid var(--border);
   border-top: 2px solid var(--slate); }
 .snapcard:hover, .snapcard:focus-visible { border-top-color: var(--red);
@@ -627,23 +627,24 @@ body.modal-open { overflow: hidden; }
   font-size: 16px; }
 .snapcard:hover .snapcard-go { color: var(--red); }
 .snapcard-body { display: block; }
-.cardnote { font-size: 12px; color: var(--text-primary); margin: 8px 0 0; }
-.cardfoot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 14px;
-  margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--grid);
-  font-size: 11.5px; color: var(--text-muted); }
+.cardnote { font-size: 11.5px; color: var(--text-primary); margin: 6px 0 0;
+  line-height: 1.4; }
+.cardfoot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px;
+  margin-top: 7px; padding-top: 6px; border-top: 1px solid var(--grid);
+  font-size: 11px; color: var(--text-muted); }
 .cardfoot b { font-family: var(--mono); color: var(--text-primary); font-weight: 600; }
-.bigstat { display: flex; flex-direction: column; gap: 1px; padding: 6px 0 2px; }
-.bigstat .v { font-family: var(--mono); font-size: 30px; font-weight: 600;
+.bigstat { display: flex; flex-direction: column; gap: 1px; padding: 3px 0 1px; }
+.bigstat .v { font-family: var(--mono); font-size: 23px; font-weight: 600;
   color: var(--seq-550); line-height: 1; }
-.bigstat .v em { font-style: normal; font-size: 14px; margin-left: 4px;
+.bigstat .v em { font-style: normal; font-size: 13px; margin-left: 4px;
   color: var(--text-muted); }
-.bigstat .k { font-size: 11.5px; color: var(--text-muted); }
+.bigstat .k { font-size: 11px; color: var(--text-muted); }
 /* Label first, then the figure, where the label is the thing being asked for. */
 .bigstat.label-first { flex-direction: column; }
 .bigstat.label-first .k { order: -1; margin-bottom: 2px; }
 /* A name is not a number: it takes the title face and wraps rather than being
    set in a monospace slot sized for digits. */
-.bigstat.name .v { font-family: var(--title); font-size: 19px; font-weight: 500;
+.bigstat.name .v { font-family: var(--title); font-size: 16.5px; font-weight: 500;
   color: var(--text-primary); line-height: 1.2; }
 
 /* The shared bar row lets its label column grow to 200px, which is right in a
