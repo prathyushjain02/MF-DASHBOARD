@@ -24,14 +24,17 @@
 const API = '/api/mf';
 const $ = (s, r = document) => r.querySelector(s);
 const state = { mode: 'client', view: 'shortlist', fw: null, meta: null, fund: null,
-                gloss: {} };
+                category: null, gloss: {} };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
   (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const num = (v, d = 1) =>
   (v === null || v === undefined || Number.isNaN(v)) ? '—' : Number(v).toLocaleString('en-IN',
     { minimumFractionDigits: d, maximumFractionDigits: d });
-const cr = (v) => v == null ? '—' : (v >= 1000 ? `₹${num(v / 1000, 1)}k cr` : `₹${num(v, 0)} cr`);
+/* House formatting: 'cr' lowercase, 'INR' rather than a rupee glyph or 'Rs',
+   per the template's formatting guidelines. */
+const cr = (v) => v == null ? '—'
+  : (v >= 100000 ? `INR ${num(v / 100000, 2)} lakh cr` : `INR ${num(v, 0)} cr`);
 const isAnalyst = () => state.mode === 'analyst';
 
 const BAND_TONE = { A: 'good', B: 'warning', C: 'serious', Review: 'critical',
@@ -225,74 +228,113 @@ function labelForField(f) {
 
 /* --------------------------------------------------- 2. category shortlists */
 
-/* One horizontal strip per category rather than a grid of boxes. Each fund is a
-   bubble: position is the median rolling 3Y return, area is AUM. Clicking one
-   opens its full card in place, so the shortlist and the fund sit on the same
-   page instead of a tab apart. */
+/* A tile per category. Clicking one opens its shortlist below, and clicking a
+   fund in that shortlist opens the full card in place, so category, shortlist
+   and fund all sit on one page rather than a tab apart. */
+
+let catData = null;
 
 async function renderShortlists(host) {
   host.innerHTML = '<div class="loading">Building shortlists…</div>';
-  const data = await get('/shortlists');
+  if (!catData) catData = await get('/shortlists');
+
+  const openCat = state.category
+    || (catData.categories[0] && catData.categories[0].category);
+
   host.innerHTML = `
     <section>
       <div class="section-head">
         <h2>Category top funds</h2>
-        <p class="lede">The shortlist per category. Each bubble is a fund: further
-        right is a higher ${term('median rolling return')} over three years, and a
-        bigger bubble is a larger fund. Click one to open it.</p>
+        <p class="lede">Pick a category to see its shortlist and the reason each
+        fund is on it.</p>
       </div>
-      <div id="cat-detail" class="detail" hidden></div>
-      <div class="strips">
-        ${data.categories.map((c, i) => `
-          <div class="stripwrap">
-            <div class="striphead">
-              <h3>${esc(c.category)}</h3>
-              <span class="muted">${c.count} schemes${
-                c.mandate ? ' · ' + esc(c.mandate) : ''}</span>
-            </div>
-            ${c.caveat ? `<div class="caveat">${esc(c.caveat)}</div>` : ''}
-            <div id="strip-${i}" class="chart-host"></div>
-            <div class="striplegend">
-              <span>x: ${term('Median rolling 3Y')}</span>
-              <span>bubble area: ${term('AUM')}</span>
-              <span>labelled: top ${Math.min(3, c.funds.length)} by rolling return</span>
-            </div>
-          </div>`).join('')}
+      <div class="tiles">
+        ${catData.categories.map((c) => `
+          <button class="tile${c.category === openCat ? ' on' : ''}"
+                  data-cat="${esc(c.category)}" aria-pressed="${c.category === openCat}">
+            <span class="tile-open">&rsaquo;</span>
+            <h3>${esc(c.category)}</h3>
+            <span class="tile-count">${c.count} schemes</span>
+            <span class="tile-lead">${tileLead(c)}</span>
+          </button>`).join('')}
       </div>
+      <div id="catpanel" class="catpanel"></div>
     </section>`;
 
-  data.categories.forEach((c, i) => {
-    const rows = c.funds.map((f) => ({
-      key: f.key, name: f.name, short: shortName(f.name, f.amc),
-      x: f.medianRolling3Y, size: f.aumCr || 0, fund: f,
-    }));
-    Chart.bubbleStrip($('#strip-' + i), rows, {
-      onClick: (p) => openFund(p.key, '#cat-detail'),
-      tipFor: (p) => {
-        const f = p.fund;
-        return `<strong>${esc(f.name)}</strong>
-          <div class="tt-note">${esc(f.amc || '')}</div>
-          <div class="tt-row"><span>Median rolling 3Y</span><span>${num(f.medianRolling3Y, 1)}%</span></div>
-          <div class="tt-row"><span>Downside capture</span><span>${num(f.downsideCapture3Y, 0)}</span></div>
-          <div class="tt-row"><span>Sortino</span><span>${num(f.sortino3Y, 2)}</span></div>
-          <div class="tt-row"><span>AUM</span><span>${cr(f.aumCr)}</span></div>
-          ${isAnalyst() ? `<div class="tt-row"><span>Composite</span><span>${
-            num(f.composite, 1)} (${esc(f.band)})</span></div>` : ''}`;
-      },
-    });
+  host.querySelectorAll('.tile').forEach((el) => el.onclick = () => {
+    state.category = el.dataset.cat;
+    state.fund = null;
+    renderShortlists(host);
   });
+  drawCategoryPanel(openCat);
   wireGlossary(host);
+  // A mode switch re-renders the page; without this the open fund would close
+  // every time somebody toggled between client and analyst.
+  if (state.fund) openFund(state.fund, '#cat-detail');
+}
+
+function drawCategoryPanel(category) {
+  const c = catData.categories.find((x) => x.category === category);
+  const panel = $('#catpanel');
+  if (!c) { panel.innerHTML = ''; return; }
+  panel.innerHTML = `
+    <div class="catpanel-head">
+      <h3>${esc(c.category)}</h3>
+      <span class="muted">${c.count} schemes${c.mandate ? ' · ' + esc(c.mandate) : ''}</span>
+    </div>
+    ${c.caveat ? `<div class="caveat">${esc(c.caveat)}</div>` : ''}
+    <div id="cat-detail" class="detail" hidden></div>
+    <div class="picks">
+      ${c.funds.map((f, i) => `
+        <article class="pick" data-fund="${esc(f.key)}" tabindex="0">
+          <div class="pick-rank">${String(i + 1).padStart(2, '0')}</div>
+          <div class="pick-id">
+            <h4>${esc(f.name)}</h4>
+            <span class="pick-house">${esc(f.amc || '')}${
+              f.fundManager ? ' · ' + esc(f.fundManager) : ''}</span>
+            <p class="rationale">${esc(f.whyWeLikeIt)}</p>
+            ${f.flags.length ? `<div class="flags analyst-only">${f.flags.map((x) =>
+              `<span class="flag">${esc(x)}</span>`).join('')}</div>` : ''}
+          </div>
+          <div>
+            <div class="pick-band analyst-only">${bandPill(f.band)}
+              <span class="composite">${num(f.composite, 1)}</span></div>
+            <div class="pick-stats">
+              <span>${term('Median rolling 3Y')}</span><b>${num(f.medianRolling3Y, 1)}%</b>
+              <span>${term('Downside capture')}</span><b>${num(f.downsideCapture3Y, 0)}</b>
+              <span>${term('Sortino')}</span><b>${num(f.sortino3Y, 2)}</b>
+              <span>${term('AUM')}</span><b>${cr(f.aumCr)}</b>
+            </div>
+          </div>
+        </article>`).join('') || '<p class="muted">No scored funds in this category.</p>'}
+    </div>`;
+  panel.querySelectorAll('[data-fund]').forEach((el) =>
+    el.onclick = () => openFund(el.dataset.fund, '#cat-detail'));
+  wireGlossary(panel);
+}
+
+/* The lead line quotes whichever headline the top fund actually has. Several
+   thematic funds are too young to carry a rolling three year figure, and
+   printing "-%" beside a house name reads as a data fault rather than a young
+   fund. */
+function tileLead(c) {
+  const f = c.funds[0];
+  if (!f) return '<span class="muted">Nothing rated yet</span>';
+  const house = esc(shortHouse(f));
+  const metric = f.medianRolling3Y != null
+    ? { v: f.medianRolling3Y, unit: 'rolling 3Y' }
+    : (f.return1Y != null ? { v: f.return1Y, unit: 'CAGR 1Y' } : null);
+  return `${house}${metric
+    ? ` <b>${num(metric.v, 1)}%</b><br><span class="muted">leads on ${metric.unit}</span>`
+    : '<br><span class="muted">leads on composite</span>'}`;
 }
 
 /* Inside one category every scheme name ends in the same words, so the house is
-   the only part that identifies it. "Parag Parikh Flexi Cap Fund" in Flexicap is
-   just "Parag Parikh"; trimming from the other end would leave three funds all
-   labelled "Flexi Cap". */
-function shortName(name, amc) {
-  const house = String(amc || '')
+   the part that identifies it. */
+function shortHouse(f) {
+  const house = String(f.amc || '')
     .replace(/\s*(Mutual Fund|Asset Management|AMC|MF)\s*$/i, '').trim();
-  const label = house || String(name || '');
-  return label.length > 22 ? label.slice(0, 21) + '…' : label;
+  return house || f.name;
 }
 
 /* ------------------------------------------------------------ 3. all funds */

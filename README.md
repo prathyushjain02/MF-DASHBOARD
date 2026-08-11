@@ -51,6 +51,34 @@ marks down size as a capacity risk; Midcap, Focused, Sectoral and Dividend Yield
 prefer a middle band; Largecap, Flexicap, Multicap, Large & Midcap, Value and ELSS
 reward scale with a floor for viability.
 
+## House style
+
+Colour and type follow the Avendus landscape template: primaries `#000000`
+`#323132` `#708090` `#C3DFF4` `#CC1919` `#808083`, Univia Pro for titles and
+Franklin Gothic for body, tables ruled top and bottom in red with a zebra body
+and square corners. Numbers follow the template's formatting guidelines: `cr`
+lowercase, `INR` rather than a rupee glyph, sentence case in headings.
+
+Two notes on taking a slide template into charts:
+
+- The template's **Chart Colour Sequence** (`#A6A6A6 #F8D0D1 #A6B0BA #C3DFF4
+  #F9A1A3 #EBEAEB`) is a set of pastel fills for bar segments that carry their
+  own value labels. Tested as a categorical data palette it fails on lightness
+  band, chroma floor and normal-vision separation — `#C3DFF4` against `#A6B0BA`
+  is ΔE 13.9, below the 15 floor for full colour vision. It is used only where a
+  direct label sits on the mark.
+- Almost every chart here encodes **magnitude, not identity**, so it wants a
+  sequential ramp. That ramp is built from the brand's own blue and slate and is
+  monotonic in OKLab lightness (0.956 → 0.315). Marks stop one step short of the
+  darkest value, which is reserved for text: a row of high scores at full
+  strength renders as one black slab rather than as a chart.
+
+Quality bands run blue → grey → red, a diverging pair using the brand's own
+accent rather than an off-brand green, and every use ships with a text label
+beside the swatch. Univia Pro and Franklin Gothic are licensed fonts, so the CSS
+names them first and falls back to the nearest system stacks where they are not
+installed.
+
 **Every technical term carries its meaning on hover.** The glossary lives in
 `mf/framework.py` and the dashboard attaches it to any label that matches, walking
 from the specific form ("Sortino 5Y") down to the bare term. A number nobody can
@@ -102,7 +130,7 @@ trivially have no overlap.
 | Page | What it is |
 |---|---|
 | How we look at funds | The methodology, generated from the same object the engine scores with, so it cannot drift from the code. |
-| Category top funds | One horizontal bubble strip per category: position is the median rolling 3Y return, bubble area is AUM, click a bubble to open the fund in place. |
+| Category top funds | A tile per category. Click one to open its shortlist below, click a fund to open its full card in place. |
 | All funds | Every scheme. Filter by search, category, AMC, band, minimum AUM, maximum downside capture, holdings and rated-only; sort on any column. |
 | Portfolio | Look-through of a weighted set: combined book, sector exposure, pairwise overlap. |
 

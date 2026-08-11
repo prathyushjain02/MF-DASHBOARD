@@ -147,94 +147,6 @@ const Chart = (() => {
     host.appendChild(svg);
   }
 
-  /* -------------------------------------------------------- bubble strip */
-  /* One horizontal axis per category, one bubble per fund. Position carries the
-     metric, area carries AUM, and identity is carried by the label rather than
-     by colour, so no hue is ever cycled across an unbounded number of funds.
-     Overlapping bubbles get a 2px surface ring so they stay separable. */
-  function bubbleStrip(host, rows, opts = {}) {
-    const {
-      height = 150, valueFmt = (v) => fmt(v, 1) + '%',
-      onClick = null, tipFor = null, labelTop = 3,
-    } = opts;
-    host.innerHTML = '';
-    const pts = rows.filter((r) => r.x != null);
-    if (!pts.length) { host.innerHTML = '<div class="empty">Nothing to plot</div>'; return; }
-
-    const w = Math.max(host.clientWidth || 900, 420);
-    const pad = { l: 18, r: 18, t: 34, b: 34 };
-    const xs = pts.map((p) => p.x);
-    let lo = Math.min(...xs), hi = Math.max(...xs);
-    if (hi - lo < 1e-6) { lo -= 1; hi += 1; }
-    const span = hi - lo;
-    lo -= span * 0.08; hi += span * 0.08;
-    const sizes = pts.map((p) => Math.max(0, p.size || 0));
-    const maxS = Math.max(...sizes, 1);
-    const rOf = (s) => 7 + 15 * Math.sqrt(Math.max(0, s) / maxS);
-    const sx = (v) => pad.l + ((v - lo) / (hi - lo)) * (w - pad.l - pad.r);
-    const cy = pad.t + (height - pad.t - pad.b) / 2;
-
-    const svg = el('svg', { class: 'chart', viewBox: `0 0 ${w} ${height}`, height });
-
-    // Axis line and ticks, recessive.
-    svg.appendChild(el('line', { x1: pad.l, y1: cy, x2: w - pad.r, y2: cy,
-                                 stroke: 'var(--grid)', 'stroke-width': 1 }));
-    [lo + (hi - lo) * 0.02, (lo + hi) / 2, hi - (hi - lo) * 0.02].forEach((t) => {
-      svg.appendChild(el('text', { x: sx(t), y: height - 12, class: 'tick-label',
-                                   'text-anchor': 'middle' }, valueFmt(t)));
-    });
-
-    // Biggest first, so smaller bubbles land on top and stay clickable.
-    const order = pts.map((p, i) => ({ p, i })).sort((a, b) => rOf(b.p.size) - rOf(a.p.size));
-    const ranked = [...pts].sort((a, b) => (b.rankBy ?? b.x) - (a.rankBy ?? a.x));
-    const labelled = new Set(ranked.slice(0, labelTop).map((p) => p.key));
-
-    order.forEach(({ p }) => {
-      const r = rOf(p.size);
-      const g = el('g', { class: 'bubble' });
-      const c = el('circle', {
-        cx: sx(p.x), cy, r,
-        fill: p.fill || 'var(--series-1)',
-        'fill-opacity': 0.72,
-        stroke: 'var(--surface-2)', 'stroke-width': 2,
-      });
-      g.appendChild(c);
-      hoverable(g, tipFor ? tipFor(p) : `<strong>${p.name}</strong>`);
-      if (onClick) {
-        g.style.cursor = 'pointer';
-        g.setAttribute('tabindex', '0');
-        g.setAttribute('role', 'button');
-        g.setAttribute('aria-label', p.name);
-        g.onclick = () => onClick(p);
-        g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(p); } };
-      }
-      svg.appendChild(g);
-    });
-
-    /* Labels last, so they sit above every bubble. Two rows, alternating only
-       when a label would actually run into its neighbour, measured from an
-       estimated text width rather than assumed. */
-    let lastRight = -Infinity, row = 0;
-    ranked.slice(0, labelTop)
-      .sort((a, b) => a.x - b.x)
-      .forEach((p) => {
-        const text = p.short || p.name;
-        const halfW = text.length * 2.9;
-        const x = Math.max(pad.l + halfW, Math.min(w - pad.r - halfW, sx(p.x)));
-        row = (x - halfW < lastRight) ? 1 - row : 0;
-        lastRight = x + halfW;
-        const y = cy - rOf(p.size) - 8 - row * 13;
-        svg.appendChild(el('line', {
-          x1: sx(p.x), y1: cy - rOf(p.size) - 2, x2: sx(p.x), y2: y + 3,
-          stroke: 'var(--grid)', 'stroke-width': 1,
-        }));
-        svg.appendChild(el('text', {
-          x, y, class: 'bubble-label', 'text-anchor': 'middle',
-        }, text));
-      });
-    host.appendChild(svg);
-  }
-
   /* ------------------------------------------------------------- scatter */
   /* Two colours only (population + the highlighted fund), so the all-pairs
      series cap is never in play. */
@@ -478,14 +390,18 @@ const Chart = (() => {
 
   /* -------------------------------------------------- sequential cell ink */
   /* Blue sequential ramp for the overlap heatmap — one hue, light→dark. */
+  /* The ramp's darkest step is the body ink, which is right for a single
+     emphasised mark and wrong for a row of them: four high scores side by side
+     render as one black slab. Marks stop at seq-550 and keep seq-700 for text,
+     so the top of the scale still reads as a step rather than as background. */
   function seqColor(t) {
     const steps = ['var(--seq-100)', 'var(--seq-200)', 'var(--seq-300)',
-                   'var(--seq-450)', 'var(--seq-550)', 'var(--seq-700)'];
+                   'var(--seq-450)', 'var(--seq-550)'];
     const i = Math.max(0, Math.min(steps.length - 1, Math.floor(t * steps.length)));
     return steps[i];
   }
-  function seqInk(t) { return t > 0.55 ? '#ffffff' : 'var(--text-primary)'; }
+  function seqInk(t) { return t > 0.6 ? '#ffffff' : 'var(--text-primary)'; }
 
-  return { bars, blockBar, bubbleStrip, scatter, histogram, rangeStrip, funnel,
+  return { bars, blockBar, scatter, histogram, rangeStrip, funnel,
            seqColor, seqInk, hoverable, showTip, hideTip, fmt };
 })();
