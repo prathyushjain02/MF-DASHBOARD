@@ -215,19 +215,46 @@ def growth(fund, period="1y", state=None):
         return {"period": period, "series": [], "unavailable": "Not enough NAV history."}
     out.append({"code": "fund", "label": fund["name"], **f_line})
 
+    """
+    Two candidates for the market line, and the window decides which:
+
+      the benchmark    the category's own total return index, monthly, back to
+                       2018. Dividends are inside it as they are inside a NAV, so
+                       it is the honest comparison and it covers any long window.
+      the index fund   a daily tracking scheme. Short windows need daily points,
+                       where the monthly series would draw as two or three.
+
+    The one that is drawn is labelled, since the two are not the same thing.
+    """
+    span_days = (_date.fromisoformat(last) - _date.fromisoformat(start)).days
+    limit = _shift(start, _START_SLACK_DAYS)
+
+    bm_name = (navs.get("benchmarkByCategory") or {}).get(cat)
+    bm = (navs.get("benchmarks") or {}).get(bm_name or "")
     idx_name = (navs.get("indexByCategory") or {}).get(cat)
     idx = (navs.get("indices") or {}).get(idx_name or "")
-    if idx:
-        if idx["d"][0] <= _shift(start, _START_SLACK_DAYS):
-            line = _rebased(idx, start)
-            if line:
-                out.append({"code": "index", "label": idx["label"],
-                            "source": idx.get("source"),
-                            "dividends": idx.get("dividends"), **line})
-        else:
-            notes.append(f"{idx['label']} starts in "
-                         f"{_month_name(idx['d'][0])}, so it cannot be drawn over "
-                         f"this window.")
+
+    picked = None
+    if bm and span_days >= fw.MONTHLY_MIN_DAYS and bm["d"][0] <= limit:
+        picked = {"series": bm, "label": bm["label"], "source": "benchmark",
+                  "dividends": True}
+    elif idx and idx["d"][0] <= limit:
+        picked = {"series": idx, "label": idx["label"],
+                  "source": idx.get("source"), "dividends": idx.get("dividends")}
+    elif bm and bm["d"][0] <= limit:
+        picked = {"series": bm, "label": bm["label"], "source": "benchmark",
+                  "dividends": True}
+
+    if picked:
+        line = _rebased(picked["series"], start)
+        if line:
+            out.append({"code": "index", "label": picked["label"],
+                        "source": picked["source"],
+                        "dividends": picked["dividends"], **line})
+    elif idx or bm:
+        first_seen = min(s["d"][0] for s in (idx, bm) if s)
+        notes.append(f"No market series reaches back to {_month_name(start)}; "
+                     f"the earliest on file starts in {_month_name(first_seen)}.")
 
     avg = (navs.get("categoryAverage") or {}).get(cat)
     if avg and avg["d"][0] <= _shift(start, _START_SLACK_DAYS):

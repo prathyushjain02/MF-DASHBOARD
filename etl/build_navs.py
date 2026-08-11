@@ -188,6 +188,67 @@ def fetch_index_yahoo(tickers, refresh=False):
 
 
 # ---------------------------------------------------------------------------
+# Benchmarks, from the workbook's own benchmark sheet
+# ---------------------------------------------------------------------------
+
+def benchmark_series(workbook):
+    """Month on month benchmark returns, compounded into index levels.
+
+    The sheet publishes a return per month per benchmark rather than a level, so
+    the level is rebuilt by compounding from a base of 100. These are total
+    return indices: dividends are already inside them, which is what makes them
+    comparable to a fund's NAV rather than reading low against it the way a price
+    index does.
+    """
+    if not workbook or not os.path.exists(workbook):
+        _log("  no workbook given, benchmarks skipped")
+        return {}
+    try:
+        from openpyxl import load_workbook
+    except ImportError:
+        _log("  openpyxl is not installed, benchmarks skipped")
+        return {}
+
+    wb = load_workbook(workbook, read_only=True, data_only=True)
+    if "BMMom Performance" not in wb.sheetnames:
+        _log("  workbook has no BMMom Performance sheet")
+        return {}
+    it = wb["BMMom Performance"].iter_rows(min_row=4, values_only=True)
+    header = list(next(it))
+    rows = [r for r in it if r and isinstance(r[0], dt.datetime)]
+    rows.sort(key=lambda r: r[0])
+
+    out = {}
+    for ci, name in enumerate(header):
+        if ci == 0 or not name:
+            continue
+        name = str(name).strip()
+        level, series = 100.0, []
+        # The first month's return is the step into it, so the series is seeded a
+        # month earlier at the base. Without that the chart would start one month
+        # late and lose the first move.
+        seeded = False
+        for r in rows:
+            if ci >= len(r):
+                continue
+            v = r[ci]
+            if not isinstance(v, (int, float)) or isinstance(v, bool):
+                continue
+            d = r[0].date()
+            if not seeded:
+                prev = (d.replace(day=1) - dt.timedelta(days=1))
+                series.append((prev, level))
+                seeded = True
+            level *= (1.0 + float(v) / 100.0)
+            series.append((d, level))
+        if len(series) >= 24:
+            out[name] = series
+    _log(f"  {len(out)} benchmark series, "
+         f"{rows[0][0].date()} to {rows[-1][0].date()}")
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Category average
 # ---------------------------------------------------------------------------
 
@@ -233,6 +294,8 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--refresh", action="store_true",
                     help="ignore the on-disk cache and refetch every scheme")
+    ap.add_argument("--workbook",
+                    help="Underlying xlsx, read for the benchmark TRI series")
     ap.add_argument("--workers", type=int, default=8)
     args = ap.parse_args()
 
@@ -297,6 +360,18 @@ def main():
         indices[name] = {"label": spec["fallbackLabel"], "source": "fund",
                          "code": spec["fallback"], "dividends": True, **encode(s)}
 
+    _log("benchmarks:")
+    wanted_bm = {fw.benchmark_series_for(c) for c in fw.CATEGORIES}
+    benchmarks = {}
+    for name, series in benchmark_series(args.workbook).items():
+        if name not in wanted_bm:
+            continue
+        s = [(d, v) for d, v in series
+             if d >= today - dt.timedelta(days=int(365.25 * MAX_YEARS))]
+        if len(s) >= 24:
+            benchmarks[name] = {"label": name, "monthly": True, **encode(s)}
+    _log(f"  kept {len(benchmarks)}: {', '.join(sorted(benchmarks)) or 'none'}")
+
     cat_avg = {}
     for cat, series_list in per_cat.items():
         avg = category_average(series_list)
@@ -311,6 +386,9 @@ def main():
         "funds": by_key,
         "indices": indices,
         "indexByCategory": {c: fw.index_name_for(c) for c in fw.CATEGORIES},
+        "benchmarks": benchmarks,
+        "benchmarkByCategory": {c: fw.benchmark_series_for(c)
+                                for c in fw.CATEGORIES},
         "categoryAverage": cat_avg,
     }
     out = os.path.join(DATA_DIR, "navs.json")

@@ -131,10 +131,25 @@ async function renderApproach(host) {
     <section>
       <div class="section-head">
         <h2>Fund selection process: mutual funds</h2>
-        <p class="lede">Six factors. Three a fund has to clear, three that explain
-        whether the record repeats. Click any of them.</p>
+        <p class="lede">How the universe narrows, and the six factors it narrows
+        on. Three a fund has to clear, three that explain whether the record
+        repeats. Click any of them.</p>
       </div>
 
+      <div class="funnelwrap">
+        <div class="funnelart" id="funnelart"></div>
+        <div class="stagelist">
+          ${funnelStages().map((s, i) => `
+            <div class="stage${i === 3 ? ' last' : ''}">
+              <span class="stage-chip" style="background:${s.ink}"></span>
+              <span class="stage-n">${s.n}</span>
+              <span class="stage-label">${esc(s.label)}</span>
+              <span class="stage-note">${esc(s.note)}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <h3 class="band-title">What it narrows on</h3>
       <div class="diamond">
         <div class="diamond-side">
           <h3>${esc(fw.selectionGroups.basic.label)}</h3>
@@ -152,14 +167,99 @@ async function renderApproach(host) {
           <div class="grp-list">${drivers.map(nodeCard).join('')}</div>
         </div>
       </div>
-
     </section>`;
 
   host.querySelectorAll('[data-node]').forEach((el) =>
     el.onclick = () => openNodeModal(el.dataset.node));
 
   drawDiamond();
+  drawFunnel();
   wireGlossary(host);
+}
+
+/* The four cuts between the feed and the shortlist, read from the live build so
+   the page reports this dataset rather than a claim written into the copy. */
+function funnelStages() {
+  const m = state.meta;
+  const fw = state.fw;
+  return [
+    { n: m.universeCount, label: 'In the feed', ink: 'var(--seq-200)',
+      note: 'Every equity scheme the data provider publishes, direct plans.' },
+    { n: m.inScope, label: 'In scope', ink: 'var(--seq-300)',
+      note: `Actively managed equity only. Index funds, ETFs, fund of funds, `
+            + `sectoral and thematic mandates are out, as are ${
+              fw.excludedCount || 15} fund houses held back on coverage.` },
+    { n: m.scored, label: 'Carry a score', ink: 'var(--seq-450)',
+      note: `Scored only where at least ${m.minEvidence}% of the model could be `
+            + `measured. The other ${m.notRated} keep their data and are `
+            + `reported as not rated.` },
+    { n: (m.bands || {}).A || 0, label: 'Reach the top band', ink: 'var(--red)',
+      note: 'Band A: ranks well across most blocks, not on one number alone. '
+            + 'A shortlist to discuss, not a buy list.' },
+  ];
+}
+
+/* The funnel. Four bands narrowing to an arrow, band depth proportional to what
+   survives the cut, so the shape carries the attrition rather than decorating
+   it. Flat fills and the house ramp: the reference art was glossy 3D, which is
+   not what this template does. */
+function drawFunnel() {
+  const host = $('#funnelart');
+  if (!host) return;
+  const stages = funnelStages();
+  const ns = 'http://www.w3.org/2000/svg';
+  const mk = (t, a, txt) => { const e = document.createElementNS(ns, t);
+    Object.entries(a).forEach(([k, v]) => e.setAttribute(k, v));
+    if (txt != null) e.textContent = txt; return e; };
+
+  const w = 300, h = 330, cx = w / 2;
+  const svg = mk('svg', { viewBox: `0 0 ${w} ${h}`, class: 'chart funnel-svg',
+                          role: 'img',
+                          'aria-label': 'Funnel from the feed to the shortlist' });
+
+  // Half-widths at each boundary, tapering to the neck.
+  const half = [132, 96, 66, 42, 24];
+  const yTop = 26, yBot = 250;
+  const top = stages[0].n || 1;
+  // Every band gets a floor of depth so the last cut stays legible next to the
+  // first, which is twenty times its size.
+  const depth = stages.map((s) => 0.55 + 0.45 * ((s.n || 0) / top));
+  const sum = depth.reduce((a, b) => a + b, 0);
+  let y = yTop;
+  const bounds = [y];
+  depth.forEach((d) => { y += (yBot - yTop) * d / sum; bounds.push(y); });
+
+  const ry = 11;
+  stages.forEach((s, i) => {
+    const y0 = bounds[i], y1 = bounds[i + 1], w0 = half[i], w1 = half[i + 1];
+    const band = mk('path', {
+      d: `M${cx - w0},${y0} L${cx + w0},${y0} L${cx + w1},${y1} L${cx - w1},${y1} Z`,
+      fill: s.ink, stroke: 'var(--surface-1)', 'stroke-width': 1.5,
+    });
+    Chart.hoverable(band, `<strong>${s.label}</strong>
+      <div class="tt-row"><span>Schemes</span><span>${s.n}</span></div>`);
+    svg.appendChild(band);
+    // A cap on each boundary reads as an opening rather than a flat wedge.
+    svg.appendChild(mk('ellipse', {
+      cx, cy: y0, rx: w0, ry, fill: s.ink,
+      stroke: 'var(--surface-1)', 'stroke-width': 1.5,
+    }));
+    svg.appendChild(mk('text', { x: cx, y: (y0 + y1) / 2 + ry / 2 + 4,
+                                 'text-anchor': 'middle', class: 'funnel-n' },
+                       s.n));
+  });
+
+  // The neck, then the arrow: what comes out of the bottom.
+  svg.appendChild(mk('rect', { x: cx - 13, y: yBot, width: 26, height: 22,
+                               fill: 'var(--red)' }));
+  svg.appendChild(mk('path', {
+    d: `M${cx - 30},${yBot + 22} L${cx + 30},${yBot + 22} L${cx},${yBot + 58} Z`,
+    fill: 'var(--red)',
+  }));
+  svg.appendChild(mk('text', { x: cx, y: h - 4, 'text-anchor': 'middle',
+                               class: 'funnel-foot' }, 'Shortlist'));
+  host.innerHTML = '';
+  host.appendChild(svg);
 }
 
 function nodeCard(n) {
@@ -871,6 +971,10 @@ async function drawGrowth(key, period) {
   const note = $('#growth-note');
   if (note) {
     const caveat = !idx ? ''
+      : idx.source === 'benchmark'
+        ? `${idx.label} is the category's total return index, so dividends sit `
+          + 'inside it exactly as they do inside the fund NAV. It is published '
+          + 'monthly, so the line steps by month while the fund moves daily.'
       : idx.source === 'index'
         ? `${idx.label} is a price index, so it excludes dividends while the `
           + 'fund NAV includes them.'

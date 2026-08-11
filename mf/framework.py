@@ -174,6 +174,34 @@ INDEX_PROXIES = {
     },
 }
 
+# The true benchmark series, month on month, from the source workbook's own
+# benchmark sheet. These are total return indices, so dividends are inside them
+# exactly as they are inside a fund's NAV, and they reach back to 2018. That
+# makes them the right line for any window of a year or more.
+#
+# They are monthly, so a one or three month window would draw them as two or
+# three points. Short windows keep the daily tracking scheme above instead, and
+# the chart says which of the two it is showing.
+BENCHMARK_SERIES = {
+    "Flexicap":       "Nifty 500 TRI",
+    "Multicap":       "Nifty 500 TRI",
+    "Focused":        "Nifty 500 TRI",
+    "Value / Contra": "Nifty 500 TRI",
+    "Large & Midcap": "Nifty 500 TRI",
+    "Dividend Yield": "Nifty 500 TRI",
+    "Largecap":       "Nifty 50 TRI",
+    "Midcap":         "Nifty Midcap 100 TRI",
+    "Smallcap":       "Nifty Smallcap 250 TRI",
+}
+
+# Below this many days a monthly series has too few points to draw as a line.
+MONTHLY_MIN_DAYS = 300
+
+
+def benchmark_series_for(category):
+    return BENCHMARK_SERIES.get(category, "Nifty 500 TRI")
+
+
 # Mid and small cap get their own index rather than the blended BSE MidSmallCap
 # series the summary table uses: a mid cap fund read against a mid-and-small
 # blend is being marked against exposure it does not hold.
