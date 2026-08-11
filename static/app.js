@@ -747,7 +747,7 @@ async function renderFundPage(host) {
   // --- the visuals -------------------------------------------------------
   const periods = [['3M', 'return3M'], ['6M', 'return6M'], ['1Y', 'return1Y'],
                    ['3Y', 'return3Y'], ['5Y', 'return5Y']];
-  Chart.barsPaired($('#c-returns'),
+  Chart.barsPairedV($('#c-returns'),
     periods.map(([lab, k]) => ({ label: lab, a: f[k], b: bm[k] })),
     { aLabel: 'Fund', bLabel: bm.name || 'Index' });
   $('#c-returns-note').innerHTML = leadNote(f, bm);

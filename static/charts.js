@@ -214,6 +214,88 @@ const Chart = (() => {
         <span><i class="b"></i>${bLabel}</span></div>`);
   }
 
+  /* ----------------------------------------------- paired bars (vertical) */
+  /* The same fund-vs-index comparison as barsPaired, drawn as upright columns
+     against a zero baseline. Vertical reads as "returns over the period" the way
+     a reader already expects a performance chart to look; the horizontal form is
+     kept for tight rows elsewhere. Two fixed hues carry identity, a legend names
+     them, and negative periods drop below the baseline. */
+  function barsPairedV(host, rows, opts = {}) {
+    const {
+      suffix = '%', decimals = 1, aLabel = 'Fund', bLabel = 'Index',
+      height = 210, aColor = 'var(--seq-550)', bColor = 'var(--seq-200)',
+    } = opts;
+    host.innerHTML = '';
+    if (!rows.length) { host.innerHTML = '<div class="empty">No record yet</div>'; return; }
+    const vals = rows.flatMap((r) => [r.a, r.b]).filter((v) => v != null);
+    if (!vals.length) { host.innerHTML = '<div class="empty">No record yet</div>'; return; }
+
+    const w = host.clientWidth || 520;
+    const m = { t: 24, r: 12, b: 34, l: 40 };
+    const iw = w - m.l - m.r, ih = height - m.t - m.b;
+
+    // Scale runs from a rounded floor to a rounded ceiling, always through zero.
+    const rawHi = Math.max(0, ...vals), rawLo = Math.min(0, ...vals);
+    const yTop = niceMax(rawHi) || 1;
+    const yBot = rawLo < 0 ? -niceMax(-rawLo) : 0;
+    const span = (yTop - yBot) || 1;
+    const sy = (v) => m.t + ih * (yTop - v) / span;
+    const zeroY = sy(0);
+
+    const svg = el('svg', { class: 'chart', viewBox: `0 0 ${w} ${height}`, height });
+
+    // Horizontal gridlines and their readings, four divisions across the range.
+    for (let i = 0; i <= 4; i++) {
+      const v = yTop - (span / 4) * i;
+      const gy = sy(v);
+      svg.appendChild(el('line', { x1: m.l, x2: m.l + iw, y1: gy, y2: gy,
+                                   class: v === 0 ? 'baseline' : 'gridline' }));
+      svg.appendChild(el('text', { x: m.l - 7, y: gy + 3.5, class: 'tick-label',
+                                   'text-anchor': 'end' }, fmt(v, 0)));
+    }
+
+    const n = rows.length;
+    const groupW = iw / n;
+    const barW = Math.min(26, groupW * 0.3);
+    const gap = 4;
+
+    rows.forEach((r, i) => {
+      const cx = m.l + groupW * i + groupW / 2;
+      const gap12 = r.a != null && r.b != null ? r.a - r.b : null;
+      [['a', r.a, aColor, aLabel, cx - barW - gap / 2],
+       ['b', r.b, bColor, bLabel, cx + gap / 2]].forEach(([which, v, fill, name, x]) => {
+        if (v == null) {
+          svg.appendChild(el('text', { x: x + barW / 2, y: zeroY - 4,
+                                       class: 'tick-label', 'text-anchor': 'middle' }, '—'));
+          return;
+        }
+        const y = v >= 0 ? sy(v) : zeroY;
+        const h = Math.max(1.5, Math.abs(sy(v) - zeroY));
+        const rect = el('rect', { x, y, width: barW, height: h, rx: 3, fill });
+        hoverable(rect, `<strong>${r.label}</strong>
+          <div class="tt-row"><span>${aLabel}</span><span>${fmt(r.a, decimals)}${suffix}</span></div>
+          <div class="tt-row"><span>${bLabel}</span><span>${fmt(r.b, decimals)}${suffix}</span></div>
+          ${gap12 == null ? '' : `<div class="tt-row"><span>Difference</span><span>${
+            (gap12 >= 0 ? '+' : '') + fmt(gap12, decimals)} pts</span></div>`}`);
+        svg.appendChild(rect);
+        // Reading sits above a positive column, below a negative one.
+        const ly = v >= 0 ? y - 6 : y + h + 12;
+        svg.appendChild(el('text', {
+          x: x + barW / 2, y: ly, 'text-anchor': 'middle',
+          class: 'tick-label', fill: which === 'a' ? 'var(--seq-700)' : 'var(--text-muted)',
+        }, fmt(v, decimals)));
+      });
+      // Period label under the baseline.
+      svg.appendChild(el('text', { x: cx, y: height - 12, class: 'axis-label',
+                                   'text-anchor': 'middle' }, r.label));
+    });
+
+    host.appendChild(svg);
+    host.insertAdjacentHTML('beforeend',
+      `<div class="pairkey"><span><i class="a"></i>${aLabel}</span>
+        <span><i class="b"></i>${bLabel}</span></div>`);
+  }
+
   /* ------------------------------------------------------------- scatter */
   /* Two colours only (population + the highlighted fund), so the all-pairs
      series cap is never in play. */
@@ -469,6 +551,6 @@ const Chart = (() => {
   }
   function seqInk(t) { return t > 0.6 ? '#ffffff' : 'var(--text-primary)'; }
 
-  return { bars, barsPaired, blockBar, scatter, histogram, rangeStrip, funnel,
+  return { bars, barsPaired, barsPairedV, blockBar, scatter, histogram, rangeStrip, funnel,
            seqColor, seqInk, hoverable, showTip, hideTip, fmt };
 })();
