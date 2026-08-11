@@ -223,7 +223,7 @@ const Chart = (() => {
   function barsPairedV(host, rows, opts = {}) {
     const {
       suffix = '%', decimals = 1, aLabel = 'Fund', bLabel = 'Index',
-      height = 126, aColor = 'var(--seq-550)', bColor = 'var(--seq-200)',
+      height = 104, aColor = 'var(--seq-550)', bColor = 'var(--seq-200)',
     } = opts;
     host.innerHTML = '';
     if (!rows.length) { host.innerHTML = '<div class="empty">No record yet</div>'; return; }
@@ -308,7 +308,7 @@ const Chart = (() => {
                        category: 'var(--seq-300)' };
 
   function growthLines(host, series, opts = {}) {
-    const { height = 330, asOf = null } = opts;
+    const { height = 400, asOf = null } = opts;
     host.innerHTML = '';
     const live = (series || []).filter((s) => s.days && s.days.length > 1);
     if (!live.length) { host.innerHTML = '<div class="empty">No NAV history</div>'; return; }

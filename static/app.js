@@ -726,21 +726,6 @@ async function renderFundPage(host) {
         <p class="cardnote muted sm" id="growth-note"></p>
       </section>
 
-      ${card('risk', 'How it behaves in a fall', 'capture against the benchmark at 100',
-             '<div id="c-capture"></div>' +
-             `<div class="cardfoot"><span>${term('Maximum drawdown')}</span>
-                <b>${num(f.maxDrawdown3Y, 1)}%</b></div>`)}
-
-      ${card('done', 'How it has done',
-             `against ${esc(bm.name || 'its benchmark')}${
-               bm.kind === 'index' ? ' (index)' : ''}`,
-             '<div id="c-returns"></div>' +
-             `<p class="cardnote" id="c-returns-note"></p>`)}
-
-      ${card('rolling', 'What a holding period gave',
-             'median of every window of that length',
-             '<div id="c-rolling"></div>')}
-
       ${card('holds', 'What it holds', `${f.holdingCount || 0} names`,
              '<div id="c-caps"></div>' +
              `<div class="cardfoot">
@@ -748,17 +733,20 @@ async function renderFundPage(host) {
                 <span>${term('Effective number of stocks')}</span>
                   <b>${num(f.effectiveStocks, 0)}</b></div>`)}
 
-      ${card('size', 'Size and cost', esc(f.vintageBasis || ''),
-             `<div class="bigstat label-first">
-                <span class="k">${term('AUM')}</span>
-                <span class="v">${cr(f.aumCr)}</span>
-              </div>
-              <div class="cardfoot">
-                <span>${term('Net flow over 1Y')}</span>
-                  <b>${f.netFlow1YPct == null ? '—'
-                       : (f.netFlow1YPct > 0 ? '+' : '') + num(f.netFlow1YPct, 0) + '%'}</b>
-                <span>${term('Expense ratio')}</span>
-                  <b>${f.ter == null ? '—' : num(f.ter, 2) + '%'}</b></div>`)}
+      ${card('rolling', 'What a holding period gave',
+             'median of every window of that length',
+             '<div id="c-rolling"></div>')}
+
+      ${card('done', 'How it has done',
+             `against ${esc(bm.name || 'its benchmark')}${
+               bm.kind === 'index' ? ' (index)' : ''}`,
+             '<div id="c-returns"></div>' +
+             `<p class="cardnote" id="c-returns-note"></p>`)}
+
+      ${card('risk', 'How it behaves in a fall', 'capture against the benchmark at 100',
+             '<div id="c-capture"></div>' +
+             `<div class="cardfoot"><span>${term('Maximum drawdown')}</span>
+                <b>${num(f.maxDrawdown3Y, 1)}%</b></div>`)}
 
       ${card('who', 'Who runs it', mgrs.length === 1 ? 'one manager'
               : `${mgrs.length} managers`,
@@ -772,6 +760,18 @@ async function renderFundPage(host) {
                 <span>${term('Market cycles run')}</span>
                   <b>${num(f.managerCycles, 0)}</b>
                 ${mgrs.length > 1 ? `<span>and ${mgrs.length - 1} more</span>` : ''}</div>`)}
+
+      ${card('size', 'Size and cost', esc(f.vintageBasis || ''),
+             `<div class="bigstat label-first">
+                <span class="k">${term('AUM')}</span>
+                <span class="v">${cr(f.aumCr)}</span>
+              </div>
+              <div class="cardfoot">
+                <span>${term('Net flow over 1Y')}</span>
+                  <b>${f.netFlow1YPct == null ? '—'
+                       : (f.netFlow1YPct > 0 ? '+' : '') + num(f.netFlow1YPct, 0) + '%'}</b>
+                <span>${term('Expense ratio')}</span>
+                  <b>${f.ter == null ? '—' : num(f.ter, 2) + '%'}</b></div>`)}
 
       ${analyst ? card('score', 'The score', 'seven blocks, weighted',
              '<div id="c-blocks"></div>') : ''}

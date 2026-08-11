@@ -629,16 +629,26 @@ body.modal-open { overflow: hidden; }
    the page read as a field of ragged boxes with gaps under the short ones. Here
    the chart is the hero and holds two rows on the left, the two identity cards
    stack beside it, and the four measure cards run along the foot in one band. */
-.snapshot { display: grid; gap: 10px; grid-template-columns: repeat(12, 1fr);
+/* Three columns: the chart owns a wide one down the left, the six cards fill two
+   narrow ones on the right, two per row. The ratio is the marked up layout's:
+   the chart is a little under three fifths, each card column a little over a
+   fifth. */
+.snapshot { display: grid; gap: 10px; grid-template-columns: 2.8fr 1fr 1fr;
   align-items: stretch; }
 .snapshot > * { min-width: 0; }
-/* The chart takes the left half over three rows; the six cards fill the right
-   half in two columns of three, so the two halves end level and nothing is left
-   hanging under a short card. */
-.snapcard.chartcard { grid-column: span 6; grid-row: span 3; cursor: default; }
+.snapcard.chartcard { grid-column: 1; grid-row: 1 / span 3; cursor: default; }
 .snapcard.chartcard:hover { background: var(--surface-2);
   border-top-color: var(--slate); }
-.snapshot > [data-card] { grid-column: span 3; }
+/* The score bar is the model's own, not one of the six, so it runs the full
+   width underneath rather than taking a card slot. */
+.snapshot > [data-card="score"] { grid-column: 1 / -1; }
+
+/* At a fifth of the page a card is about 300px, so its type and bars come down
+   a step to match. Left at the full width sizes the labels crowded the tracks. */
+.snapcard-title { font-size: 13px; }
+.snapcard .barrow { padding: 2px 0; }
+.snapcard .barrow .track { height: 11px; }
+.snapcard .cardfoot { font-size: 10.5px; gap: 2px 10px; }
 .snapshot > [data-card="score"] { grid-column: span 12; }
 
 /* period buttons over the growth chart */
@@ -666,8 +676,8 @@ body.modal-open { overflow: hidden; }
 #tooltip .swatch { width: 8px; height: 8px; border-radius: 50%;
   display: inline-block; margin-right: 6px; }
 .loading.sm { font-size: 12px; padding: 28px 0; }
-.snapcard { display: flex; flex-direction: column; gap: 6px; text-align: left;
-  font: inherit; cursor: pointer; padding: 10px 13px 11px; width: 100%;
+.snapcard { display: flex; flex-direction: column; gap: 5px; text-align: left;
+  font: inherit; cursor: pointer; padding: 9px 12px 10px; width: 100%;
   background: var(--surface-2); border: 1px solid var(--border);
   border-top: 2px solid var(--slate); }
 .snapcard:hover, .snapcard:focus-visible { border-top-color: var(--red);
@@ -687,7 +697,7 @@ body.modal-open { overflow: hidden; }
 .cardnote { font-size: 11.5px; color: var(--text-primary); margin: 6px 0 0;
   line-height: 1.4; }
 .cardfoot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px;
-  margin-top: 7px; padding-top: 6px; border-top: 1px solid var(--grid);
+  margin-top: 5px; padding-top: 5px; border-top: 1px solid var(--grid);
   font-size: 11px; color: var(--text-muted); }
 .cardfoot b { font-family: var(--mono); color: var(--text-primary); font-weight: 600; }
 .bigstat { display: flex; flex-direction: column; gap: 1px; padding: 3px 0 1px; }
