@@ -136,32 +136,67 @@ def benchmark_for(category):
     return BENCHMARKS.get(category, DEFAULT_BENCHMARK)
 
 
-# The growth chart plots a real NAV series, and the feed publishes none for an
-# index. So the market line is drawn from an actual index tracking scheme, quoted
-# by its AMFI scheme code and read from the same NAV source as the funds. This is
-# a tracking vehicle rather than the index itself, so it carries the tracking
-# error and the expense of the scheme it names, which is why it is labelled as an
-# index fund on the chart and never as the index.
+# The market line on the growth chart. The feed publishes no series for an index,
+# so it is fetched separately, and there are two ways to get one:
 #
-# Mid and small cap get their own index here rather than the blended
-# BSE MidSmallCap series the summary table uses, because a tracking scheme exists
-# for each and a mid cap fund read against a mid-and-small blend is being marked
-# against exposure it does not hold.
+#   tickers   the index itself, from Yahoo via yfinance. Long history, and it is
+#             the actual index rather than something tracking it. These are price
+#             indices: they exclude dividends, while a fund's NAV includes them.
+#             That understates the index by roughly the market's dividend yield a
+#             year, so the series is labelled a price index wherever it appears.
+#   fallback  an AMFI index tracking scheme, read from the same NAV source as the
+#             funds. Dividends are inside the NAV so it is comparable like for
+#             like, but it carries the scheme's expense and tracking error, and
+#             the Nifty 500 schemes only launched in 2023.
+#
+# Several tickers are listed per index because Yahoo's coverage of the Indian
+# mid and small cap series is uneven. The build tries them in order and keeps the
+# first that returns a usable history, so a symbol that has gone away downgrades
+# the chart rather than breaking the build.
 INDEX_PROXIES = {
-    "Flexicap":       {"code": 152106, "label": "Nifty 500 Index Fund"},
-    "Multicap":       {"code": 152106, "label": "Nifty 500 Index Fund"},
-    "Focused":        {"code": 152106, "label": "Nifty 500 Index Fund"},
-    "Value / Contra": {"code": 152106, "label": "Nifty 500 Index Fund"},
-    "Large & Midcap": {"code": 152106, "label": "Nifty 500 Index Fund"},
-    "Dividend Yield": {"code": 152106, "label": "Nifty 500 Index Fund"},
-    "Largecap":       {"code": 118741, "label": "Nifty 50 Index Fund"},
-    "Midcap":         {"code": 148726, "label": "Nifty Midcap 150 Index Fund"},
-    "Smallcap":       {"code": 148519, "label": "Nifty Smallcap 250 Index Fund"},
+    "Nifty 500": {
+        "tickers": ["^CRSLDX", "NIFTY500.NS", "^NSE500"],
+        "fallback": 152106, "fallbackLabel": "Nifty 500 Index Fund",
+    },
+    "Nifty 50": {
+        "tickers": ["^NSEI", "NIFTY50.NS"],
+        "fallback": 118741, "fallbackLabel": "Nifty 50 Index Fund",
+    },
+    "Nifty Midcap 150": {
+        "tickers": ["NIFTY_MIDCAP_150.NS", "^NSEMDCP50", "NIFTYMIDCAP150.NS",
+                    "NIFTY_MIDCAP_100.NS"],
+        "fallback": 148726, "fallbackLabel": "Nifty Midcap 150 Index Fund",
+    },
+    "Nifty Smallcap 250": {
+        "tickers": ["NIFTYSMLCAP250.NS", "^CNXSC", "NIFTY_SMLCAP_250.NS",
+                    "NIFTYSMALLCAP250.NS"],
+        "fallback": 148519, "fallbackLabel": "Nifty Smallcap 250 Index Fund",
+    },
+}
+
+# Mid and small cap get their own index rather than the blended BSE MidSmallCap
+# series the summary table uses: a mid cap fund read against a mid-and-small
+# blend is being marked against exposure it does not hold.
+INDEX_BY_CATEGORY = {
+    "Flexicap":       "Nifty 500",
+    "Multicap":       "Nifty 500",
+    "Focused":        "Nifty 500",
+    "Value / Contra": "Nifty 500",
+    "Large & Midcap": "Nifty 500",
+    "Dividend Yield": "Nifty 500",
+    "Largecap":       "Nifty 50",
+    "Midcap":         "Nifty Midcap 150",
+    "Smallcap":       "Nifty Smallcap 250",
 }
 
 
+def index_name_for(category):
+    return INDEX_BY_CATEGORY.get(category, "Nifty 500")
+
+
 def index_proxy(category):
-    return INDEX_PROXIES.get(category, INDEX_PROXIES["Flexicap"])
+    name = index_name_for(category)
+    return {"name": name, **INDEX_PROXIES[name]}
 
 
 # Fund houses held out of the scored universe. This is a coverage decision made

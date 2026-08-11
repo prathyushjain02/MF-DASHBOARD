@@ -127,103 +127,102 @@ async function renderApproach(host) {
   const basic = fw.selectionNodes.filter((n) => n.group === 'basic');
   const drivers = fw.selectionNodes.filter((n) => n.group === 'driver');
 
-  const m = state.meta;
-  const analyst = isAnalyst();
-
-  /* The page answers three questions in order, because that is the order they
-     get asked in a meeting: what did you look at, what did you look for, and
-     how did you weigh it. The old diamond answered only the middle one and
-     spent most of the page doing it. */
-  const steps = [
-    { n: m.universeCount, label: 'schemes in the feed',
-      note: 'Every equity scheme the data provider publishes, direct plans.' },
-    { n: m.inScope, label: 'in scope',
-      note: `Actively managed equity only. Index funds, ETFs, fund of funds, `
-            + `sectoral and thematic mandates are out, as are ${
-              fw.excludedCount || 15} fund houses held back on coverage.` },
-    { n: m.scored, label: 'carry a score',
-      note: `A composite is published only where at least ${m.minEvidence}% of the `
-            + `model could be measured. The other ${m.notRated} keep their data `
-            + `and are reported as not rated.` },
-    { n: (m.bands || {}).A || 0, label: 'reach the top band',
-      note: 'Band A: ranks well across most blocks, not on one number alone. '
-            + 'This is a shortlist to discuss, not a buy list.' },
-  ];
-
   host.innerHTML = `
     <section>
       <div class="section-head">
-        <h2>How we look at funds</h2>
-        <p class="lede">What we looked at, what we looked for, and how it is
-        weighed. Every figure below is read from the current build.</p>
+        <h2>Fund selection process: mutual funds</h2>
+        <p class="lede">Six factors. Three a fund has to clear, three that explain
+        whether the record repeats. Click any of them.</p>
       </div>
 
-      <h3 class="band-title">From the feed to a shortlist</h3>
-      <div class="funnel">
-        ${steps.map((s, i) => `
-          <div class="funnel-step${i === steps.length - 1 ? ' last' : ''}">
-            <span class="funnel-n">${s.n}</span>
-            <span class="funnel-label">${esc(s.label)}</span>
-            <span class="funnel-note">${esc(s.note)}</span>
-          </div>`).join('<span class="funnel-arrow" aria-hidden="true">&rsaquo;</span>')}
+      <div class="diamond">
+        <div class="diamond-side">
+          <h3>${esc(fw.selectionGroups.basic.label)}</h3>
+          <span class="grp-range">(${esc(fw.selectionGroups.basic.range)})</span>
+          <p class="muted">${esc(fw.selectionGroups.basic.note)}</p>
+          <div class="grp-list">${basic.map(nodeCard).join('')}</div>
+        </div>
+
+        <div class="diamond-mid" id="diamond-mid"></div>
+
+        <div class="diamond-side right">
+          <h3>${esc(fw.selectionGroups.driver.label)}</h3>
+          <span class="grp-range">(${esc(fw.selectionGroups.driver.range)})</span>
+          <p class="muted">${esc(fw.selectionGroups.driver.note)}</p>
+          <div class="grp-list">${drivers.map(nodeCard).join('')}</div>
+        </div>
       </div>
 
-      <h3 class="band-title">What we look for</h3>
-      <p class="band-sub">Six factors. ${esc(fw.selectionGroups.basic.note)}
-      ${esc(fw.selectionGroups.driver.note)} Click any factor for the detail
-      behind it.</p>
-      <div class="factorgrid">
-        ${[...basic, ...drivers].map((n) => factorCard(n)).join('')}
-      </div>
-
-      <h3 class="band-title">How it is weighed</h3>
-      <p class="band-sub">The composite is seven blocks, each a weighted set of
-      metrics. Every metric is a percentile inside the fund's own category, so a
-      fund is only ever compared with its true peers. Where a metric is missing
-      the block reweights over what is there rather than assuming a middle value.</p>
-      <div class="weightstrip">
-        ${fw.blocks.map((b) => `
-          <div class="wblock" style="flex: ${b.weight}" data-block="${esc(b.code)}"
-               title="${esc(b.name)}: ${b.weight}% of the composite">
-            <span class="wbar"></span>
-            <span class="wname">${esc(b.name)}</span>
-            <span class="wpct">${b.weight}%</span>
-          </div>`).join('')}
-      </div>
-      ${analyst ? `<div class="bandcuts">
-        ${fw.bands.map((b) => `<span class="bandcut">${bandPill(b.code)}
-          <b>${b.min < 0 ? 'below 42' : b.min + ' and up'}</b>
-          <span class="muted sm">${esc(b.meaning)}</span></span>`).join('')}
-      </div>` : ''}
-
-      <div class="adjustments">
-        ${fw.categoryAdjustments.map((a) => `
-          <div class="adj"><strong>${esc(a.name)}</strong>
-          <span>${esc(a.text)}</span></div>`).join('')}
-      </div>
     </section>`;
 
   host.querySelectorAll('[data-node]').forEach((el) =>
     el.onclick = () => openNodeModal(el.dataset.node));
+
+  drawDiamond();
   wireGlossary(host);
 }
 
-/* A factor card leads with the live figure rather than the factor's name, because
-   the number is what makes the factor concrete: "AUM" is a topic, "23 funds sit
-   where size starts to work against the mandate" is a finding. */
-function factorCard(n) {
-  const s = (processStats || {})[n.stat] || {};
+function nodeCard(n) {
   return `
-    <button class="factor" data-node="${esc(n.code)}">
-      <span class="factor-head">
-        <span class="factor-n">${n.n}</span>
-        <span class="factor-name">${esc(n.name)}</span>
-        <span class="factor-go" aria-hidden="true">&rsaquo;</span>
-      </span>
-      <span class="factor-stat">${esc(s.headline || '—')}</span>
-      <span class="factor-cap">${esc(s.caption || '')}</span>
-      <span class="factor-means">${esc((n.means || '').split('. ')[0])}.</span>
+    <button class="nodeline" data-node="${esc(n.code)}">
+      <span class="nodeline-n">${n.n}</span>
+      <span class="nodeline-name">${esc(n.name)}</span>
+      <span class="nodeline-go" aria-hidden="true">&rsaquo;</span>
     </button>`;
+}
+
+/* The diamond. Two chevron arms of three nodes meeting at a centre mark, drawn
+   as SVG so the arms scale with the panel. Position carries sequence only: this
+   is a process diagram, not a chart. */
+function drawDiamond() {
+  const fw = state.fw;
+  const host = $('#diamond-mid');
+  const w = 300, h = 320;
+  const ns = 'http://www.w3.org/2000/svg';
+  const mk = (t, a, txt) => { const e = document.createElementNS(ns, t);
+    Object.entries(a).forEach(([k, v]) => e.setAttribute(k, v));
+    if (txt != null) e.textContent = txt; return e; };
+  const svg = mk('svg', { viewBox: `0 0 ${w} ${h}`, class: 'chart diamond-svg' });
+
+  const cx = w / 2, cy = h / 2;
+  const pos = {
+    1: [cx - 74, cy - 96], 2: [cx - 116, cy], 3: [cx - 74, cy + 96],
+    4: [cx + 74, cy - 96], 5: [cx + 116, cy], 6: [cx + 74, cy + 96],
+  };
+
+  [[1, 2, 3], [4, 5, 6]].forEach((arm) => {
+    const d = arm.map((n, i) => `${i ? 'L' : 'M'}${pos[n][0]},${pos[n][1]}`).join(' ');
+    svg.appendChild(mk('path', { d, fill: 'none', stroke: 'var(--grid)',
+                                 'stroke-width': 16, 'stroke-linecap': 'round',
+                                 'stroke-linejoin': 'round' }));
+  });
+
+  svg.appendChild(mk('rect', { x: cx - 30, y: cy - 15, width: 60, height: 30,
+                               fill: 'var(--zebra)', stroke: 'var(--border-strong)' }));
+  svg.appendChild(mk('text', { x: cx, y: cy + 4, 'text-anchor': 'middle',
+                               class: 'diamond-centre' }, 'FUND'));
+
+  fw.selectionNodes.forEach((n) => {
+    const [x, y] = pos[n.n];
+    const g = mk('g', { class: 'dnode', tabindex: 0, role: 'button',
+                        'aria-label': n.name });
+    g.appendChild(mk('circle', {
+      cx: x, cy: y, r: 24,
+      fill: n.group === 'basic' ? 'var(--seq-450)' : 'var(--serious)',
+      stroke: 'var(--surface-2)', 'stroke-width': 2,
+    }));
+    g.appendChild(mk('text', { x, y: y + 6, 'text-anchor': 'middle',
+                               class: 'dnode-n' }, n.n));
+    Chart.hoverable(g, `<strong>${esc(n.n + '. ' + n.name)}</strong>
+      <div class="tt-note">Click to open</div>`);
+    g.onclick = () => openNodeModal(n.code);
+    g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault(); openNodeModal(n.code); } };
+    svg.appendChild(g);
+  });
+
+  host.innerHTML = '';
+  host.appendChild(svg);
 }
 
 /* ------------------------------------------------------------------ modal */
@@ -864,11 +863,20 @@ async function drawGrowth(key, period) {
   const sub = $('#growth-sub');
   if (sub) sub.textContent = `${fmtDay(g.start)} to ${fmtDay(g.end)}, `
     + 'daily NAV rebased to zero';
+  /* The market line is either the index itself or a scheme tracking it, and the
+     two are not read the same way: a price index leaves out the dividends a NAV
+     already contains, while a tracking scheme carries its own cost. Whichever is
+     on the chart, the note says which. */
+  const idx = (g.series || []).find((s) => s.code === 'index');
   const note = $('#growth-note');
   if (note) {
-    note.textContent = (g.notes || []).join(' ')
-      || 'The index line is a tracking scheme, so it carries that scheme’s cost '
-         + 'and tracking error rather than being the index itself.';
+    const caveat = !idx ? ''
+      : idx.source === 'index'
+        ? `${idx.label} is a price index, so it excludes dividends while the `
+          + 'fund NAV includes them.'
+        : `${idx.label} is a scheme tracking the index, so it carries that `
+          + 'scheme’s cost and tracking error.';
+    note.textContent = [...(g.notes || []), caveat].filter(Boolean).join(' ');
   }
 }
 

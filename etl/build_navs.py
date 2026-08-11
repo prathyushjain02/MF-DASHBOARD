@@ -8,10 +8,14 @@ the feed already carries, and writes one compact file.
 Three series end up on the chart, and each is built here:
 
     fund        the scheme's own daily NAV.
-    index       an index tracking scheme, one per category. The feed publishes no
-                NAV for an index itself, so the market line is a real scheme and
-                carries that scheme's tracking error and expense. It is labelled
-                as an index fund on the chart for exactly that reason.
+    index       the index itself, from Yahoo through yfinance. These are price
+                indices, so they exclude the dividends a fund's NAV already
+                contains and read low against the funds by roughly the market's
+                dividend yield a year. Where a symbol will not resolve the build
+                falls back to an AMFI index tracking scheme, which is dividend
+                inclusive but carries that scheme's expense and tracking error.
+                Whichever was used is recorded on the series so the chart can say
+                which it is showing.
     category    the average of every scored fund in the category. Built from
                 daily returns rather than by rebasing NAVs, so a fund that
                 launched part way through the window joins the average on the day
@@ -128,6 +132,62 @@ def thin(series, today):
 
 
 # ---------------------------------------------------------------------------
+# Indices
+# ---------------------------------------------------------------------------
+
+def fetch_index_yahoo(tickers, refresh=False):
+    """First ticker that resolves to a usable daily close series.
+
+    Returns (series, ticker) or (None, None). yfinance is imported lazily so the
+    rest of the build still runs where it is not installed.
+    """
+    try:
+        import yfinance as yf
+    except ImportError:
+        _log("  yfinance is not installed, indices fall back to tracking schemes")
+        return None, None
+
+    for t in tickers:
+        cache = os.path.join(CACHE_DIR, f"yf_{t.replace('^', '_')}.json")
+        if not refresh and os.path.exists(cache):
+            try:
+                with open(cache, "r", encoding="utf-8") as fh:
+                    raw = json.load(fh)
+                s = [(dt.date.fromisoformat(d), v) for d, v in raw]
+                if len(s) >= 30:
+                    _log(f"  {t}: {len(s)} points (cached)")
+                    return s, t
+            except (ValueError, OSError, TypeError):
+                pass
+        try:
+            hist = yf.Ticker(t).history(period="max", interval="1d",
+                                        auto_adjust=False)
+        except Exception as e:
+            _log(f"  {t}: {str(e)[:70]}")
+            continue
+        if hist is None or hist.empty or "Close" not in hist:
+            _log(f"  {t}: no data")
+            continue
+        s = []
+        for idx, close in hist["Close"].items():
+            try:
+                v = float(close)
+            except (TypeError, ValueError):
+                continue
+            if v > 0:
+                s.append((idx.date(), v))
+        if len(s) < 30:
+            _log(f"  {t}: only {len(s)} points")
+            continue
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        with open(cache, "w", encoding="utf-8") as fh:
+            json.dump([[d.isoformat(), v] for d, v in s], fh, separators=(",", ":"))
+        _log(f"  {t}: {len(s)} points, {s[0][0]} to {s[-1][0]}")
+        return s, t
+    return None, None
+
+
+# ---------------------------------------------------------------------------
 # Category average
 # ---------------------------------------------------------------------------
 
@@ -185,14 +245,14 @@ def main():
                 and f.get("amfiCode")]
     _log(f"{len(in_scope)} in-scope schemes carry an AMFI code")
 
-    index_codes = {}
-    for cat in fw.CATEGORIES:
-        p = fw.index_proxy(cat)
-        index_codes[p["code"]] = p["label"]
+    # Every index any in-scope category points at, and the tracking scheme that
+    # stands in for it if the symbol will not resolve.
+    wanted = {fw.index_name_for(c) for c in fw.CATEGORIES}
+    index_specs = {n: fw.INDEX_PROXIES[n] for n in wanted}
 
     jobs = {f["amfiCode"]: f["key"] for f in in_scope}
-    for code in index_codes:
-        jobs.setdefault(code, None)
+    for spec in index_specs.values():
+        jobs.setdefault(spec["fallback"], None)
 
     raw = {}
     session = requests.Session()
@@ -219,13 +279,23 @@ def main():
         by_key[f["key"]] = encode(s)
         per_cat.setdefault(f["category"], []).append(s)
 
+    _log("indices:")
     indices = {}
-    for code, label in index_codes.items():
-        s = thin(parse_series(raw.get(code)), today)
-        if len(s) < 30:
-            _log(f"  index {code} ({label}) has no usable series")
+    for name, spec in index_specs.items():
+        series, ticker = fetch_index_yahoo(spec["tickers"], args.refresh)
+        if series:
+            s = thin(series, today)
+            indices[name] = {"label": name, "source": "index", "ticker": ticker,
+                             "dividends": False, **encode(s)}
             continue
-        indices[str(code)] = {"label": label, "code": code, **encode(s)}
+        # No symbol resolved, so stand the tracking scheme in and say so.
+        s = thin(parse_series(raw.get(spec["fallback"])), today)
+        if len(s) < 30:
+            _log(f"  {name}: no index and no tracking scheme, dropped")
+            continue
+        _log(f"  {name}: falling back to {spec['fallbackLabel']}")
+        indices[name] = {"label": spec["fallbackLabel"], "source": "fund",
+                         "code": spec["fallback"], "dividends": True, **encode(s)}
 
     cat_avg = {}
     for cat, series_list in per_cat.items():
@@ -240,7 +310,7 @@ def main():
                       f"capped at {MAX_YEARS} years",
         "funds": by_key,
         "indices": indices,
-        "indexByCategory": {c: str(fw.index_proxy(c)["code"]) for c in fw.CATEGORIES},
+        "indexByCategory": {c: fw.index_name_for(c) for c in fw.CATEGORIES},
         "categoryAverage": cat_avg,
     }
     out = os.path.join(DATA_DIR, "navs.json")

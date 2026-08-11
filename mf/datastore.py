@@ -215,15 +215,17 @@ def growth(fund, period="1y", state=None):
         return {"period": period, "series": [], "unavailable": "Not enough NAV history."}
     out.append({"code": "fund", "label": fund["name"], **f_line})
 
-    idx_code = (navs.get("indexByCategory") or {}).get(cat)
-    idx = (navs.get("indices") or {}).get(idx_code or "")
+    idx_name = (navs.get("indexByCategory") or {}).get(cat)
+    idx = (navs.get("indices") or {}).get(idx_name or "")
     if idx:
         if idx["d"][0] <= _shift(start, _START_SLACK_DAYS):
             line = _rebased(idx, start)
             if line:
-                out.append({"code": "index", "label": idx["label"], **line})
+                out.append({"code": "index", "label": idx["label"],
+                            "source": idx.get("source"),
+                            "dividends": idx.get("dividends"), **line})
         else:
-            notes.append(f"{idx['label']} launched in "
+            notes.append(f"{idx['label']} starts in "
                          f"{_month_name(idx['d'][0])}, so it cannot be drawn over "
                          f"this window.")
 
