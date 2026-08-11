@@ -12,6 +12,7 @@ import json
 import os
 import threading
 from collections import defaultdict
+from datetime import date as _date, timedelta as _timedelta
 
 from . import framework as fw
 from . import narrative
@@ -41,6 +42,7 @@ def load(force=False):
         holdings = _read("holdings.json", {})
         meta = _read("meta.json", {})
         benchmarks = _read("benchmarks.json", {})
+        navs = _read("navs.json", {})
 
         scored = score_universe(funds, holdings)
 
@@ -57,6 +59,7 @@ def load(force=False):
             "byCategory": dict(by_cat),
             "holdings": holdings,
             "benchmarks": benchmarks,
+            "navs": navs,
             "meta": meta,
             "universeCount": len(funds),
         }
@@ -131,6 +134,131 @@ def detail(fund, state=None):
     rec["closest"] = closest_books(fund, state, limit=5)
     rec["holdings"] = top_holdings(fund, limit=15)
     return rec
+
+
+# ---------------------------------------------------------------------------
+# Growth series
+# ---------------------------------------------------------------------------
+
+# What each period button asks for, in days. `None` means the fund's whole life.
+PERIODS = {"1m": 30, "3m": 91, "6m": 182, "1y": 365, "3y": 1095, "5y": 1826,
+           "ytd": None, "all": None}
+
+# A series has to reach back to the start of the window to be drawn against the
+# others. Anything that begins later would be rebased on a different day, and two
+# lines rebased on different days are not a comparison. A week of slack absorbs
+# the usual gap between a start date and the next traded day.
+_START_SLACK_DAYS = 7
+
+# No chart is more than a thousand pixels wide, so beyond a few hundred points
+# the extra ones are bytes nobody can see.
+_MAX_POINTS = 400
+
+
+def _slice_from(series, start_iso):
+    d, v = series.get("d") or [], series.get("v") or []
+    for i, day in enumerate(d):
+        if day >= start_iso:
+            return d[i:], v[i:]
+    return [], []
+
+
+def _downsample(days, vals, limit=_MAX_POINTS):
+    n = len(days)
+    if n <= limit:
+        return days, vals
+    step = (n - 1) / float(limit - 1)
+    idx = sorted({int(round(i * step)) for i in range(limit)} | {n - 1})
+    return [days[i] for i in idx], [vals[i] for i in idx]
+
+
+def _rebased(series, start_iso):
+    """Percent growth from the first traded day on or after `start_iso`."""
+    days, vals = _slice_from(series, start_iso)
+    if len(days) < 2 or not vals[0]:
+        return None
+    base = vals[0]
+    days, vals = _downsample(days, vals)
+    return {"days": days, "values": [round(100.0 * (v / base - 1.0), 2) for v in vals]}
+
+
+def growth(fund, period="1y", state=None):
+    """The fund, its category's index tracker and the category average, each
+    rebased to zero on the same day so the three are directly comparable.
+
+    A line that cannot reach the start of the window is left out rather than
+    rebased on a later day, and the reason is reported so the chart can say why.
+    """
+    state = state or load()
+    navs = state.get("navs") or {}
+    key, cat = fund["key"], fund.get("category")
+    own = (navs.get("funds") or {}).get(key)
+    if not own or len(own.get("d") or []) < 2:
+        return {"period": period, "series": [], "unavailable": "No NAV history on file."}
+
+    first, last = own["d"][0], own["d"][-1]
+    period = period if period in PERIODS else "1y"
+    if period == "all":
+        start = first
+    elif period == "ytd":
+        start = last[:4] + "-01-01"
+    else:
+        end = _date.fromisoformat(last)
+        start = (end - _timedelta(days=PERIODS[period])).isoformat()
+    # The fund anchors the window: asking for five years of a three year old fund
+    # gives three years, not an empty chart.
+    start = max(start, first)
+
+    out, notes = [], []
+    f_line = _rebased(own, start)
+    if not f_line:
+        return {"period": period, "series": [], "unavailable": "Not enough NAV history."}
+    out.append({"code": "fund", "label": fund["name"], **f_line})
+
+    idx_code = (navs.get("indexByCategory") or {}).get(cat)
+    idx = (navs.get("indices") or {}).get(idx_code or "")
+    if idx:
+        if idx["d"][0] <= _shift(start, _START_SLACK_DAYS):
+            line = _rebased(idx, start)
+            if line:
+                out.append({"code": "index", "label": idx["label"], **line})
+        else:
+            notes.append(f"{idx['label']} launched in "
+                         f"{_month_name(idx['d'][0])}, so it cannot be drawn over "
+                         f"this window.")
+
+    avg = (navs.get("categoryAverage") or {}).get(cat)
+    if avg and avg["d"][0] <= _shift(start, _START_SLACK_DAYS):
+        line = _rebased(avg, start)
+        if line:
+            out.append({"code": "category", "label": f"{cat} average", **line})
+
+    return {
+        "period": period, "start": start, "end": last,
+        "series": out, "notes": notes,
+        "asOf": last,
+        "periods": [p for p in ("1m", "3m", "6m", "ytd", "1y", "3y", "5y", "all")
+                    if p in ("ytd", "all") or _has_room(first, last, PERIODS[p])],
+    }
+
+
+def _shift(iso, days):
+    return (_date.fromisoformat(iso) + _timedelta(days=days)).isoformat()
+
+
+def _has_room(first, last, days):
+    if not days:
+        return True
+    return (_date.fromisoformat(last) - _date.fromisoformat(first)).days >= days * 0.6
+
+
+_MONTHS = ("January", "February", "March", "April", "May", "June", "July",
+           "August", "September", "October", "November", "December")
+
+
+def _month_name(iso):
+    d = _date.fromisoformat(iso)
+    return f"{_MONTHS[d.month - 1]} {d.year}"
 
 
 def category_comparison(fund, state=None):

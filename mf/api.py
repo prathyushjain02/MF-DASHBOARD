@@ -41,6 +41,7 @@ def framework():
         "selectionNodes": fw.SELECTION_NODES,
         "selectionGroups": fw.SELECTION_GROUPS,
         "categoryAdjustments": fw.CATEGORY_ADJUSTMENTS,
+        "excludedCount": len(fw.EXCLUDED_AMCS),
         "howToUse": fw.HOW_TO_USE,
         "glossary": fw.GLOSSARY,
         "notScoredWhy": fw.NOT_SCORED_WHY,
@@ -117,6 +118,16 @@ def fund(key):
     return jsonify(ds.detail(f, state))
 
 
+@bp.get("/nav/<key>")
+def nav(key):
+    """Rebased growth of the fund, its index tracker and its category average."""
+    state = ds.load()
+    f = state["byKey"].get(key)
+    if not f:
+        return jsonify({"error": "unknown fund", "key": key}), 404
+    return jsonify(ds.growth(f, request.args.get("period") or "1y", state))
+
+
 @bp.get("/category/<path:name>")
 def category(name):
     state = ds.load()
@@ -134,12 +145,20 @@ def shortlists():
         group = state["byCategory"].get(c, [])
         if not group:
             continue
+        # The benchmark travels with the table so every row above it can be read
+        # against the same line, rather than against a number held in the head.
+        name, kind = fw.benchmark_for(c)
+        bm = (state.get("benchmarks") or {}).get(name)
         out.append({
             "category": c,
             "mandate": fw.MANDATE.get(c, {}).get("note"),
             "caveat": fw.loose_peer_group(c),
             "count": len(group),
             "funds": [ds.row(f) for f in ds.shortlist(c, state)],
+            "benchmark": {"name": name, "kind": kind,
+                          **{k: (bm or {}).get(k) for k in
+                             ("return3M", "return6M", "return1Y",
+                              "return3Y", "return5Y")}} if bm else None,
         })
     return jsonify({"categories": out})
 

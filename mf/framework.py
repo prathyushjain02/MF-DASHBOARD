@@ -41,7 +41,6 @@ CATEGORIES = [
     "Focused",
     "Value / Contra",
     "Dividend Yield",
-    "ELSS",
 ]
 
 # Feed category label -> screener category. Anything not listed is out of scope.
@@ -72,10 +71,6 @@ CATEGORY_MAP = {
     "contra": "Value / Contra",
     "dividend yield fund": "Dividend Yield",
     "dividend yield": "Dividend Yield",
-    "elss": "ELSS",
-    "elss funds": "ELSS",
-    "equity linked savings scheme": "ELSS",
-    "tax saver": "ELSS",
 }
 
 # Mandate shape by category, used by the portfolio block to test cap-mix fit.
@@ -97,7 +92,6 @@ MANDATE = {
     "Value / Contra":      {"note": "Minimum 65% equity following a value or contrarian process.",
                             "bands": {}},
     "Dividend Yield":      {"note": "Minimum 65% in dividend yielding stocks.", "bands": {}},
-    "ELSS":                {"note": "Minimum 80% equity, three year lock in.", "bands": {}},
 }
 
 # Categories that are a SEBI label rather than a peer group. Everything in the
@@ -126,7 +120,6 @@ BENCHMARKS = {
     "Multicap":       ("Nifty 500 TRI", "benchmark"),
     "Focused":        ("Nifty 500 TRI", "benchmark"),
     "Value / Contra": ("Nifty 500 TRI", "benchmark"),
-    "ELSS":           ("Nifty 500 TRI", "benchmark"),
     "Large & Midcap": ("Nifty 500 TRI", "benchmark"),
     "Dividend Yield": ("Nifty 500 TRI", "benchmark"),
     "Largecap":       ("Nifty 50 TRI", "index"),
@@ -141,6 +134,34 @@ def benchmark_for(category):
     """(name, kind) for a category. kind is 'benchmark' where the series is the
     category's own, 'index' where it is the closest available stand-in."""
     return BENCHMARKS.get(category, DEFAULT_BENCHMARK)
+
+
+# The growth chart plots a real NAV series, and the feed publishes none for an
+# index. So the market line is drawn from an actual index tracking scheme, quoted
+# by its AMFI scheme code and read from the same NAV source as the funds. This is
+# a tracking vehicle rather than the index itself, so it carries the tracking
+# error and the expense of the scheme it names, which is why it is labelled as an
+# index fund on the chart and never as the index.
+#
+# Mid and small cap get their own index here rather than the blended
+# BSE MidSmallCap series the summary table uses, because a tracking scheme exists
+# for each and a mid cap fund read against a mid-and-small blend is being marked
+# against exposure it does not hold.
+INDEX_PROXIES = {
+    "Flexicap":       {"code": 152106, "label": "Nifty 500 Index Fund"},
+    "Multicap":       {"code": 152106, "label": "Nifty 500 Index Fund"},
+    "Focused":        {"code": 152106, "label": "Nifty 500 Index Fund"},
+    "Value / Contra": {"code": 152106, "label": "Nifty 500 Index Fund"},
+    "Large & Midcap": {"code": 152106, "label": "Nifty 500 Index Fund"},
+    "Dividend Yield": {"code": 152106, "label": "Nifty 500 Index Fund"},
+    "Largecap":       {"code": 118741, "label": "Nifty 50 Index Fund"},
+    "Midcap":         {"code": 148726, "label": "Nifty Midcap 150 Index Fund"},
+    "Smallcap":       {"code": 148519, "label": "Nifty Smallcap 250 Index Fund"},
+}
+
+
+def index_proxy(category):
+    return INDEX_PROXIES.get(category, INDEX_PROXIES["Flexicap"])
 
 
 # Fund houses held out of the scored universe. This is a coverage decision made
@@ -185,7 +206,6 @@ EFFECTIVE_N_BAND = {
     "Focused": (12, 25),
     "Value / Contra": (20, 50),
     "Dividend Yield": (20, 45),
-    "ELSS": (20, 50),
 }
 
 # ---------------------------------------------------------------------------
@@ -407,8 +427,8 @@ AUM_CURVES = {
     },
 }
 
-# Large cap, flexi, multicap, large & mid, value, ELSS all use the scale curve.
-for _c in ("Largecap", "Flexicap", "Multicap", "Large & Midcap", "Value / Contra", "ELSS"):
+# Large cap, flexi, multicap, large & mid and value all use the scale curve.
+for _c in ("Largecap", "Flexicap", "Multicap", "Large & Midcap", "Value / Contra"):
     AUM_CURVES[_c] = AUM_CURVES["_default"]
 
 

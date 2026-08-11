@@ -110,9 +110,9 @@ function setView(v) {
 
 /* ------------------------------------------- 1. how we look at funds */
 
-/* One page, driven by clicking. The six factor diamond from the deck, then the
-   three tier screen. Everything opens in a modal over the page rather than
-   expanding underneath it, so the reader never loses their place in the diagram,
+/* Three bands: the funnel from the feed to the shortlist, the six factors, and
+   the weighting behind the composite. Each factor opens in a modal over the page
+   rather than expanding underneath it, so the reader never loses their place,
    and the backdrop or Escape closes it.
  *
  * Figures come from the live universe each request rather than being written
@@ -127,102 +127,103 @@ async function renderApproach(host) {
   const basic = fw.selectionNodes.filter((n) => n.group === 'basic');
   const drivers = fw.selectionNodes.filter((n) => n.group === 'driver');
 
+  const m = state.meta;
+  const analyst = isAnalyst();
+
+  /* The page answers three questions in order, because that is the order they
+     get asked in a meeting: what did you look at, what did you look for, and
+     how did you weigh it. The old diamond answered only the middle one and
+     spent most of the page doing it. */
+  const steps = [
+    { n: m.universeCount, label: 'schemes in the feed',
+      note: 'Every equity scheme the data provider publishes, direct plans.' },
+    { n: m.inScope, label: 'in scope',
+      note: `Actively managed equity only. Index funds, ETFs, fund of funds, `
+            + `sectoral and thematic mandates are out, as are ${
+              fw.excludedCount || 15} fund houses held back on coverage.` },
+    { n: m.scored, label: 'carry a score',
+      note: `A composite is published only where at least ${m.minEvidence}% of the `
+            + `model could be measured. The other ${m.notRated} keep their data `
+            + `and are reported as not rated.` },
+    { n: (m.bands || {}).A || 0, label: 'reach the top band',
+      note: 'Band A: ranks well across most blocks, not on one number alone. '
+            + 'This is a shortlist to discuss, not a buy list.' },
+  ];
+
   host.innerHTML = `
     <section>
       <div class="section-head">
-        <h2>Fund selection process: mutual funds</h2>
-        <p class="lede">Six factors. Three a fund has to clear, three that explain
-        whether the record repeats. Click any of them.</p>
+        <h2>How we look at funds</h2>
+        <p class="lede">What we looked at, what we looked for, and how it is
+        weighed. Every figure below is read from the current build.</p>
       </div>
 
-      <div class="diamond">
-        <div class="diamond-side">
-          <h3>${esc(fw.selectionGroups.basic.label)}</h3>
-          <span class="grp-range">(${esc(fw.selectionGroups.basic.range)})</span>
-          <p class="muted">${esc(fw.selectionGroups.basic.note)}</p>
-          <div class="grp-list">${basic.map(nodeCard).join('')}</div>
-        </div>
-
-        <div class="diamond-mid" id="diamond-mid"></div>
-
-        <div class="diamond-side right">
-          <h3>${esc(fw.selectionGroups.driver.label)}</h3>
-          <span class="grp-range">(${esc(fw.selectionGroups.driver.range)})</span>
-          <p class="muted">${esc(fw.selectionGroups.driver.note)}</p>
-          <div class="grp-list">${drivers.map(nodeCard).join('')}</div>
-        </div>
+      <h3 class="band-title">From the feed to a shortlist</h3>
+      <div class="funnel">
+        ${steps.map((s, i) => `
+          <div class="funnel-step${i === steps.length - 1 ? ' last' : ''}">
+            <span class="funnel-n">${s.n}</span>
+            <span class="funnel-label">${esc(s.label)}</span>
+            <span class="funnel-note">${esc(s.note)}</span>
+          </div>`).join('<span class="funnel-arrow" aria-hidden="true">&rsaquo;</span>')}
       </div>
 
+      <h3 class="band-title">What we look for</h3>
+      <p class="band-sub">Six factors. ${esc(fw.selectionGroups.basic.note)}
+      ${esc(fw.selectionGroups.driver.note)} Click any factor for the detail
+      behind it.</p>
+      <div class="factorgrid">
+        ${[...basic, ...drivers].map((n) => factorCard(n)).join('')}
+      </div>
+
+      <h3 class="band-title">How it is weighed</h3>
+      <p class="band-sub">The composite is seven blocks, each a weighted set of
+      metrics. Every metric is a percentile inside the fund's own category, so a
+      fund is only ever compared with its true peers. Where a metric is missing
+      the block reweights over what is there rather than assuming a middle value.</p>
+      <div class="weightstrip">
+        ${fw.blocks.map((b) => `
+          <div class="wblock" style="flex: ${b.weight}" data-block="${esc(b.code)}"
+               title="${esc(b.name)}: ${b.weight}% of the composite">
+            <span class="wbar"></span>
+            <span class="wname">${esc(b.name)}</span>
+            <span class="wpct">${b.weight}%</span>
+          </div>`).join('')}
+      </div>
+      ${analyst ? `<div class="bandcuts">
+        ${fw.bands.map((b) => `<span class="bandcut">${bandPill(b.code)}
+          <b>${b.min < 0 ? 'below 42' : b.min + ' and up'}</b>
+          <span class="muted sm">${esc(b.meaning)}</span></span>`).join('')}
+      </div>` : ''}
+
+      <div class="adjustments">
+        ${fw.categoryAdjustments.map((a) => `
+          <div class="adj"><strong>${esc(a.name)}</strong>
+          <span>${esc(a.text)}</span></div>`).join('')}
+      </div>
     </section>`;
 
   host.querySelectorAll('[data-node]').forEach((el) =>
     el.onclick = () => openNodeModal(el.dataset.node));
-
-  drawDiamond();
   wireGlossary(host);
 }
 
-function nodeCard(n) {
+/* A factor card leads with the live figure rather than the factor's name, because
+   the number is what makes the factor concrete: "AUM" is a topic, "23 funds sit
+   where size starts to work against the mandate" is a finding. */
+function factorCard(n) {
+  const s = (processStats || {})[n.stat] || {};
   return `
-    <button class="nodeline" data-node="${esc(n.code)}">
-      <span class="nodeline-n">${n.n}</span>
-      <span class="nodeline-name">${esc(n.name)}</span>
-      <span class="nodeline-go" aria-hidden="true">&rsaquo;</span>
+    <button class="factor" data-node="${esc(n.code)}">
+      <span class="factor-head">
+        <span class="factor-n">${n.n}</span>
+        <span class="factor-name">${esc(n.name)}</span>
+        <span class="factor-go" aria-hidden="true">&rsaquo;</span>
+      </span>
+      <span class="factor-stat">${esc(s.headline || '—')}</span>
+      <span class="factor-cap">${esc(s.caption || '')}</span>
+      <span class="factor-means">${esc((n.means || '').split('. ')[0])}.</span>
     </button>`;
-}
-
-/* The diamond. Two chevron arms of three nodes meeting at a centre mark, drawn
-   as SVG so the arms scale with the panel. Position carries sequence only: this
-   is a process diagram, not a chart. */
-function drawDiamond() {
-  const fw = state.fw;
-  const host = $('#diamond-mid');
-  const w = 300, h = 320;
-  const ns = 'http://www.w3.org/2000/svg';
-  const mk = (t, a, txt) => { const e = document.createElementNS(ns, t);
-    Object.entries(a).forEach(([k, v]) => e.setAttribute(k, v));
-    if (txt != null) e.textContent = txt; return e; };
-  const svg = mk('svg', { viewBox: `0 0 ${w} ${h}`, class: 'chart diamond-svg' });
-
-  const cx = w / 2, cy = h / 2;
-  const pos = {
-    1: [cx - 74, cy - 96], 2: [cx - 116, cy], 3: [cx - 74, cy + 96],
-    4: [cx + 74, cy - 96], 5: [cx + 116, cy], 6: [cx + 74, cy + 96],
-  };
-
-  [[1, 2, 3], [4, 5, 6]].forEach((arm) => {
-    const d = arm.map((n, i) => `${i ? 'L' : 'M'}${pos[n][0]},${pos[n][1]}`).join(' ');
-    svg.appendChild(mk('path', { d, fill: 'none', stroke: 'var(--grid)',
-                                 'stroke-width': 16, 'stroke-linecap': 'round',
-                                 'stroke-linejoin': 'round' }));
-  });
-
-  svg.appendChild(mk('rect', { x: cx - 30, y: cy - 15, width: 60, height: 30,
-                               fill: 'var(--zebra)', stroke: 'var(--border-strong)' }));
-  svg.appendChild(mk('text', { x: cx, y: cy + 4, 'text-anchor': 'middle',
-                               class: 'diamond-centre' }, 'FUND'));
-
-  fw.selectionNodes.forEach((n) => {
-    const [x, y] = pos[n.n];
-    const g = mk('g', { class: 'dnode', tabindex: 0, role: 'button',
-                        'aria-label': n.name });
-    g.appendChild(mk('circle', {
-      cx: x, cy: y, r: 24,
-      fill: n.group === 'basic' ? 'var(--seq-450)' : 'var(--serious)',
-      stroke: 'var(--surface-2)', 'stroke-width': 2,
-    }));
-    g.appendChild(mk('text', { x, y: y + 6, 'text-anchor': 'middle',
-                               class: 'dnode-n' }, n.n));
-    Chart.hoverable(g, `<strong>${esc(n.n + '. ' + n.name)}</strong>
-      <div class="tt-note">Click to open</div>`);
-    g.onclick = () => openNodeModal(n.code);
-    g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault(); openNodeModal(n.code); } };
-    svg.appendChild(g);
-  });
-
-  host.innerHTML = '';
-  host.appendChild(svg);
 }
 
 /* ------------------------------------------------------------------ modal */
@@ -415,6 +416,24 @@ function drawCategoryPanel(category) {
             <td class="mgr">${esc(f.fundManager || '—')}</td>
           </tr>`).join('') || '<tr><td colspan="10" class="muted">No scored funds in this category.</td></tr>'}
         </tbody>
+        ${c.benchmark ? `<tfoot>
+          <tr class="bmrow">
+            <td class="fundcell">
+              <span class="bmname">${esc(c.benchmark.name)}</span>
+              <span class="muted sm">${c.benchmark.kind === 'index'
+                ? 'closest available index' : 'category benchmark'}</span>
+            </td>
+            <td class="r mono">${num(c.benchmark.return3M, 1)}</td>
+            <td class="r mono">${num(c.benchmark.return6M, 1)}</td>
+            <td class="r mono">${num(c.benchmark.return1Y, 1)}</td>
+            <td class="r mono">${num(c.benchmark.return3Y, 1)}</td>
+            <td class="r mono">${num(c.benchmark.return5Y, 1)}</td>
+            <td class="r mono roll">—</td>
+            <td class="r mono roll">—</td>
+            <td class="r mono">—</td>
+            <td class="mgr">—</td>
+          </tr>
+        </tfoot>` : ''}
       </table>
     </div>
     <p class="muted sm">Returns are point to point and annualised beyond one year.
@@ -689,27 +708,29 @@ async function renderFundPage(host) {
     </div>
 
     <div class="snapshot">
-      ${card('done', 'How it has done',
-             `against ${esc(bm.name || 'its benchmark')}${
-               bm.kind === 'index' ? ' (index)' : ''}`,
-             '<div id="c-returns"></div>' +
-             `<p class="cardnote" id="c-returns-note"></p>`)}
+      <section class="snapcard chartcard">
+        <span class="snapcard-head">
+          <span class="snapcard-title">Growth of 100 rupees</span>
+          <span class="snapcard-sub" id="growth-sub">daily NAV, rebased to zero
+            at the start of the window</span>
+        </span>
+        <div class="periodbar" id="periodbar" role="group"
+             aria-label="Chart period"></div>
+        <div id="c-growth"></div>
+        <p class="cardnote muted sm" id="growth-note"></p>
+      </section>
 
-      ${card('rolling', 'What a holding period gave',
-             'median of every window of that length',
-             '<div id="c-rolling"></div>')}
-
-      ${card('risk', 'How it behaves in a fall', 'capture against the benchmark at 100',
-             '<div id="c-capture"></div>' +
-             `<div class="cardfoot"><span>${term('Maximum drawdown')}</span>
-                <b>${num(f.maxDrawdown3Y, 1)}%</b></div>`)}
-
-      ${card('holds', 'What it holds', `${f.holdingCount || 0} names`,
-             '<div id="c-caps"></div>' +
-             `<div class="cardfoot">
-                <span>${term('Top 10 weight')}</span><b>${num(f.top10, 0)}%</b>
-                <span>${term('Effective number of stocks')}</span>
-                  <b>${num(f.effectiveStocks, 0)}</b></div>`)}
+      ${card('size', 'Size and cost', esc(f.vintageBasis || ''),
+             `<div class="bigstat label-first">
+                <span class="k">${term('AUM')}</span>
+                <span class="v">${cr(f.aumCr)}</span>
+              </div>
+              <div class="cardfoot">
+                <span>${term('Net flow over 1Y')}</span>
+                  <b>${f.netFlow1YPct == null ? '—'
+                       : (f.netFlow1YPct > 0 ? '+' : '') + num(f.netFlow1YPct, 0) + '%'}</b>
+                <span>${term('Expense ratio')}</span>
+                  <b>${f.ter == null ? '—' : num(f.ter, 2) + '%'}</b></div>`)}
 
       ${card('who', 'Who runs it', mgrs.length === 1 ? 'one manager'
               : `${mgrs.length} managers`,
@@ -724,17 +745,27 @@ async function renderFundPage(host) {
                   <b>${num(f.managerCycles, 0)}</b>
                 ${mgrs.length > 1 ? `<span>and ${mgrs.length - 1} more</span>` : ''}</div>`)}
 
-      ${card('size', 'Size and cost', esc(f.vintageBasis || ''),
-             `<div class="bigstat label-first">
-                <span class="k">${term('AUM')}</span>
-                <span class="v">${cr(f.aumCr)}</span>
-              </div>
-              <div class="cardfoot">
-                <span>${term('Net flow over 1Y')}</span>
-                  <b>${f.netFlow1YPct == null ? '—'
-                       : (f.netFlow1YPct > 0 ? '+' : '') + num(f.netFlow1YPct, 0) + '%'}</b>
-                <span>${term('Expense ratio')}</span>
-                  <b>${f.ter == null ? '—' : num(f.ter, 2) + '%'}</b></div>`)}
+      ${card('risk', 'How it behaves in a fall', 'capture against the benchmark at 100',
+             '<div id="c-capture"></div>' +
+             `<div class="cardfoot"><span>${term('Maximum drawdown')}</span>
+                <b>${num(f.maxDrawdown3Y, 1)}%</b></div>`)}
+
+      ${card('done', 'How it has done',
+             `against ${esc(bm.name || 'its benchmark')}${
+               bm.kind === 'index' ? ' (index)' : ''}`,
+             '<div id="c-returns"></div>' +
+             `<p class="cardnote" id="c-returns-note"></p>`)}
+
+      ${card('rolling', 'What a holding period gave',
+             'median of every window of that length',
+             '<div id="c-rolling"></div>')}
+
+      ${card('holds', 'What it holds', `${f.holdingCount || 0} names`,
+             '<div id="c-caps"></div>' +
+             `<div class="cardfoot">
+                <span>${term('Top 10 weight')}</span><b>${num(f.top10, 0)}%</b>
+                <span>${term('Effective number of stocks')}</span>
+                  <b>${num(f.effectiveStocks, 0)}</b></div>`)}
 
       ${analyst ? card('score', 'The score', 'seven blocks, weighted',
              '<div id="c-blocks"></div>') : ''}
@@ -782,6 +813,8 @@ async function renderFundPage(host) {
 
   if (analyst) Chart.blockBar($('#c-blocks'), f.blocks);
 
+  drawGrowth(f.key, state.growthPeriod || '1y');
+
   // --- wiring ------------------------------------------------------------
   $('#fund-back').onclick = () => { state.fund = null; setView(back); };
   host.querySelectorAll('[data-card]').forEach((el) =>
@@ -790,6 +823,60 @@ async function renderFundPage(host) {
       openCardModal(el.dataset.card);
     });
   wireGlossary(host);
+}
+
+/* The growth chart, its period buttons and the note under it. Kept out of the
+   card modal machinery because this card is read in place rather than opened:
+   the period buttons and the crosshair are the detail view. */
+
+const PERIOD_LABEL = { '1m': '1M', '3m': '3M', '6m': '6M', ytd: 'YTD',
+                       '1y': '1Y', '3y': '3Y', '5y': '5Y', all: 'All' };
+
+async function drawGrowth(key, period) {
+  const host = $('#c-growth');
+  if (!host) return;
+  host.innerHTML = '<div class="loading sm">Reading NAV history…</div>';
+  let g;
+  try {
+    g = await get(`/nav/${encodeURIComponent(key)}?period=${encodeURIComponent(period)}`);
+  } catch (e) {
+    host.innerHTML = `<div class="empty">Could not load NAV history.</div>`;
+    return;
+  }
+  if (state.fund !== key) return;          // the reader moved on while it loaded
+  state.growthPeriod = g.period || period;
+
+  const bar = $('#periodbar');
+  if (bar) {
+    bar.innerHTML = (g.periods || ['1y']).map((p) =>
+      `<button class="pbtn${p === state.growthPeriod ? ' on' : ''}" data-period="${p}"
+        aria-pressed="${p === state.growthPeriod}">${PERIOD_LABEL[p] || p}</button>`).join('');
+    bar.querySelectorAll('.pbtn').forEach((b) =>
+      b.onclick = () => drawGrowth(key, b.dataset.period));
+  }
+
+  if (!g.series || !g.series.length) {
+    host.innerHTML = `<div class="empty">${esc(g.unavailable || 'No NAV history')}</div>`;
+    return;
+  }
+  Chart.growthLines(host, g.series);
+
+  const sub = $('#growth-sub');
+  if (sub) sub.textContent = `${fmtDay(g.start)} to ${fmtDay(g.end)}, `
+    + 'daily NAV rebased to zero';
+  const note = $('#growth-note');
+  if (note) {
+    note.textContent = (g.notes || []).join(' ')
+      || 'The index line is a tracking scheme, so it carries that scheme’s cost '
+         + 'and tracking error rather than being the index itself.';
+  }
+}
+
+function fmtDay(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  return `${d.getDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
+    'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()]} ${d.getFullYear()}`;
 }
 
 function card(code, title, sub, body) {

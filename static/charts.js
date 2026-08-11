@@ -296,6 +296,173 @@ const Chart = (() => {
         <span><i class="b"></i>${bLabel}</span></div>`);
   }
 
+  /* --------------------------------------------------------- growth lines */
+  /* Rebased NAV growth: the fund, its index tracker and the category average on
+     one zero line. Three series is inside the categorical cap, so identity is
+     carried by fixed hues and a legend.
+
+     A shared crosshair reads all three at the same date, because the question a
+     reader brings to this chart is "where did they diverge", and that is only
+     answerable if the three readings are from the same day. */
+  const GROWTH_INK = { fund: 'var(--series-2)', index: 'var(--series-1)',
+                       category: 'var(--seq-300)' };
+
+  function growthLines(host, series, opts = {}) {
+    const { height = 260, asOf = null } = opts;
+    host.innerHTML = '';
+    const live = (series || []).filter((s) => s.days && s.days.length > 1);
+    if (!live.length) { host.innerHTML = '<div class="empty">No NAV history</div>'; return; }
+
+    const w = Math.max(320, host.clientWidth || 640);
+    const m = { t: 12, r: 14, b: 26, l: 46 };
+    const iw = w - m.l - m.r, ih = height - m.t - m.b;
+
+    // One date axis for every series: they share a start, so index by position
+    // against the longest and read each series on its own dates.
+    const all = live.flatMap((s) => s.values);
+    let lo = Math.min(0, ...all), hi = Math.max(0, ...all);
+    const padv = (hi - lo) * 0.08 || 1;
+    lo -= padv; hi += padv;
+    const span = (hi - lo) || 1;
+
+    const t0 = Date.parse(live[0].days[0]);
+    const t1 = Date.parse(live[0].days[live[0].days.length - 1]);
+    const tspan = (t1 - t0) || 1;
+    const sx = (iso) => m.l + ((Date.parse(iso) - t0) / tspan) * iw;
+    const sy = (v) => m.t + ih - ((v - lo) / span) * ih;
+
+    const svg = el('svg', { class: 'chart growth', viewBox: `0 0 ${w} ${height}`,
+                            height, preserveAspectRatio: 'none' });
+
+    // Horizontal grid, with the zero line drawn as the baseline it is.
+    const ticks = niceTicks(lo, hi, 5);
+    ticks.forEach((v) => {
+      const y = sy(v);
+      svg.appendChild(el('line', { x1: m.l, x2: m.l + iw, y1: y, y2: y,
+                                   class: v === 0 ? 'baseline' : 'gridline' }));
+      svg.appendChild(el('text', { x: m.l - 7, y: y + 3.5, class: 'tick-label',
+                                   'text-anchor': 'end' },
+                         (v > 0 ? '+' : '') + fmt(v, 0) + '%'));
+    });
+
+    // Date ticks along the foot, spaced by time rather than by position in the
+    // array. The series is daily at the recent end and weekly further back, so
+    // stepping through it by index bunched every label into the last third.
+    const TICKS = 5;
+    for (let i = 0; i < TICKS; i++) {
+      const frac = i / (TICKS - 1);
+      svg.appendChild(el('text', {
+        x: m.l + frac * iw, y: height - 8, class: 'tick-label',
+        'text-anchor': i === 0 ? 'start' : i === TICKS - 1 ? 'end' : 'middle',
+      }, monthTick(new Date(t0 + frac * tspan).toISOString().slice(0, 10))));
+    }
+
+    live.forEach((s) => {
+      const d = s.days.map((iso, i) => `${i ? 'L' : 'M'}${sx(iso).toFixed(1)},${
+        sy(s.values[i]).toFixed(1)}`).join('');
+      // The index and the category average sit close in hue, and two similar
+      // greys at the same weight are one line to most readers. The average is
+      // dashed to separate them, which also reads correctly: it is a computed
+      // line rather than something anyone can actually buy.
+      svg.appendChild(el('path', {
+        d, fill: 'none', stroke: GROWTH_INK[s.code] || 'var(--series-1)',
+        'stroke-width': s.code === 'fund' ? 2 : 1.5,
+        'stroke-dasharray': s.code === 'category' ? '5 3' : null,
+        'stroke-linejoin': 'round', 'stroke-linecap': 'round',
+        'vector-effect': 'non-scaling-stroke',
+      }));
+    });
+
+    // Crosshair layer: one transparent rect catches the pointer, a rule and a
+    // dot per series follow the nearest date.
+    const rule = el('line', { y1: m.t, y2: m.t + ih, class: 'crosshair',
+                              opacity: 0 });
+    svg.appendChild(rule);
+    const dots = live.map((s) => {
+      const c = el('circle', { r: 3.5, fill: GROWTH_INK[s.code] || 'var(--series-1)',
+                               stroke: 'var(--surface-1)', 'stroke-width': 1.5,
+                               opacity: 0 });
+      svg.appendChild(c);
+      return c;
+    });
+    const hit = el('rect', { x: m.l, y: m.t, width: iw, height: ih,
+                             fill: 'transparent' });
+    hit.style.cursor = 'crosshair';
+    hit.addEventListener('mousemove', (e) => {
+      const box = svg.getBoundingClientRect();
+      const px = ((e.clientX - box.left) / box.width) * w;
+      const t = t0 + ((px - m.l) / iw) * tspan;
+      const rows = [];
+      let shownX = null;
+      live.forEach((s, i) => {
+        const j = nearest(s.days, t);
+        if (j < 0) { dots[i].setAttribute('opacity', 0); return; }
+        const x = sx(s.days[j]), y = sy(s.values[j]);
+        if (shownX === null) shownX = x;
+        dots[i].setAttribute('cx', x);
+        dots[i].setAttribute('cy', y);
+        dots[i].setAttribute('opacity', 1);
+        rows.push(`<div class="tt-row"><span><i class="swatch" style="background:${
+          GROWTH_INK[s.code]}"></i>${s.label}</span><span>${
+          (s.values[j] >= 0 ? '+' : '') + fmt(s.values[j], 1)}%</span></div>`);
+      });
+      if (shownX === null) return;
+      rule.setAttribute('x1', shownX); rule.setAttribute('x2', shownX);
+      rule.setAttribute('opacity', 1);
+      const j0 = nearest(live[0].days, t);
+      showTip(e, `<strong>${longDate(live[0].days[j0])}</strong>${rows.join('')}`);
+    });
+    hit.addEventListener('mouseleave', () => {
+      rule.setAttribute('opacity', 0);
+      dots.forEach((d) => d.setAttribute('opacity', 0));
+      hideTip();
+    });
+    svg.appendChild(hit);
+    host.appendChild(svg);
+
+    host.insertAdjacentHTML('beforeend',
+      `<div class="growthkey">${live.map((s) => `<span><i class="${
+        s.code === 'category' ? 'dash' : ''}" style="background:${
+        GROWTH_INK[s.code]}"></i>${s.label}<b>${
+        (s.values[s.values.length - 1] >= 0 ? '+' : '')
+        + fmt(s.values[s.values.length - 1], 1)}%</b></span>`).join('')}</div>`);
+  }
+
+  function nearest(days, t) {
+    if (!days.length) return -1;
+    let best = 0, bd = Infinity;
+    for (let i = 0; i < days.length; i++) {
+      const d = Math.abs(Date.parse(days[i]) - t);
+      if (d < bd) { bd = d; best = i; }
+    }
+    return best;
+  }
+
+  function niceTicks(lo, hi, count) {
+    const raw = (hi - lo) / count;
+    const mag = Math.pow(10, Math.floor(Math.log10(Math.abs(raw) || 1)));
+    const n = raw / mag;
+    const step = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag;
+    const out = [];
+    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+      out.push(Math.abs(v) < step / 1e6 ? 0 : v);
+    }
+    return out;
+  }
+
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  function monthTick(iso) {
+    const d = new Date(iso + 'T00:00:00');
+    return `${MON[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
+  }
+
+  function longDate(iso) {
+    const d = new Date(iso + 'T00:00:00');
+    return `${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
   /* ------------------------------------------------------------- scatter */
   /* Two colours only (population + the highlighted fund), so the all-pairs
      series cap is never in play. */
@@ -551,6 +718,7 @@ const Chart = (() => {
   }
   function seqInk(t) { return t > 0.6 ? '#ffffff' : 'var(--text-primary)'; }
 
-  return { bars, barsPaired, barsPairedV, blockBar, scatter, histogram, rangeStrip, funnel,
+  return { bars, barsPaired, barsPairedV, blockBar, growthLines,
+           scatter, histogram, rangeStrip, funnel,
            seqColor, seqInk, hoverable, showTip, hideTip, fmt };
 })();
