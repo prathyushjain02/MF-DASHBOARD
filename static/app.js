@@ -128,10 +128,6 @@ async function renderApproach(host) {
     <section>
       <div class="section-head">
         <h2>Fund selection process: mutual funds</h2>
-        <p class="lede">Six factors, read in order. The first three are what a
-        fund has to clear before the discussion starts; the last three are what
-        explain whether the record repeats. Click any step for the detail and
-        the live figures behind it.</p>
       </div>
       <div class="stairs" id="stairs"></div>
     </section>`;
