@@ -135,7 +135,32 @@ def thin(series, today):
 # Indices
 # ---------------------------------------------------------------------------
 
-def fetch_index_yahoo(tickers, refresh=False):
+def _yahoo_session():
+    """A requests session Yahoo will actually answer.
+
+    Called cold, Yahoo replies 429 to every request from a fresh client. Asking
+    for a cookie first, the way a browser does on the way to a quote page, is
+    what makes the difference, so the session is primed once and handed to
+    yfinance for every ticker. Without this the whole index fetch fails and the
+    build quietly falls back.
+    """
+    s = requests.Session()
+    s.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                      "AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/126.0.0.0 Safari/537.36",
+        "Accept": "application/json,text/plain,*/*",
+        "Accept-Language": "en-US,en;q=0.9",
+    })
+    for url in ("https://fc.yahoo.com/", "https://finance.yahoo.com/"):
+        try:
+            s.get(url, timeout=25)
+        except Exception:
+            pass
+    return s
+
+
+def fetch_index_yahoo(tickers, refresh=False, session=None):
     """First ticker that resolves to a usable daily close series.
 
     Returns (series, ticker) or (None, None). yfinance is imported lazily so the
@@ -159,12 +184,16 @@ def fetch_index_yahoo(tickers, refresh=False):
                     return s, t
             except (ValueError, OSError, TypeError):
                 pass
-        try:
-            hist = yf.Ticker(t).history(period="max", interval="1d",
-                                        auto_adjust=False)
-        except Exception as e:
-            _log(f"  {t}: {str(e)[:70]}")
-            continue
+        hist = None
+        for period in ("max", "10y"):     # a few symbols reject "max"
+            try:
+                tk = yf.Ticker(t, session=session) if session else yf.Ticker(t)
+                hist = tk.history(period=period, interval="1d", auto_adjust=False)
+            except Exception as e:
+                _log(f"  {t} [{period}]: {str(e)[:60]}")
+                continue
+            if hist is not None and not hist.empty and len(hist) > 30:
+                break
         if hist is None or hist.empty or "Close" not in hist:
             _log(f"  {t}: no data")
             continue
@@ -344,8 +373,10 @@ def main():
 
     _log("indices:")
     indices = {}
+    yf_session = _yahoo_session()
     for name, spec in index_specs.items():
-        series, ticker = fetch_index_yahoo(spec["tickers"], args.refresh)
+        series, ticker = fetch_index_yahoo(spec["tickers"], args.refresh,
+                                           yf_session)
         if series:
             s = thin(series, today)
             indices[name] = {"label": name, "source": "index", "ticker": ticker,

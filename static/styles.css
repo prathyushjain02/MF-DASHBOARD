@@ -497,75 +497,50 @@ th.sortable.on .arrow { opacity: 1; }
 .tile .tile-lead .muted { font-size: 10.5px; }
 
 /* ==================================================== selection process ==== */
-.diamond { display: grid; grid-template-columns: 1fr auto 1fr; gap: 26px;
-  align-items: start; margin: 14px 0 0; }
-.diamond-side h3 { font-size: 15px; font-weight: 500; display: inline;
-  color: var(--red); }
-.diamond-side .grp-range { font-size: 12px; color: var(--text-muted); margin-left: 5px; }
-.diamond-side > p { margin: 4px 0 12px; font-size: 12.5px; }
-.diamond-side.right { text-align: right; }
-.grp-list { display: flex; flex-direction: column; gap: 7px; }
-
-.nodeline { display: flex; gap: 11px; align-items: center; text-align: left;
-  font: inherit; cursor: pointer; padding: 12px 13px; width: 100%;
-  background: var(--surface-2); border: 1px solid var(--border);
-  border-left: 3px solid var(--seq-450); transition: background 0.12s; }
-.nodeline:hover, .nodeline:focus-visible { background: var(--wash);
-  border-left-color: var(--red); outline: none; }
-.diamond-side.right .nodeline { flex-direction: row-reverse; text-align: right;
-  border-left: 1px solid var(--border); border-right: 3px solid var(--serious); }
-.diamond-side.right .nodeline:hover, .diamond-side.right .nodeline:focus-visible {
-  border-right-color: var(--red); }
-.nodeline-n { font-family: var(--mono); font-size: 13px; font-weight: 600;
-  color: var(--red); flex: none; }
-.nodeline-name { font-size: 13.5px; font-family: var(--title); font-weight: 500;
-  color: var(--text-primary); flex: 1; }
-.nodeline-go { color: var(--text-muted); font-size: 15px; flex: none; }
-.diamond-side.right .nodeline-go { transform: rotate(180deg); }
-
-/* ------------------------------------------------------------ the funnel */
-/* Funnel on the left, the four cuts written out on the right, in the layout of
-   the reference art. The art itself is flat and on the house ramp rather than
-   the glossy 3D of the original. */
-.band-title { font-size: 15px; font-weight: 500; margin: 30px 0 6px;
-  padding-bottom: 5px; position: relative; }
-.band-title::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0;
-  height: 1px; background: linear-gradient(to right, var(--red) 0 38px,
-                                           var(--border) 38px); }
-.funnelwrap { display: grid; grid-template-columns: minmax(220px, 300px) 1fr;
-  gap: 30px; align-items: center; margin-top: 14px; }
-.funnel-svg { width: 100%; max-width: 300px; display: block; margin: 0 auto; }
+/* Funnel on the left, one row per factor on the right, level with its own band.
+   The art is flat and on the house ramp rather than the glossy 3D of the
+   reference slide. */
+/* The funnel scales to the height of the rows beside it, so band N sits level
+   with factor N. Sized the other way round the art ran out well above the last
+   row and the pairing stopped reading. */
+.funnelwrap { display: grid; grid-template-columns: minmax(200px, 280px) 1fr;
+  gap: 30px; align-items: stretch; margin-top: 14px; }
+.funnelart { display: flex; align-items: center; justify-content: center;
+  min-height: 0; }
+.funnel-svg { height: 100%; width: auto; max-width: 280px; max-height: 560px;
+  display: block; }
 .funnel-n { font-family: var(--mono); font-size: 15px; font-weight: 600;
   fill: #fff; }
 .funnel-foot { font-family: var(--title); font-size: 11px; font-weight: 600;
   letter-spacing: 0.08em; fill: var(--text-secondary); }
+.fband { cursor: pointer; }
+.fband:focus { outline: none; }
+.fband:hover, .fband:focus { stroke: var(--red); stroke-width: 2.5; }
 
-.stagelist { display: flex; flex-direction: column; gap: 8px; }
-.stage { display: grid; grid-template-columns: 4px auto 1fr; gap: 3px 12px;
-  align-items: baseline; padding: 11px 14px 12px;
-  background: var(--surface-2); border: 1px solid var(--border); }
+.stagelist { display: flex; flex-direction: column; gap: 7px; }
+.stage { display: grid; grid-template-columns: 4px auto 1fr auto auto;
+  gap: 1px 12px; align-items: baseline; text-align: left; font: inherit;
+  width: 100%; cursor: pointer; padding: 10px 14px 11px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  transition: background 0.12s; }
+.stage:hover, .stage:focus-visible { background: var(--wash); outline: none; }
 .stage .stage-chip { grid-row: 1 / 3; align-self: stretch; }
-.stage.last { background: var(--wash); }
-.stage-n { font-family: var(--mono); font-size: 21px; font-weight: 600;
-  color: var(--seq-550); line-height: 1; }
-.stage.last .stage-n { color: var(--red); }
+.stage-n { font-family: var(--mono); font-size: 13px; font-weight: 600;
+  color: var(--red); }
 .stage-label { font-family: var(--title); font-size: 13.5px; font-weight: 500;
   color: var(--text-primary); }
-.stage-note { grid-column: 2 / 4; font-size: 11.5px; color: var(--text-muted);
-  line-height: 1.45; margin-top: 2px; }
+/* The figure sits on the title's line, right of it, so a row is two lines and
+   the six of them stack to about the depth of the funnel. */
+.stage-stat { font-family: var(--mono); font-size: 17px; font-weight: 600;
+  color: var(--seq-550); line-height: 1.1; }
+.stage-go { color: var(--text-muted); font-size: 15px; }
+.stage:hover .stage-go { color: var(--red); }
+.stage-note { grid-column: 3 / 6; font-size: 11.5px; color: var(--text-muted);
+  line-height: 1.4; }
 
 @media (max-width: 860px) {
   .funnelwrap { grid-template-columns: 1fr; gap: 16px; }
 }
-
-.diamond-mid { width: 300px; }
-.diamond-svg { max-width: 300px; }
-.dnode { cursor: pointer; }
-.dnode:focus { outline: none; }
-.dnode:focus circle, .dnode:hover circle { stroke: var(--red); stroke-width: 3; }
-.dnode-n { font-family: var(--title); font-size: 15px; font-weight: 600; fill: #fff; }
-.diamond-centre { font-family: var(--title); font-size: 10px; font-weight: 600;
-  letter-spacing: 0.08em; fill: var(--text-secondary); }
 
 /* --------------------------------------------------------------- modal */
 .modal-backdrop { position: fixed; inset: 0; z-index: 200;
@@ -601,12 +576,6 @@ body.modal-open { overflow: hidden; }
 .np-live .np-v { white-space: normal; word-break: break-word; }
 
 @media (max-width: 980px) {
-  .diamond { grid-template-columns: 1fr; }
-  .diamond-mid { width: 100%; margin: 0 auto; max-width: 300px; }
-  .diamond-side.right { text-align: left; }
-  .diamond-side.right .nodeline { flex-direction: row;
-    border-left: 3px solid var(--serious); border-right: 1px solid var(--border); }
-  .diamond-side.right .nodeline-go { transform: none; }
   .np-grid { grid-template-columns: 1fr; }
   .modal { padding: 18px 16px 20px; }
 }
@@ -663,16 +632,13 @@ body.modal-open { overflow: hidden; }
 .snapshot { display: grid; gap: 10px; grid-template-columns: repeat(12, 1fr);
   align-items: stretch; }
 .snapshot > * { min-width: 0; }
-/* The chart holds two rows, matched by the two identity cards beside it, and the
-   four measure cards run along the foot. A three row chart left dead space
-   inside its own card once the plot was cut down to fit the page. */
-.snapcard.chartcard { grid-column: span 7; grid-row: span 2; cursor: default; }
+/* The chart takes the left half over three rows; the six cards fill the right
+   half in two columns of three, so the two halves end level and nothing is left
+   hanging under a short card. */
+.snapcard.chartcard { grid-column: span 6; grid-row: span 3; cursor: default; }
 .snapcard.chartcard:hover { background: var(--surface-2);
   border-top-color: var(--slate); }
-.snapshot > [data-card="size"], .snapshot > [data-card="who"] { grid-column: span 5; }
-.snapshot > [data-card="risk"], .snapshot > [data-card="done"],
-.snapshot > [data-card="rolling"], .snapshot > [data-card="holds"] {
-  grid-column: span 3; }
+.snapshot > [data-card] { grid-column: span 3; }
 .snapshot > [data-card="score"] { grid-column: span 12; }
 
 /* period buttons over the growth chart */
@@ -803,9 +769,7 @@ body.modal-open { overflow: hidden; }
    across while the chart takes the full width, then everything stacks. */
 @media (max-width: 1100px) {
   .snapcard.chartcard { grid-column: span 12; grid-row: auto; }
-  .snapshot > [data-card="size"], .snapshot > [data-card="who"],
-  .snapshot > [data-card="done"], .snapshot > [data-card="rolling"],
-  .snapshot > [data-card="risk"], .snapshot > [data-card="holds"] { grid-column: span 6; }
+  .snapshot > [data-card] { grid-column: span 6; }
 }
 @media (max-width: 760px) {
   .snapshot { grid-template-columns: 1fr; }

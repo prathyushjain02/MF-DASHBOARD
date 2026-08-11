@@ -155,7 +155,7 @@ def benchmark_for(category):
 # the chart rather than breaking the build.
 INDEX_PROXIES = {
     "Nifty 500": {
-        "tickers": ["^CRSLDX", "NIFTY500.NS", "^NSE500"],
+        "tickers": ["^CRSLDX", "NIFTY500.NS"],
         "fallback": 152106, "fallbackLabel": "Nifty 500 Index Fund",
     },
     "Nifty 50": {
@@ -163,13 +163,11 @@ INDEX_PROXIES = {
         "fallback": 118741, "fallbackLabel": "Nifty 50 Index Fund",
     },
     "Nifty Midcap 150": {
-        "tickers": ["NIFTY_MIDCAP_150.NS", "^NSEMDCP50", "NIFTYMIDCAP150.NS",
-                    "NIFTY_MIDCAP_100.NS"],
+        "tickers": ["NIFTYMIDCAP150.NS", "^NSEMDCP50"],
         "fallback": 148726, "fallbackLabel": "Nifty Midcap 150 Index Fund",
     },
     "Nifty Smallcap 250": {
-        "tickers": ["NIFTYSMLCAP250.NS", "^CNXSC", "NIFTY_SMLCAP_250.NS",
-                    "NIFTYSMALLCAP250.NS"],
+        "tickers": ["NIFTYSMLCAP250.NS", "^CNXSC"],
         "fallback": 148519, "fallbackLabel": "Nifty Smallcap 250 Index Fund",
     },
 }

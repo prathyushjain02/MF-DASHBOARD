@@ -308,7 +308,7 @@ const Chart = (() => {
                        category: 'var(--seq-300)' };
 
   function growthLines(host, series, opts = {}) {
-    const { height = 172, asOf = null } = opts;
+    const { height = 330, asOf = null } = opts;
     host.innerHTML = '';
     const live = (series || []).filter((s) => s.days && s.days.length > 1);
     if (!live.length) { host.innerHTML = '<div class="empty">No NAV history</div>'; return; }

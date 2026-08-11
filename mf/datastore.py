@@ -216,15 +216,18 @@ def growth(fund, period="1y", state=None):
     out.append({"code": "fund", "label": fund["name"], **f_line})
 
     """
-    Two candidates for the market line, and the window decides which:
+    The market line, in order of preference:
 
-      the benchmark    the category's own total return index, monthly, back to
-                       2018. Dividends are inside it as they are inside a NAV, so
-                       it is the honest comparison and it covers any long window.
-      the index fund   a daily tracking scheme. Short windows need daily points,
-                       where the monthly series would draw as two or three.
+      the index      daily closes of the index itself, from Yahoo. Deepest
+                     history and it is the actual index rather than a stand-in,
+                     but it is a price index, so it excludes the dividends a NAV
+                     already contains.
+      the benchmark  the category's total return index from the workbook,
+                     monthly. Dividends are inside it, but it is monthly, so it
+                     only stands up over a window of a year or more.
+      the fund       a daily tracking scheme, the last resort.
 
-    The one that is drawn is labelled, since the two are not the same thing.
+    Whichever is drawn is labelled, since the three are not the same thing.
     """
     span_days = (_date.fromisoformat(last) - _date.fromisoformat(start)).days
     limit = _shift(start, _START_SLACK_DAYS)
@@ -235,13 +238,10 @@ def growth(fund, period="1y", state=None):
     idx = (navs.get("indices") or {}).get(idx_name or "")
 
     picked = None
-    if bm and span_days >= fw.MONTHLY_MIN_DAYS and bm["d"][0] <= limit:
-        picked = {"series": bm, "label": bm["label"], "source": "benchmark",
-                  "dividends": True}
-    elif idx and idx["d"][0] <= limit:
+    if idx and idx["d"][0] <= limit:
         picked = {"series": idx, "label": idx["label"],
                   "source": idx.get("source"), "dividends": idx.get("dividends")}
-    elif bm and bm["d"][0] <= limit:
+    elif bm and span_days >= fw.MONTHLY_MIN_DAYS and bm["d"][0] <= limit:
         picked = {"series": bm, "label": bm["label"], "source": "benchmark",
                   "dividends": True}
 

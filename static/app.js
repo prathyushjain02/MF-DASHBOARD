@@ -124,47 +124,21 @@ async function renderApproach(host) {
   const fw = state.fw;
   if (!processStats) processStats = await get('/process');
 
-  const basic = fw.selectionNodes.filter((n) => n.group === 'basic');
-  const drivers = fw.selectionNodes.filter((n) => n.group === 'driver');
+  const nodes = fw.selectionNodes;
 
   host.innerHTML = `
     <section>
       <div class="section-head">
         <h2>Fund selection process: mutual funds</h2>
-        <p class="lede">How the universe narrows, and the six factors it narrows
-        on. Three a fund has to clear, three that explain whether the record
-        repeats. Click any of them.</p>
+        <p class="lede">Six factors, in order. Three a fund has to clear before
+        the discussion starts, three that explain whether the record repeats.
+        Click any of them for the detail and the live figures behind it.</p>
       </div>
 
       <div class="funnelwrap">
         <div class="funnelart" id="funnelart"></div>
         <div class="stagelist">
-          ${funnelStages().map((s, i) => `
-            <div class="stage${i === 3 ? ' last' : ''}">
-              <span class="stage-chip" style="background:${s.ink}"></span>
-              <span class="stage-n">${s.n}</span>
-              <span class="stage-label">${esc(s.label)}</span>
-              <span class="stage-note">${esc(s.note)}</span>
-            </div>`).join('')}
-        </div>
-      </div>
-
-      <h3 class="band-title">What it narrows on</h3>
-      <div class="diamond">
-        <div class="diamond-side">
-          <h3>${esc(fw.selectionGroups.basic.label)}</h3>
-          <span class="grp-range">(${esc(fw.selectionGroups.basic.range)})</span>
-          <p class="muted">${esc(fw.selectionGroups.basic.note)}</p>
-          <div class="grp-list">${basic.map(nodeCard).join('')}</div>
-        </div>
-
-        <div class="diamond-mid" id="diamond-mid"></div>
-
-        <div class="diamond-side right">
-          <h3>${esc(fw.selectionGroups.driver.label)}</h3>
-          <span class="grp-range">(${esc(fw.selectionGroups.driver.range)})</span>
-          <p class="muted">${esc(fw.selectionGroups.driver.note)}</p>
-          <div class="grp-list">${drivers.map(nodeCard).join('')}</div>
+          ${nodes.map((n) => factorRow(n)).join('')}
         </div>
       </div>
     </section>`;
@@ -172,155 +146,88 @@ async function renderApproach(host) {
   host.querySelectorAll('[data-node]').forEach((el) =>
     el.onclick = () => openNodeModal(el.dataset.node));
 
-  drawDiamond();
   drawFunnel();
   wireGlossary(host);
 }
 
-/* The four cuts between the feed and the shortlist, read from the live build so
-   the page reports this dataset rather than a claim written into the copy. */
-function funnelStages() {
-  const m = state.meta;
-  const fw = state.fw;
-  return [
-    { n: m.universeCount, label: 'In the feed', ink: 'var(--seq-200)',
-      note: 'Every equity scheme the data provider publishes, direct plans.' },
-    { n: m.inScope, label: 'In scope', ink: 'var(--seq-300)',
-      note: `Actively managed equity only. Index funds, ETFs, fund of funds, `
-            + `sectoral and thematic mandates are out, as are ${
-              fw.excludedCount || 15} fund houses held back on coverage.` },
-    { n: m.scored, label: 'Carry a score', ink: 'var(--seq-450)',
-      note: `Scored only where at least ${m.minEvidence}% of the model could be `
-            + `measured. The other ${m.notRated} keep their data and are `
-            + `reported as not rated.` },
-    { n: (m.bands || {}).A || 0, label: 'Reach the top band', ink: 'var(--red)',
-      note: 'Band A: ranks well across most blocks, not on one number alone. '
-            + 'A shortlist to discuss, not a buy list.' },
-  ];
+/* One row per factor, sitting level with its band in the funnel. It leads with
+   the factor's live figure rather than its name, because the number is what
+   makes the factor concrete: "AUM" is a topic, "11 funds sit where size starts
+   to work against the mandate" is a finding. */
+function factorRow(n) {
+  const s = (processStats || {})[n.stat] || {};
+  return `
+    <button class="stage" data-node="${esc(n.code)}">
+      <span class="stage-chip" style="background:${FACTOR_INK[n.n - 1]}"></span>
+      <span class="stage-n">${n.n}</span>
+      <span class="stage-label">${esc(n.name)}</span>
+      <span class="stage-stat">${esc(s.headline || '\u2014')}</span>
+      <span class="stage-go" aria-hidden="true">&rsaquo;</span>
+      <span class="stage-note">${esc(s.caption || '')}</span>
+    </button>`;
 }
 
-/* The funnel. Four bands narrowing to an arrow, band depth proportional to what
-   survives the cut, so the shape carries the attrition rather than decorating
-   it. Flat fills and the house ramp: the reference art was glossy 3D, which is
-   not what this template does. */
+/* Basic requirements run down the slate end of the house ramp, the performance
+   drivers through its red end, which is the same split the two groups carried
+   before and keeps the reading that one set is a gate and the other explains. */
+const FACTOR_INK = ['var(--seq-200)', 'var(--seq-300)', 'var(--seq-450)',
+                    'var(--seq-550)', 'var(--serious)', 'var(--red)'];
+
+/* The funnel: one band per factor, narrowing to the shortlist. Position carries
+   sequence, not magnitude, so the bands are equal depth. Flat fills on the house
+   ramp rather than the glossy three dimensional reference art. */
 function drawFunnel() {
   const host = $('#funnelart');
   if (!host) return;
-  const stages = funnelStages();
+  const nodes = state.fw.selectionNodes;
   const ns = 'http://www.w3.org/2000/svg';
   const mk = (t, a, txt) => { const e = document.createElementNS(ns, t);
     Object.entries(a).forEach(([k, v]) => e.setAttribute(k, v));
     if (txt != null) e.textContent = txt; return e; };
 
-  const w = 300, h = 330, cx = w / 2;
+  const w = 300, h = 400, cx = w / 2;
   const svg = mk('svg', { viewBox: `0 0 ${w} ${h}`, class: 'chart funnel-svg',
                           role: 'img',
-                          'aria-label': 'Funnel from the feed to the shortlist' });
+                          'aria-label': 'The six factors, narrowing to a shortlist' });
 
-  // Half-widths at each boundary, tapering to the neck.
-  const half = [132, 96, 66, 42, 24];
-  const yTop = 26, yBot = 250;
-  const top = stages[0].n || 1;
-  // Every band gets a floor of depth so the last cut stays legible next to the
-  // first, which is twenty times its size.
-  const depth = stages.map((s) => 0.55 + 0.45 * ((s.n || 0) / top));
-  const sum = depth.reduce((a, b) => a + b, 0);
-  let y = yTop;
-  const bounds = [y];
-  depth.forEach((d) => { y += (yBot - yTop) * d / sum; bounds.push(y); });
+  const yTop = 26, yBot = 300, ry = 10;
+  const wTop = 132, wBot = 26;
+  const n = nodes.length;
+  const halfAt = (i) => wTop + (wBot - wTop) * (i / n);
+  const yAt = (i) => yTop + (yBot - yTop) * (i / n);
 
-  const ry = 11;
-  stages.forEach((s, i) => {
-    const y0 = bounds[i], y1 = bounds[i + 1], w0 = half[i], w1 = half[i + 1];
+  nodes.forEach((node, i) => {
+    const y0 = yAt(i), y1 = yAt(i + 1), w0 = halfAt(i), w1 = halfAt(i + 1);
+    const ink = FACTOR_INK[i];
     const band = mk('path', {
       d: `M${cx - w0},${y0} L${cx + w0},${y0} L${cx + w1},${y1} L${cx - w1},${y1} Z`,
-      fill: s.ink, stroke: 'var(--surface-1)', 'stroke-width': 1.5,
+      fill: ink, stroke: 'var(--surface-1)', 'stroke-width': 1.5,
+      class: 'fband', tabindex: 0, role: 'button', 'aria-label': node.name,
     });
-    Chart.hoverable(band, `<strong>${s.label}</strong>
-      <div class="tt-row"><span>Schemes</span><span>${s.n}</span></div>`);
+    Chart.hoverable(band, `<strong>${esc(node.n + '. ' + node.name)}</strong>
+      <div class="tt-note">Click to open</div>`);
+    band.onclick = () => openNodeModal(node.code);
+    band.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault(); openNodeModal(node.code); } };
     svg.appendChild(band);
-    // A cap on each boundary reads as an opening rather than a flat wedge.
     svg.appendChild(mk('ellipse', {
-      cx, cy: y0, rx: w0, ry, fill: s.ink,
+      cx, cy: y0, rx: w0, ry, fill: ink,
       stroke: 'var(--surface-1)', 'stroke-width': 1.5,
     }));
     svg.appendChild(mk('text', { x: cx, y: (y0 + y1) / 2 + ry / 2 + 4,
                                  'text-anchor': 'middle', class: 'funnel-n' },
-                       s.n));
+                       node.n));
   });
 
-  // The neck, then the arrow: what comes out of the bottom.
-  svg.appendChild(mk('rect', { x: cx - 13, y: yBot, width: 26, height: 22,
+  // The neck and the arrow: what comes out of the bottom.
+  svg.appendChild(mk('rect', { x: cx - 13, y: yBot, width: 26, height: 24,
                                fill: 'var(--red)' }));
   svg.appendChild(mk('path', {
-    d: `M${cx - 30},${yBot + 22} L${cx + 30},${yBot + 22} L${cx},${yBot + 58} Z`,
+    d: `M${cx - 30},${yBot + 24} L${cx + 30},${yBot + 24} L${cx},${yBot + 62} Z`,
     fill: 'var(--red)',
   }));
-  svg.appendChild(mk('text', { x: cx, y: h - 4, 'text-anchor': 'middle',
+  svg.appendChild(mk('text', { x: cx, y: h - 6, 'text-anchor': 'middle',
                                class: 'funnel-foot' }, 'Shortlist'));
-  host.innerHTML = '';
-  host.appendChild(svg);
-}
-
-function nodeCard(n) {
-  return `
-    <button class="nodeline" data-node="${esc(n.code)}">
-      <span class="nodeline-n">${n.n}</span>
-      <span class="nodeline-name">${esc(n.name)}</span>
-      <span class="nodeline-go" aria-hidden="true">&rsaquo;</span>
-    </button>`;
-}
-
-/* The diamond. Two chevron arms of three nodes meeting at a centre mark, drawn
-   as SVG so the arms scale with the panel. Position carries sequence only: this
-   is a process diagram, not a chart. */
-function drawDiamond() {
-  const fw = state.fw;
-  const host = $('#diamond-mid');
-  const w = 300, h = 320;
-  const ns = 'http://www.w3.org/2000/svg';
-  const mk = (t, a, txt) => { const e = document.createElementNS(ns, t);
-    Object.entries(a).forEach(([k, v]) => e.setAttribute(k, v));
-    if (txt != null) e.textContent = txt; return e; };
-  const svg = mk('svg', { viewBox: `0 0 ${w} ${h}`, class: 'chart diamond-svg' });
-
-  const cx = w / 2, cy = h / 2;
-  const pos = {
-    1: [cx - 74, cy - 96], 2: [cx - 116, cy], 3: [cx - 74, cy + 96],
-    4: [cx + 74, cy - 96], 5: [cx + 116, cy], 6: [cx + 74, cy + 96],
-  };
-
-  [[1, 2, 3], [4, 5, 6]].forEach((arm) => {
-    const d = arm.map((n, i) => `${i ? 'L' : 'M'}${pos[n][0]},${pos[n][1]}`).join(' ');
-    svg.appendChild(mk('path', { d, fill: 'none', stroke: 'var(--grid)',
-                                 'stroke-width': 16, 'stroke-linecap': 'round',
-                                 'stroke-linejoin': 'round' }));
-  });
-
-  svg.appendChild(mk('rect', { x: cx - 30, y: cy - 15, width: 60, height: 30,
-                               fill: 'var(--zebra)', stroke: 'var(--border-strong)' }));
-  svg.appendChild(mk('text', { x: cx, y: cy + 4, 'text-anchor': 'middle',
-                               class: 'diamond-centre' }, 'FUND'));
-
-  fw.selectionNodes.forEach((n) => {
-    const [x, y] = pos[n.n];
-    const g = mk('g', { class: 'dnode', tabindex: 0, role: 'button',
-                        'aria-label': n.name });
-    g.appendChild(mk('circle', {
-      cx: x, cy: y, r: 24,
-      fill: n.group === 'basic' ? 'var(--seq-450)' : 'var(--serious)',
-      stroke: 'var(--surface-2)', 'stroke-width': 2,
-    }));
-    g.appendChild(mk('text', { x, y: y + 6, 'text-anchor': 'middle',
-                               class: 'dnode-n' }, n.n));
-    Chart.hoverable(g, `<strong>${esc(n.n + '. ' + n.name)}</strong>
-      <div class="tt-note">Click to open</div>`);
-    g.onclick = () => openNodeModal(n.code);
-    g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault(); openNodeModal(n.code); } };
-    svg.appendChild(g);
-  });
-
   host.innerHTML = '';
   host.appendChild(svg);
 }
@@ -819,6 +726,28 @@ async function renderFundPage(host) {
         <p class="cardnote muted sm" id="growth-note"></p>
       </section>
 
+      ${card('risk', 'How it behaves in a fall', 'capture against the benchmark at 100',
+             '<div id="c-capture"></div>' +
+             `<div class="cardfoot"><span>${term('Maximum drawdown')}</span>
+                <b>${num(f.maxDrawdown3Y, 1)}%</b></div>`)}
+
+      ${card('done', 'How it has done',
+             `against ${esc(bm.name || 'its benchmark')}${
+               bm.kind === 'index' ? ' (index)' : ''}`,
+             '<div id="c-returns"></div>' +
+             `<p class="cardnote" id="c-returns-note"></p>`)}
+
+      ${card('rolling', 'What a holding period gave',
+             'median of every window of that length',
+             '<div id="c-rolling"></div>')}
+
+      ${card('holds', 'What it holds', `${f.holdingCount || 0} names`,
+             '<div id="c-caps"></div>' +
+             `<div class="cardfoot">
+                <span>${term('Top 10 weight')}</span><b>${num(f.top10, 0)}%</b>
+                <span>${term('Effective number of stocks')}</span>
+                  <b>${num(f.effectiveStocks, 0)}</b></div>`)}
+
       ${card('size', 'Size and cost', esc(f.vintageBasis || ''),
              `<div class="bigstat label-first">
                 <span class="k">${term('AUM')}</span>
@@ -843,28 +772,6 @@ async function renderFundPage(host) {
                 <span>${term('Market cycles run')}</span>
                   <b>${num(f.managerCycles, 0)}</b>
                 ${mgrs.length > 1 ? `<span>and ${mgrs.length - 1} more</span>` : ''}</div>`)}
-
-      ${card('risk', 'How it behaves in a fall', 'capture against the benchmark at 100',
-             '<div id="c-capture"></div>' +
-             `<div class="cardfoot"><span>${term('Maximum drawdown')}</span>
-                <b>${num(f.maxDrawdown3Y, 1)}%</b></div>`)}
-
-      ${card('done', 'How it has done',
-             `against ${esc(bm.name || 'its benchmark')}${
-               bm.kind === 'index' ? ' (index)' : ''}`,
-             '<div id="c-returns"></div>' +
-             `<p class="cardnote" id="c-returns-note"></p>`)}
-
-      ${card('rolling', 'What a holding period gave',
-             'median of every window of that length',
-             '<div id="c-rolling"></div>')}
-
-      ${card('holds', 'What it holds', `${f.holdingCount || 0} names`,
-             '<div id="c-caps"></div>' +
-             `<div class="cardfoot">
-                <span>${term('Top 10 weight')}</span><b>${num(f.top10, 0)}%</b>
-                <span>${term('Effective number of stocks')}</span>
-                  <b>${num(f.effectiveStocks, 0)}</b></div>`)}
 
       ${analyst ? card('score', 'The score', 'seven blocks, weighted',
              '<div id="c-blocks"></div>') : ''}
