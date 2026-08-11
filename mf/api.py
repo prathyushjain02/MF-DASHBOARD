@@ -48,7 +48,7 @@ def framework():
 
 @bp.get("/funds")
 def funds():
-    """All Funds, with the filters the table needs."""
+    """All Funds, with the filters and sorting the table needs."""
     state = ds.load()
     rows = state["funds"]
 
@@ -58,6 +58,9 @@ def funds():
     band = request.args.get("band")
     if band and band != "All":
         rows = [f for f in rows if f.get("band") == band]
+    amc = request.args.get("amc")
+    if amc and amc != "All":
+        rows = [f for f in rows if f.get("amc") == amc]
     q = (request.args.get("q") or "").strip().lower()
     if q:
         rows = [f for f in rows
@@ -73,13 +76,26 @@ def funds():
                 and _f(f["downsideCapture3Y"]) <= max_dn]
     if request.args.get("hasHoldings") == "1":
         rows = [f for f in rows if f.get("holdingCount")]
+    if request.args.get("rated") == "1":
+        rows = [f for f in rows if f.get("rated")]
 
-    sort = request.args.get("sort") or "composite"
-    reverse = request.args.get("dir", "desc") != "asc"
-    rows = sorted(rows, key=lambda f: (f.get(sort) is None,
-                                       -(_f(f.get(sort)) or 0) if reverse else (_f(f.get(sort)) or 0)))
-    limit = int(request.args.get("limit") or 0)
     total = len(rows)
+
+    # Sorting. Text columns sort alphabetically; everything else numerically.
+    # Missing values always sink to the bottom whichever way the column is
+    # pointing, so an empty cell never wins a "best downside capture" sort.
+    sort = request.args.get("sort") or "medianRolling3Y"
+    asc = request.args.get("dir", "desc") == "asc"
+    text_cols = {"name", "category", "amc", "band", "fundManager"}
+    if sort in text_cols:
+        rows = sorted(rows, key=lambda f: str(f.get(sort) or "").lower(), reverse=not asc)
+    else:
+        def key(f):
+            v = _f(f.get(sort))
+            return (v is None, (v if asc else -v) if v is not None else 0)
+        rows = sorted(rows, key=key)
+
+    limit = int(request.args.get("limit") or 0)
     if limit:
         rows = rows[:limit]
     return jsonify({"total": total, "funds": [ds.row(f) for f in rows]})

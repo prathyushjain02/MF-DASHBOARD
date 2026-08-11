@@ -395,3 +395,39 @@ button.primary { font: inherit; font-size: 13.5px; font-weight: 600; padding: 7p
 .holdfoot { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px;
   color: var(--text-muted); margin: 2px 0 6px; }
 .holdfoot b { font-family: var(--mono); color: var(--text-primary); font-weight: 600; }
+
+/* ---------------------------------------------------------- bubble strip */
+.bubble-label { font-size: 10.5px; fill: var(--text-secondary); }
+.bubble:hover circle { fill-opacity: 1; }
+.bubble:focus { outline: none; }
+.bubble:focus circle { stroke: var(--text-primary); stroke-width: 2.5; }
+.stripwrap { background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 14px 4px; }
+.striphead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px;
+  margin-bottom: 2px; }
+.striphead h3 { font-size: 15px; }
+.striphead .muted { font-size: 12px; }
+.striplegend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 11.5px;
+  color: var(--text-muted); padding: 0 0 8px; }
+
+/* --------------------------------------------------------- sortable table */
+th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+th.sortable:hover { color: var(--text-primary); }
+th.sortable .arrow { opacity: 0.35; margin-left: 3px; }
+th.sortable.on { color: var(--text-primary); }
+th.sortable.on .arrow { opacity: 1; }
+.filterbar { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 14px; margin-bottom: 14px; }
+.filterbar .spacer { flex: 1 1 auto; }
+button.ghost { font: inherit; font-size: 12.5px; padding: 6px 12px; border-radius: 7px;
+  border: 1px solid var(--border-strong); background: var(--surface-1);
+  color: var(--text-secondary); cursor: pointer; }
+button.ghost:hover { color: var(--text-primary); }
+
+/* Fund names are the row's identity, so they get room rather than wrapping to
+   four lines while numeric columns sit half empty. */
+.grid.dense td:first-child, .grid.dense th:first-child { min-width: 60px; }
+.grid.dense th.sortable[data-sort="name"], .grid.dense td.fundcell { min-width: 230px; }
+.grid.dense td.fundcell { white-space: normal; }
+.grid.dense td.mono, .grid.dense th.r { white-space: nowrap; }

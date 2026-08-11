@@ -102,8 +102,8 @@ trivially have no overlap.
 | Page | What it is |
 |---|---|
 | How we look at funds | The methodology, generated from the same object the engine scores with, so it cannot drift from the code. |
-| Category top funds | The shortlist per category, each with its written rationale. |
-| All funds | Every scheme, filterable, with a full detail card per fund. |
+| Category top funds | One horizontal bubble strip per category: position is the median rolling 3Y return, bubble area is AUM, click a bubble to open the fund in place. |
+| All funds | Every scheme. Filter by search, category, AMC, band, minimum AUM, maximum downside capture, holdings and rated-only; sort on any column. |
 | Portfolio | Look-through of a weighted set: combined book, sector exposure, pairwise overlap. |
 
 The **Client / Analyst toggle** decides what the page is for, not just how much of
@@ -114,6 +114,7 @@ it shows.
 | Why we like it, What to watch | yes | yes |
 | Who runs it | yes | yes |
 | The numbers, grouped by block | yes | yes, plus each metric's category percentile |
+| Filter by band, rated-only, and the rank column | no | yes |
 | What it holds, with cash | yes | yes |
 | Composite, band, rank, tier | no | yes |
 | Block scores, weights, coverage, evidence | no | yes |

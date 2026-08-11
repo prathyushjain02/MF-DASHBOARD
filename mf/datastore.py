@@ -80,7 +80,7 @@ _ROW_FIELDS = (
     "decile3Y", "decile5Y", "vintageYears", "managerYears", "managerCycles",
     "effectiveStocks", "top10", "holdingCount", "mandateFit", "differentiation",
     "categoryOverlap", "capMix", "hasHoldings", "loosePeerGroup", "cashPct",
-    "netFlow1YPct", "cyBeatPct",
+    "netFlow1YPct", "cyBeatPct", "rated", "upsideCapture3Y",
     "managerExperienceYears", "vintageBasis", "rollingHitRate3Y",
 )
 
@@ -260,6 +260,7 @@ def meta_summary(state=None):
                   for b in fw.BANDS},
         "notRated": sum(1 for f in state["funds"] if not f.get("rated")),
         "minEvidence": fw.MIN_EVIDENCE,
+        "amcs": sorted({f["amc"] for f in state["funds"] if f.get("amc")}),
         "marketCycles": state["meta"].get("marketCycles", []),
         "medianEvidence": (sorted(f["evidence"] for f in state["funds"])[len(state["funds"]) // 2]
                            if state["funds"] else None),

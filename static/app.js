@@ -225,6 +225,11 @@ function labelForField(f) {
 
 /* --------------------------------------------------- 2. category shortlists */
 
+/* One horizontal strip per category rather than a grid of boxes. Each fund is a
+   bubble: position is the median rolling 3Y return, area is AUM. Clicking one
+   opens its full card in place, so the shortlist and the fund sit on the same
+   page instead of a tab apart. */
+
 async function renderShortlists(host) {
   host.innerHTML = '<div class="loading">Building shortlists…</div>';
   const data = await get('/shortlists');
@@ -232,81 +237,148 @@ async function renderShortlists(host) {
     <section>
       <div class="section-head">
         <h2>Category top funds</h2>
-        <p class="lede">The shortlist per category, each with the reason it is there.</p>
+        <p class="lede">The shortlist per category. Each bubble is a fund: further
+        right is a higher ${term('median rolling return')} over three years, and a
+        bigger bubble is a larger fund. Click one to open it.</p>
       </div>
-      ${data.categories.map(catBlock).join('')}
+      <div id="cat-detail" class="detail" hidden></div>
+      <div class="strips">
+        ${data.categories.map((c, i) => `
+          <div class="stripwrap">
+            <div class="striphead">
+              <h3>${esc(c.category)}</h3>
+              <span class="muted">${c.count} schemes${
+                c.mandate ? ' · ' + esc(c.mandate) : ''}</span>
+            </div>
+            ${c.caveat ? `<div class="caveat">${esc(c.caveat)}</div>` : ''}
+            <div id="strip-${i}" class="chart-host"></div>
+            <div class="striplegend">
+              <span>x: ${term('Median rolling 3Y')}</span>
+              <span>bubble area: ${term('AUM')}</span>
+              <span>labelled: top ${Math.min(3, c.funds.length)} by rolling return</span>
+            </div>
+          </div>`).join('')}
+      </div>
     </section>`;
-  host.querySelectorAll('[data-fund]').forEach((el) =>
-    el.onclick = () => openFund(el.dataset.fund));
+
+  data.categories.forEach((c, i) => {
+    const rows = c.funds.map((f) => ({
+      key: f.key, name: f.name, short: shortName(f.name, f.amc),
+      x: f.medianRolling3Y, size: f.aumCr || 0, fund: f,
+    }));
+    Chart.bubbleStrip($('#strip-' + i), rows, {
+      onClick: (p) => openFund(p.key, '#cat-detail'),
+      tipFor: (p) => {
+        const f = p.fund;
+        return `<strong>${esc(f.name)}</strong>
+          <div class="tt-note">${esc(f.amc || '')}</div>
+          <div class="tt-row"><span>Median rolling 3Y</span><span>${num(f.medianRolling3Y, 1)}%</span></div>
+          <div class="tt-row"><span>Downside capture</span><span>${num(f.downsideCapture3Y, 0)}</span></div>
+          <div class="tt-row"><span>Sortino</span><span>${num(f.sortino3Y, 2)}</span></div>
+          <div class="tt-row"><span>AUM</span><span>${cr(f.aumCr)}</span></div>
+          ${isAnalyst() ? `<div class="tt-row"><span>Composite</span><span>${
+            num(f.composite, 1)} (${esc(f.band)})</span></div>` : ''}`;
+      },
+    });
+  });
   wireGlossary(host);
 }
 
-function catBlock(c) {
-  return `
-    <div class="catblock">
-      <div class="catblock-head">
-        <h3>${esc(c.category)}</h3>
-        <span class="muted">${c.count} schemes${c.mandate ? ' · ' + esc(c.mandate) : ''}</span>
-      </div>
-      ${c.caveat ? `<div class="caveat">${esc(c.caveat)}</div>` : ''}
-      <div class="shortlist">
-        ${c.funds.map((f) => `
-          <article class="pick" data-fund="${esc(f.key)}" tabindex="0">
-            <div class="pick-head">
-              <div class="pick-id">
-                <h4>${esc(f.name)}</h4>
-                <span class="muted">${esc(f.amc || '')}${
-                  f.fundManager ? ' · ' + esc(f.fundManager) : ''}</span>
-              </div>
-              <div class="pick-band analyst-only">${bandPill(f.band)}
-                <span class="composite">${num(f.composite, 1)}</span>
-                <span class="muted sm">${f.tierSize > 1 ? 'tier ' + f.tier
-                  : 'rank ' + f.categoryRank}</span></div>
-            </div>
-            <p class="rationale">${esc(f.whyWeLikeIt)}</p>
-            <div class="pick-stats">
-              <span>${term('Median rolling 3Y')} <b>${num(f.medianRolling3Y, 1)}%</b></span>
-              <span>${term('Downside capture')} <b>${num(f.downsideCapture3Y, 0)}</b></span>
-              <span>${term('Sortino')} <b>${num(f.sortino3Y, 2)}</b></span>
-              <span>${term('AUM')} <b>${cr(f.aumCr)}</b></span>
-            </div>
-            ${f.flags.length ? `<div class="flags analyst-only">${f.flags.map((x) =>
-              `<span class="flag">${esc(x)}</span>`).join('')}</div>` : ''}
-          </article>`).join('')}
-      </div>
-    </div>`;
+/* Inside one category every scheme name ends in the same words, so the house is
+   the only part that identifies it. "Parag Parikh Flexi Cap Fund" in Flexicap is
+   just "Parag Parikh"; trimming from the other end would leave three funds all
+   labelled "Flexi Cap". */
+function shortName(name, amc) {
+  const house = String(amc || '')
+    .replace(/\s*(Mutual Fund|Asset Management|AMC|MF)\s*$/i, '').trim();
+  const label = house || String(name || '');
+  return label.length > 22 ? label.slice(0, 21) + '…' : label;
 }
 
 /* ------------------------------------------------------------ 3. all funds */
 
+/* Columns the table can sort on. `field` is what the API sorts by; `dir` is the
+   direction that puts "good" first, so one click on any column shows the best of
+   it rather than making the reader work out which way is up. */
+const COLUMNS = [
+  { field: 'categoryRank', label: '#', analyst: true, dir: 'asc', fmt: (f) => f.categoryRank ?? '—' },
+  { field: 'name', label: 'Fund', dir: 'asc', text: true },
+  { field: 'category', label: 'Category', dir: 'asc', text: true },
+  { field: 'band', label: 'Band', analyst: true, dir: 'asc', text: true },
+  { field: 'composite', label: 'Composite', analyst: true, dir: 'desc', d: 1 },
+  { field: 'medianRolling3Y', label: 'Median rolling 3Y', dir: 'desc', d: 1 },
+  { field: 'medianRolling5Y', label: 'Median rolling 5Y', dir: 'desc', d: 1 },
+  { field: 'rollingHitRate3Y', label: 'Hit rate', dir: 'desc', d: 0 },
+  { field: 'return3Y', label: 'CAGR 3Y', dir: 'desc', d: 1 },
+  { field: 'sortino3Y', label: 'Sortino', dir: 'desc', d: 2 },
+  { field: 'informationRatio3Y', label: 'Information Ratio', dir: 'desc', d: 2 },
+  { field: 'downsideCapture3Y', label: 'Downside capture', dir: 'asc', d: 0 },
+  { field: 'upsideCapture3Y', label: 'Upside capture', dir: 'desc', d: 0 },
+  { field: 'maxDrawdown3Y', label: 'Maximum drawdown', dir: 'desc', d: 1 },
+  { field: 'ter', label: 'Expense ratio', dir: 'asc', d: 2 },
+  { field: 'managerYears', label: 'Tenure on this scheme', dir: 'desc', d: 1 },
+  { field: 'aumCr', label: 'AUM', dir: 'desc', money: true },
+  { field: 'evidence', label: 'Evidence', analyst: true, dir: 'desc', d: 0 },
+];
+
+const filters = { category: 'All', band: 'All', amc: 'All', q: '',
+                  minAum: '', maxDownside: '', hasHoldings: false, ratedOnly: false,
+                  sort: 'medianRolling3Y', dir: 'desc' };
+
 async function renderAll(host) {
+  const amcs = state.meta.amcs || [];
   host.innerHTML = `
     <section>
       <div class="section-head"><h2>All funds</h2></div>
-      <div class="filters">
-        <label>Fund lookup
-          <input id="lookup" type="search" placeholder="Type a scheme, AMC or manager"
-                 autocomplete="off">
-          <div id="suggest" class="suggest" hidden></div>
+      <div class="filterbar">
+        <label>Search
+          <input id="f-q" type="search" placeholder="Scheme, AMC or manager"
+                 value="${esc(filters.q)}" autocomplete="off">
         </label>
         <label>Category
-          <select id="f-cat"><option>All</option>
-            ${state.fw.categories.map((c) => `<option>${esc(c)}</option>`).join('')}</select>
+          <select id="f-cat">${['All', ...state.fw.categories].map((c) =>
+            `<option${c === filters.category ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>
+        </label>
+        <label>AMC
+          <select id="f-amc">${['All', ...amcs].map((c) =>
+            `<option${c === filters.amc ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>
         </label>
         <label class="analyst-only">Band
-          <select id="f-band"><option>All</option>
-            ${['A', 'B', 'C', 'Review', 'Not rated'].map((b) => `<option>${esc(b)}</option>`).join('')}</select>
+          <select id="f-band">${['All', 'A', 'B', 'C', 'Review', 'Not rated'].map((c) =>
+            `<option${c === filters.band ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>
         </label>
-        <label>Min AUM (₹ cr)<input id="f-aum" type="number" min="0" step="100" placeholder="0"></label>
-        <label class="chk"><input id="f-hold" type="checkbox"> Has holdings</label>
+        <label>Min AUM (₹ cr)
+          <input id="f-aum" type="number" min="0" step="100" placeholder="any"
+                 value="${esc(filters.minAum)}"></label>
+        <label>Max downside capture
+          <input id="f-dn" type="number" min="0" step="5" placeholder="any"
+                 value="${esc(filters.maxDownside)}"></label>
+        <label class="chk"><input id="f-hold" type="checkbox"${
+          filters.hasHoldings ? ' checked' : ''}> Has holdings</label>
+        <label class="chk analyst-only"><input id="f-rated" type="checkbox"${
+          filters.ratedOnly ? ' checked' : ''}> Rated only</label>
+        <span class="spacer"></span>
+        <button id="f-reset" class="ghost">Reset</button>
       </div>
       <div id="detail" class="detail" hidden></div>
       <div id="tablewrap" class="tablewrap"></div>
     </section>`;
 
-  const reload = debounce(loadTable, 220);
-  ['f-cat', 'f-band', 'f-aum', 'f-hold'].forEach((id) => $('#' + id).onchange = reload);
-  wireLookup();
+  const bind = (id, key, prop = 'value') => {
+    const el = $('#' + id);
+    if (!el) return;
+    const handler = debounce(() => { filters[key] = el[prop]; loadTable(); }, 220);
+    el.oninput = handler; el.onchange = handler;
+  };
+  bind('f-q', 'q'); bind('f-cat', 'category'); bind('f-amc', 'amc');
+  bind('f-band', 'band'); bind('f-aum', 'minAum'); bind('f-dn', 'maxDownside');
+  bind('f-hold', 'hasHoldings', 'checked'); bind('f-rated', 'ratedOnly', 'checked');
+  $('#f-reset').onclick = () => {
+    Object.assign(filters, { category: 'All', band: 'All', amc: 'All', q: '',
+      minAum: '', maxDownside: '', hasHoldings: false, ratedOnly: false });
+    renderAll(host);
+  };
+
   await loadTable();
   if (state.fund) openFund(state.fund);
 }
@@ -315,78 +387,67 @@ function debounce(fn, ms) {
   let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
 }
 
+function sortBy(field) {
+  const col = COLUMNS.find((c) => c.field === field);
+  if (!col) return;
+  // First click on a column uses its natural direction; clicking the active
+  // column flips it.
+  filters.dir = filters.sort === field
+    ? (filters.dir === 'asc' ? 'desc' : 'asc')
+    : (col.dir || 'desc');
+  filters.sort = field;
+  loadTable();
+}
+
 async function loadTable() {
-  const p = new URLSearchParams({
-    category: $('#f-cat').value, band: $('#f-band').value, limit: '400',
-  });
-  if ($('#f-aum').value) p.set('minAum', $('#f-aum').value);
-  if ($('#f-hold').checked) p.set('hasHoldings', '1');
+  const p = new URLSearchParams({ limit: '500', sort: filters.sort, dir: filters.dir });
+  if (filters.category !== 'All') p.set('category', filters.category);
+  if (filters.band !== 'All') p.set('band', filters.band);
+  if (filters.amc !== 'All') p.set('amc', filters.amc);
+  if (filters.q) p.set('q', filters.q);
+  if (filters.minAum) p.set('minAum', filters.minAum);
+  if (filters.maxDownside) p.set('maxDownside', filters.maxDownside);
+  if (filters.hasHoldings) p.set('hasHoldings', '1');
+  if (filters.ratedOnly) p.set('rated', '1');
+
   const data = await get('/funds?' + p);
+  const cols = COLUMNS.filter((c) => !c.analyst || isAnalyst());
   const wrap = $('#tablewrap');
+  const arrow = (c) => filters.sort === c.field
+    ? `<span class="arrow">${filters.dir === 'asc' ? '▲' : '▼'}</span>`
+    : '<span class="arrow">↕</span>';
+
   wrap.innerHTML = `
-    <div class="tablemeta">${data.funds.length} of ${data.total} shown</div>
+    <div class="tablemeta">${data.funds.length} of ${data.total} shown ·
+      sorted by ${esc(COLUMNS.find((c) => c.field === filters.sort)?.label || filters.sort)}
+      ${filters.dir === 'asc' ? 'ascending' : 'descending'}</div>
     <table class="grid dense sticky">
-      <thead><tr>
-        <th class="analyst-only">#</th><th>Fund</th><th>Category</th>
-        <th class="analyst-only">Band</th>
-        <th class="r analyst-only">${term('Composite')}</th>
-        <th class="r">${term('Median rolling 3Y')}</th>
-        <th class="r">${term('Median rolling 5Y')}</th>
-        <th class="r">${term('CAGR 3Y')}</th>
-        <th class="r">${term('Sortino')}</th>
-        <th class="r">${term('Information Ratio')}</th>
-        <th class="r">${term('Downside capture')}</th>
-        <th class="r">${term('Maximum drawdown')}</th>
-        <th class="r">${term('AUM')}</th>
-        <th class="r analyst-only">${term('Evidence')}</th>
+      <thead><tr>${cols.map((c) => `
+        <th class="sortable${c.text || c.field === 'categoryRank' ? '' : ' r'}${
+          filters.sort === c.field ? ' on' : ''}" data-sort="${esc(c.field)}"
+          title="Sort by ${esc(c.label)}">${term(c.label)}${arrow(c)}</th>`).join('')}
       </tr></thead>
       <tbody>${data.funds.map((f) => `
-        <tr data-fund="${esc(f.key)}" tabindex="0">
-          <td class="mono dim analyst-only">${f.categoryRank ?? '—'}</td>
-          <td><strong>${esc(f.name)}</strong>
-            ${f.flags.length ? `<span class="flag sm analyst-only">${esc(f.flags[0])}</span>` : ''}</td>
-          <td class="muted">${esc(f.category)}</td>
-          <td class="analyst-only">${bandPill(f.band)}</td>
-          <td class="r mono analyst-only">${num(f.composite, 1)}</td>
-          <td class="r mono">${num(f.medianRolling3Y, 1)}</td>
-          <td class="r mono">${num(f.medianRolling5Y, 1)}</td>
-          <td class="r mono">${num(f.return3Y, 1)}</td>
-          <td class="r mono">${num(f.sortino3Y, 2)}</td>
-          <td class="r mono">${num(f.informationRatio3Y, 2)}</td>
-          <td class="r mono">${num(f.downsideCapture3Y, 0)}</td>
-          <td class="r mono">${num(f.maxDrawdown3Y, 1)}</td>
-          <td class="r mono">${cr(f.aumCr)}</td>
-          <td class="r mono dim analyst-only">${num(f.evidence, 0)}%</td>
-        </tr>`).join('')}
+        <tr data-fund="${esc(f.key)}" tabindex="0">${cols.map((c) => {
+          if (c.field === 'name') {
+            return `<td class="fundcell"><strong>${esc(f.name)}</strong>${f.flags.length
+              ? `<span class="flag sm analyst-only">${esc(f.flags[0])}</span>` : ''}</td>`;
+          }
+          if (c.field === 'category') return `<td class="muted">${esc(f.category)}</td>`;
+          if (c.field === 'band') return `<td>${bandPill(f.band)}</td>`;
+          if (c.field === 'categoryRank') return `<td class="mono dim">${f.categoryRank ?? '—'}</td>`;
+          if (c.money) return `<td class="r mono">${cr(f.aumCr)}</td>`;
+          const v = f[c.field];
+          return `<td class="r mono${c.field === 'evidence' ? ' dim' : ''}">${
+            num(v, c.d ?? 1)}${c.field === 'evidence' ? '%' : ''}</td>`;
+        }).join('')}</tr>`).join('')}
       </tbody>
     </table>`;
+  wrap.querySelectorAll('th[data-sort]').forEach((th) =>
+    th.onclick = () => sortBy(th.dataset.sort));
   wrap.querySelectorAll('[data-fund]').forEach((el) =>
     el.onclick = () => openFund(el.dataset.fund));
   wireGlossary(wrap);
-}
-
-function wireLookup() {
-  const input = $('#lookup'), box = $('#suggest');
-  const run = debounce(async () => {
-    const q = input.value.trim();
-    if (q.length < 2) { box.hidden = true; return; }
-    const data = await get('/funds?limit=12&q=' + encodeURIComponent(q));
-    if (!data.funds.length) { box.hidden = true; return; }
-    box.innerHTML = data.funds.map((f) => `
-      <div class="opt" data-fund="${esc(f.key)}">
-        <span>${esc(f.name)}</span>
-        <span class="muted">${esc(f.category)}</span>
-      </div>`).join('');
-    box.hidden = false;
-    box.querySelectorAll('.opt').forEach((el) => el.onclick = () => {
-      box.hidden = true; input.value = '';
-      openFund(el.dataset.fund);
-    });
-  }, 200);
-  input.oninput = run;
-  document.addEventListener('click', (e) => {
-    if (!box.contains(e.target) && e.target !== input) box.hidden = true;
-  });
 }
 
 /* --------------------------------------------------------- the detail card */
@@ -419,15 +480,13 @@ function numberGroups(f) {
       rows: ctxIn('cagr').map((m) => ({ label: m.label, value: m.value, unit: m.unit })) },
     { title: 'The fund', why: '', rows: ctxIn('fund').map((m) =>
       ({ label: m.label, value: m.value, unit: m.unit })) },
-    { title: 'Portfolio shape', why: 'From the disclosed book.',
-      rows: fromBlock('portfolio') },
   ].filter((g) => g.rows.length);
 }
 
-async function openFund(key) {
+async function openFund(key, hostSel = '#detail') {
   state.fund = key;
-  if (state.view !== 'all') { setView('all'); return; }
-  const host = $('#detail');
+  const host = $(hostSel);
+  if (!host) { setView('all'); return; }
   host.hidden = false;
   host.innerHTML = '<div class="loading">Scoring…</div>';
   host.scrollIntoView({ behavior: 'smooth', block: 'start' });
