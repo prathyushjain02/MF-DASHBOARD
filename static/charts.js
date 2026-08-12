@@ -272,11 +272,32 @@ const Chart = (() => {
     host.appendChild(svg);
 
     host.insertAdjacentHTML('beforeend',
-      `<div class="growthkey">${live.map((s) => `<span><i class="${
-        s.code === 'category' ? 'dash' : ''}" style="background:${
-        GROWTH_INK[s.code]}"></i>${s.label}<b>${
-        (s.values[s.values.length - 1] >= 0 ? '+' : '')
-        + fmt(s.values[s.values.length - 1], 1)}%</b></span>`).join('')}</div>`);
+      `<div class="growthkey">${live.map((s) => {
+        const end = s.values[s.values.length - 1];
+        const total = (end >= 0 ? '+' : '') + fmt(end, 1) + '%';
+        const pa = annualised(s.days, end);
+        return `<span><i class="${s.code === 'category' ? 'dash' : ''}"
+          style="background:${GROWTH_INK[s.code]}"></i>${s.label}<b>${total}</b>${
+          pa === null ? '' : `<em>${(pa >= 0 ? '+' : '') + fmt(pa, 1)}% a year</em>`}</span>`;
+      }).join('')}</div>`);
+  }
+
+  /* Growth over a multi-year window is a cumulative number, and a cumulative
+     number is not comparable with the annualised ones printed everywhere else on
+     the page. Past a year the legend carries both: the total the window actually
+     produced, and the rate that compounds to it.
+
+     Below a year there is nothing to annualise. Extrapolating three months out
+     to a yearly rate is how a quiet quarter becomes a headline, so the second
+     figure simply does not appear. */
+  function annualised(days, totalPct) {
+    if (!days || days.length < 2) return null;
+    const years = (Date.parse(days[days.length - 1]) - Date.parse(days[0]))
+      / (365.25 * 864e5);
+    if (years < 1.1) return null;
+    const growth = 1 + totalPct / 100;
+    if (growth <= 0) return null;              // a total wipeout has no rate
+    return (Math.pow(growth, 1 / years) - 1) * 100;
   }
 
   function nearest(days, t) {

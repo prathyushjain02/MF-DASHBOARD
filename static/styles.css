@@ -628,6 +628,10 @@ body.modal-open { overflow: hidden; }
   background: none !important; border-top: 2px dashed var(--seq-300); }
 .growthkey b { font-family: var(--mono); color: var(--text-primary);
   font-weight: 600; }
+/* The annualised rate sits behind the total rather than beside it as an equal:
+   the total is what the window produced, the rate is how to read it. */
+.growthkey em { font-family: var(--mono); font-style: normal; font-size: 11px;
+  color: var(--text-muted); margin-left: -2px; }
 .chart.growth { width: 100%; }
 .crosshair { stroke: var(--axis); stroke-width: 1; stroke-dasharray: 3 3; }
 #tooltip .swatch { width: 8px; height: 8px; border-radius: 50%;
