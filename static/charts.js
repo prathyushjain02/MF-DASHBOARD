@@ -277,8 +277,9 @@ const Chart = (() => {
         const total = (end >= 0 ? '+' : '') + fmt(end, 1) + '%';
         const pa = annualised(s.days, end);
         return `<span><i class="${s.code === 'category' ? 'dash' : ''}"
-          style="background:${GROWTH_INK[s.code]}"></i>${s.label}<b>${total}</b>${
-          pa === null ? '' : `<em>${(pa >= 0 ? '+' : '') + fmt(pa, 1)}% a year</em>`}</span>`;
+          style="background:${GROWTH_INK[s.code]}"></i>${s.label}<span class="gk-nums"
+          ><b>${total}</b>${pa === null ? ''
+            : `<em>CAGR: ${(pa >= 0 ? '+' : '') + fmt(pa, 1)}%</em>`}</span></span>`;
       }).join('')}</div>`);
   }
 

@@ -621,17 +621,20 @@ body.modal-open { overflow: hidden; }
   color: var(--surface-1); font-weight: 600; }
 .growthkey { display: flex; flex-wrap: wrap; gap: 5px 16px; margin-top: 8px;
   font-size: 11.5px; color: var(--text-muted); }
-.growthkey span { display: inline-flex; align-items: center; gap: 6px; }
-.growthkey i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.growthkey span { display: inline-flex; align-items: baseline; gap: 6px; }
+.growthkey i { width: 9px; height: 9px; border-radius: 50%; display: inline-block;
+  flex: none; }
 /* The dashed series gets a dashed swatch, so the key matches the line. */
 .growthkey i.dash { width: 14px; height: 0; border-radius: 0;
   background: none !important; border-top: 2px dashed var(--seq-300); }
 .growthkey b { font-family: var(--mono); color: var(--text-primary);
   font-weight: 600; }
-/* The annualised rate sits behind the total rather than beside it as an equal:
-   the total is what the window produced, the rate is how to read it. */
-.growthkey em { font-family: var(--mono); font-style: normal; font-size: 11px;
-  color: var(--text-muted); margin-left: -2px; }
+/* The rate sits under the total rather than alongside it, so the eye reads the
+   window's own figure first and the annualised one as its restatement. */
+.growthkey .gk-nums { display: inline-flex; flex-direction: column;
+  align-items: flex-start; line-height: 1.3; }
+.growthkey em { font-family: var(--mono); font-style: normal; font-size: 10.5px;
+  color: var(--text-muted); white-space: nowrap; }
 .chart.growth { width: 100%; }
 .crosshair { stroke: var(--axis); stroke-width: 1; stroke-dasharray: 3 3; }
 #tooltip .swatch { width: 8px; height: 8px; border-radius: 50%;
