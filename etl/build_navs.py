@@ -331,6 +331,18 @@ def main():
     with open(os.path.join(DATA_DIR, "funds.json"), "r", encoding="utf-8") as fh:
         funds = json.load(fh)
 
+    # The build that runs unattended has no workbook to read, so whatever the
+    # last one wrote is carried forward rather than dropped. The benchmark TRI
+    # series moves once a month; the fund NAVs are what a nightly run is for.
+    out_path = os.path.join(DATA_DIR, "navs.json")
+    previous = {}
+    if os.path.exists(out_path):
+        try:
+            with open(out_path, "r", encoding="utf-8") as fh:
+                previous = json.load(fh)
+        except ValueError:
+            _log("  existing navs.json is unreadable, rebuilding from scratch")
+
     in_scope = [f for f in funds
                 if f.get("category") in fw.CATEGORIES
                 and not fw.excluded_amc(f.get("amc"))
@@ -394,6 +406,10 @@ def main():
     _log("benchmarks:")
     wanted_bm = {fw.benchmark_series_for(c) for c in fw.CATEGORIES}
     benchmarks = {}
+    if not args.workbook:
+        benchmarks = dict(previous.get("benchmarks") or {})
+        if benchmarks:
+            _log(f"  carried {len(benchmarks)} forward from the last build")
     for name, series in benchmark_series(args.workbook).items():
         if name not in wanted_bm:
             continue
@@ -422,7 +438,21 @@ def main():
                                 for c in fw.CATEGORIES},
         "categoryAverage": cat_avg,
     }
-    out = os.path.join(DATA_DIR, "navs.json")
+    # A bad night upstream should leave yesterday's file in place rather than
+    # replace it with a hollow one. This is the guard between a rate limited API
+    # and a dashboard with no history in it.
+    expected = len(in_scope)
+    floor = int(expected * 0.8)
+    if len(by_key) < floor:
+        _log(f"ABORT: only {len(by_key)} of {expected} schemes returned a series, "
+             f"below the {floor} floor. {out_path} left as it was.")
+        return 1
+    if previous.get("funds") and len(by_key) < len(previous["funds"]) * 0.8:
+        _log(f"ABORT: {len(by_key)} schemes against {len(previous['funds'])} in the "
+             f"last build. {out_path} left as it was.")
+        return 1
+
+    out = out_path
     with open(out, "w", encoding="utf-8") as fh:
         json.dump(payload, fh, separators=(",", ":"))
 
@@ -434,7 +464,8 @@ def main():
     if missing:
         _log(f"  no usable series    : {len(missing)} ({', '.join(missing[:6])}"
              f"{' ...' if len(missing) > 6 else ''})")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

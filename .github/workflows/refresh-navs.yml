@@ -1,0 +1,61 @@
+# Nightly NAV refresh.
+#
+# The app serves data/*.json straight off disk, so "update the prices" means
+# rebuild that file and commit it: the push is what makes Render redeploy and
+# pick the new history up. Nothing about this touches the running service.
+#
+# 05:00 in India is 23:30 UTC the day before. AMFI publishes the day's NAV late
+# in the evening IST, so a run at five in the morning reads a settled file
+# rather than racing the upload.
+#
+# Note that GitHub only runs a schedule from the repository's default branch.
+# On any other branch this workflow exists but never fires on its own; use the
+# Run workflow button to trigger it by hand.
+
+name: Refresh NAV history
+
+on:
+  schedule:
+    - cron: "30 23 * * *"      # 05:00 Asia/Kolkata
+  workflow_dispatch:
+
+# One at a time. A run that overlaps its predecessor would be rebuilding the
+# same file from the same upstream for no gain, and could race the push.
+concurrency:
+  group: refresh-navs
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install the fetchers
+        run: pip install --quiet requests yfinance
+
+      # No --workbook: the benchmark TRI series it reads is monthly and is
+      # carried forward from the last build. The fund NAVs and the indices are
+      # what this run is actually for.
+      - name: Rebuild NAV history
+        run: python etl/build_navs.py --refresh --workers 8
+
+      - name: Commit the refreshed history
+        run: |
+          if git diff --quiet -- data/navs.json; then
+            echo "NAV history unchanged, nothing to commit."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/navs.json
+          git commit -m "Refresh NAV history, $(TZ=Asia/Kolkata date +'%d %b %Y')"
+          git push
