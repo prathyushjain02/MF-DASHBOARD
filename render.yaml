@@ -11,8 +11,8 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     # --preload evaluates the universe once before forking, so both workers share
-    # it copy-on-write. Measured at ~105 MB per worker with the yfinance/pandas
-    # stack imported, against the free plan's 512 MB.
+    # it copy-on-write. The runtime is flask and gunicorn only now: yfinance and
+    # the pandas stack under it are an ETL dependency, not a served one.
     startCommand: gunicorn server:app --bind 0.0.0.0:$PORT --workers 2 --preload --timeout 120
     healthCheckPath: /health
     envVars:

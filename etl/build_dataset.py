@@ -827,6 +827,31 @@ def diff_against_previous(funds):
 
 # --------------------------------------------------------------------------- #
 
+def carry_forward(funds):
+    """Fill the fresh feed records from the last build wherever the feed is silent.
+
+    The feed and the workbook write into the same record, so re-parsing the feed
+    alone leaves every workbook field empty. Anything the new record has no value
+    for is taken from the old one; anything the feed does publish wins, because
+    an edited sheet is the whole point of the refresh.
+    """
+    path = os.path.join(DATA_DIR, "funds.json")
+    if not os.path.exists(path):
+        return 0
+    with open(path, encoding="utf-8") as fh:
+        old = {f["key"]: f for f in json.load(fh) if f.get("key")}
+    filled = 0
+    for key, fund in funds.items():
+        prev = old.get(key)
+        if not prev:
+            continue
+        for k, v in prev.items():
+            if v is not None and fund.get(k) is None:
+                fund[k] = v
+                filled += 1
+    return filled
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -859,6 +884,16 @@ def main():
     funds, benchmarks, unmapped = parse_pack(rows)
     in_scope = [f for f in funds.values() if f.get("category") in CATEGORIES]
     print(f"  {len(funds)} schemes, {len(in_scope)} inside the eleven equity categories")
+
+    # A run without the workbook is a feed refresh, not a rebuild. The sheet is
+    # the authority on which schemes exist and on every number it publishes, but
+    # it carries none of what the workbook contributes: holdings, the rolling
+    # statistics, cap allocation, expense ratio, manager tenure. Those are
+    # carried across from the last build rather than blanked, so the nightly job
+    # can pick up an edited sheet without gutting the dataset.
+    if not args.workbook:
+        carried = carry_forward(funds)
+        print(f"  feed refresh: {carried} workbook-derived values carried forward")
 
     holdings, cycles = {}, []
     if args.workbook:

@@ -1,0 +1,75 @@
+# The morning data refresh.
+#
+# The app serves data/*.json straight off disk, so "update the data" means
+# rebuild those files and commit them: the push is what makes Render redeploy
+# and pick the new build up. Nothing here touches the running service.
+#
+# Two sources, in order, because the second reads what the first writes:
+#
+#   1. the dataPack sheet, which is edited by hand every few weeks. Running it
+#      daily means an edit reaches the dashboard on its own rather than waiting
+#      for someone to rebuild.
+#   2. the daily NAV history behind the growth chart.
+#
+# 05:00 in India is 23:30 UTC the day before. AMFI publishes the day's NAV late
+# in the evening IST, so a run at five in the morning reads a settled file
+# rather than racing the upload.
+#
+# Note that GitHub only runs a schedule from the repository's default branch.
+# On any other branch this workflow exists but never fires on its own; use the
+# Run workflow button to trigger it by hand.
+
+name: Refresh data
+
+on:
+  schedule:
+    - cron: "30 23 * * *"      # 05:00 Asia/Kolkata
+  workflow_dispatch:
+
+# One at a time. A run that overlaps its predecessor would be rebuilding the
+# same files from the same upstream for no gain, and could race the push.
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install the fetchers
+        run: pip install --quiet requests yfinance
+
+      # No --workbook, so this is a feed refresh rather than a full rebuild: the
+      # sheet is authoritative for every number it publishes, and everything the
+      # workbook contributes (holdings, rolling statistics, cap allocation,
+      # expense ratio, manager tenure) is carried across from the last build.
+      # The build refuses to write if its own checks fail, so a mangled feed
+      # fails the job instead of landing.
+      - name: Refresh the quantitative feed
+        run: python etl/build_dataset.py
+
+      # Reads the funds written above, so it has to follow them.
+      - name: Rebuild NAV history
+        run: python etl/build_navs.py --refresh --workers 8
+
+      - name: Commit the refreshed data
+        run: |
+          if git diff --quiet -- data/; then
+            echo "Data unchanged, nothing to commit."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git commit -m "Refresh data, $(TZ=Asia/Kolkata date +'%d %b %Y')"
+          git push
