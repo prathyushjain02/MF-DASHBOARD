@@ -435,21 +435,54 @@ th.sortable.on .arrow { opacity: 1; }
   cursor: pointer; }
 .cmp-group input { accent-color: var(--red); cursor: pointer; }
 
-.cmp-table th { vertical-align: bottom; }
-.cmp-colhead { display: inline-flex; align-items: center; gap: 6px;
-  justify-content: flex-end; }
-.cmp-colhead i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
-.cmp-table th .muted { display: block; font-weight: 400; }
-.cmp-metric { white-space: nowrap; }
-/* A group heading inside the body, so one table carries four sections without
-   four separate tables and four sets of column widths to keep in step. */
-.cmp-grouprow td { background: var(--wash); font-family: var(--title);
-  font-weight: 500; font-size: 12px; padding-top: 9px; }
-.cmp-grouprow .muted { margin-left: 8px; font-weight: 400; }
+/* The fund is the subject, so it holds the row and the metrics run across.
+   The name column stays put while the metrics scroll: a figure is meaningless
+   once the scheme it belongs to has slid off the left edge. */
+.cmp-table th { vertical-align: bottom; white-space: nowrap; }
+.cmp-colhead { display: inline-flex; align-items: baseline; gap: 7px; }
+.cmp-colhead i { width: 9px; height: 9px; border-radius: 50%; flex: none;
+  position: relative; top: 1px; }
+.cmp-name { position: sticky; left: 0; z-index: 1; background: inherit;
+  min-width: 210px; }
+.cmp-namehead { position: sticky; left: 0; z-index: 1;
+  background: var(--surface-2); min-width: 210px; }
+.cmp-name .muted { display: block; margin-left: 16px; }
+.cmp-grouphead th { font-family: var(--title); font-weight: 500; font-size: 12px;
+  background: var(--wash); border-bottom: 1px solid var(--grid);
+  padding-top: 8px; padding-bottom: 6px; }
+.cmp-grouphead th:first-child { background: var(--surface-2); }
+.cmp-grouphead .muted { font-weight: 400; }
+.cmp-grouphead th + th { border-left: 1px solid var(--grid); }
+.cmp-markrow td { color: var(--text-muted); }
+.cmp-markrow .cmp-colhead { color: var(--text-secondary); }
 .cmp-best { font-weight: 700; color: var(--ink-strong); }
+
+/* ---- overlap matrix */
+.cmp-ovcard { margin-top: 18px; cursor: default; }
+.cmp-ovcard:hover { background: var(--surface-2); border-top-color: var(--slate); }
+/* The numeric columns are held narrow so the matrix reads as a block rather
+   than as figures scattered across a page width. */
+.ov-table { table-layout: fixed; }
+.ov-table th.r, .ov-table td.r, .ov-self { width: 92px; }
+.ov-table .cmp-namehead, .ov-table .cmp-name { width: auto; }
+.ov-self { background: var(--zebra); }
+.ov-cell { padding: 0; }
+.ov-btn { font: inherit; font-family: var(--mono); font-size: 12.5px;
+  width: 100%; padding: 7px 10px; text-align: right; border: 0; cursor: pointer;
+  background: none; color: inherit; }
+.ov-btn:hover { color: var(--red); text-decoration: underline; }
+.ov-heavy { background: rgba(204, 25, 25, 0.11); }
+.ov-heavy .ov-btn { font-weight: 600; }
+
+.ov-modal h3 { font-size: 18px; margin-bottom: 6px; padding-right: 28px; }
+.ov-modal > .muted { margin-bottom: 12px; max-width: 62ch; }
+.ov-modaltable { max-height: 52vh; overflow: auto; }
+.ov-modaltable thead th { position: sticky; top: 0; background: var(--surface-2);
+  z-index: 1; }
 
 @media (max-width: 860px) {
   .cmp-pickers { grid-template-columns: 1fr; }
+  .cmp-name, .cmp-namehead { position: static; min-width: 150px; }
 }
 
 /* ==================================================== selection process ==== */

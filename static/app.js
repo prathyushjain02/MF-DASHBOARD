@@ -1256,7 +1256,9 @@ async function drawCmpBody() {
         <label class="cmp-group"><input type="checkbox" data-group="${g.id}"
           ${c.groups.has(g.id) ? 'checked' : ''}> ${esc(g.label)}</label>`).join('')}
     </div>
-    <div class="tablewrap" id="cmp-tablewrap"></div>`;
+    <div class="tablewrap" id="cmp-tablewrap"></div>
+
+    <div id="cmp-overlap"></div>`;
 
   $('#cmp-groupbar').querySelectorAll('[data-group]').forEach((b) =>
     b.onchange = () => {
@@ -1265,7 +1267,7 @@ async function drawCmpBody() {
       drawCmpTable();
     });
 
-  await Promise.all([drawCmpGrowth(), drawCmpTable()]);
+  await Promise.all([drawCmpGrowth(), drawCmpTable(), drawCmpOverlap()]);
 }
 
 async function drawCmpGrowth() {
@@ -1324,57 +1326,177 @@ async function drawCmpTable() {
   const qs = `keys=${c.keys.map(encodeURIComponent).join(',')}`
     + `&marks=${c.marks.map(encodeURIComponent).join(',')}`;
   const t = await get('/compare?' + qs);
-  const cols = [
-    ...t.funds.map((f, i) => ({ label: f.name, sub: f.category,
+
+  /* A fund is the subject here, so it gets the row: the eye runs along one
+     scheme's record left to right, and down a single metric to rank on it.
+     Benchmarks sit underneath the funds, in the same columns. */
+  const rows = [
+    ...t.funds.map((f, i) => ({ key: f.key, label: f.name, sub: f.category,
                                 metrics: f.metrics, ink: cmpInk(i), fund: true })),
     ...t.marks.map((m) => ({ label: m.label,
                              sub: m.metrics ? m.metricsLabel : 'no published metrics',
                              metrics: m.metrics || {}, ink: Chart.MARK_INK })),
   ];
-  const priced = cols.some((col) => /price index$/.test(col.sub || ''));
+  const priced = rows.some((r) => /price index$/.test(r.sub || ''));
   const groups = CMP_GROUPS.filter((g) => c.groups.has(g.id));
   if (!groups.length) {
     wrap.innerHTML = '<p class="muted sm">Tick a group above to show its metrics.</p>';
     return;
   }
+  const cols = groups.flatMap((g) => g.rows);
 
-  const body = groups.map((g) => `
-    <tr class="cmp-grouprow"><td colspan="${cols.length + 1}">${esc(g.label)}
-      <span class="muted sm">${esc(g.note)}</span></td></tr>
-    ${g.rows.map(([label, field, suffix, dp, dir]) => {
-      const vals = cols.map((col) => col.metrics ? col.metrics[field] : null);
-      // The leader is marked among the funds only: a benchmark is the thing
-      // being measured against, not a competitor in the race.
-      const fundVals = vals.filter((v, i) => cols[i].fund && v != null);
-      let best = null;
-      if (dir && fundVals.length > 1) {
-        best = dir === 'high' ? Math.max(...fundVals) : Math.min(...fundVals);
-      }
-      return `<tr>
-        <td class="cmp-metric">${term(label)}</td>
-        ${vals.map((v, i) => `<td class="r mono${
-          best !== null && cols[i].fund && v === best ? ' cmp-best' : ''}">${
-          v == null ? '—' : num(v, dp) + suffix}</td>`).join('')}
-      </tr>`;
-    }).join('')}`).join('');
+  // The leader is marked among the funds only: a benchmark is the thing being
+  // measured against, not a competitor in the race.
+  const best = cols.map(([, field, , , dir]) => {
+    if (!dir) return null;
+    const vals = rows.filter((r) => r.fund && r.metrics[field] != null)
+      .map((r) => r.metrics[field]);
+    return vals.length > 1 ? (dir === 'high' ? Math.max(...vals) : Math.min(...vals))
+                           : null;
+  });
 
   wrap.innerHTML = `
     <table class="grid dense cmp-table">
-      <thead><tr>
-        <th></th>
-        ${cols.map((col) => `<th class="r">
-          <span class="cmp-colhead"><i style="background:${col.ink}"></i>
-            ${esc(col.label)}</span>
-          <span class="muted sm">${esc(col.sub || '')}</span></th>`).join('')}
-      </tr></thead>
-      <tbody>${body}</tbody>
+      <thead>
+        <tr class="cmp-grouphead">
+          <th></th>
+          ${groups.map((g) => `<th colspan="${g.rows.length}" class="c">
+            ${esc(g.label)} <span class="muted sm">${esc(g.note)}</span></th>`).join('')}
+        </tr>
+        <tr>
+          <th class="cmp-namehead">Fund</th>
+          ${cols.map(([label]) => `<th class="r">${term(label)}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map((r) => `<tr class="${r.fund ? '' : 'cmp-markrow'}">
+          <td class="cmp-name">
+            <span class="cmp-colhead"><i style="background:${r.ink}"></i>
+              ${esc(r.label)}</span>
+            <span class="muted sm">${esc(r.sub || '')}</span></td>
+          ${cols.map(([, field, suffix, dp], i) => {
+            const v = r.metrics[field];
+            return `<td class="r mono${
+              best[i] !== null && r.fund && v === best[i] ? ' cmp-best' : ''}">${
+              v == null ? '—' : num(v, dp) + suffix}</td>`;
+          }).join('')}
+        </tr>`).join('')}
+      </tbody>
     </table>
     <p class="muted sm">Returns are point to point and annualised beyond one year.
-    A bold figure is the best of the funds shown in that row; benchmarks are not
+    A bold figure is the best of the funds shown in that column; benchmarks are not
     ranked against them.${priced ? ' A benchmark read off a price index excludes '
       + 'dividends and carries returns only, because risk and capture have to be '
       + 'measured against something.' : ''}</p>`;
   wireGlossary(wrap);
+}
+
+/* --------------------------------------------------------------- overlap */
+
+async function drawCmpOverlap() {
+  const c = cmpState();
+  const host = $('#cmp-overlap');
+  if (!host) return;
+  const o = await get('/compare/overlap?keys='
+    + c.keys.map(encodeURIComponent).join(','));
+  const f = o.funds || [];
+  if (f.length < 2) {
+    host.innerHTML = f.length && (o.missing || []).length
+      ? `<p class="muted sm">${esc(o.missing.join(', '))} has no disclosed book,
+         so it cannot be read for overlap.</p>`
+      : '';
+    return;
+  }
+
+  /* Columns are numbered rather than named. Five scheme names across a header
+     is unreadable at any width, and the number is already in the row label. */
+  const cell = (i, j) => {
+    const v = o.matrix[i][j];
+    if (i === j) return '<td class="ov-self"></td>';
+    if (v == null) return '<td class="r mono muted">—</td>';
+    return `<td class="r ov-cell${v >= o.heavy ? ' ov-heavy' : ''}">
+      <button class="ov-btn mono" data-a="${esc(f[i].key)}" data-b="${esc(f[j].key)}"
+        >${num(v, 1)}%</button></td>`;
+  };
+
+  host.innerHTML = `
+    <section class="snapcard cmp-ovcard">
+      <span class="snapcard-head">
+        <span class="snapcard-title">How much of the same book</span>
+        <span class="snapcard-sub">weight held in common, the smaller of the two
+          positions in every stock, summed</span>
+      </span>
+      <div class="tablewrap">
+        <table class="grid dense ov-table">
+          <thead><tr><th class="cmp-namehead">Fund</th>
+            ${f.map((x, i) => `<th class="r mono">${i + 1}</th>`).join('')}
+          </tr></thead>
+          <tbody>
+            ${f.map((x, i) => `<tr>
+              <td class="cmp-name"><span class="cmp-colhead">
+                <i style="background:${cmpInk(c.keys.indexOf(x.key))}"></i>
+                ${i + 1}. ${esc(x.name)}</span>
+                <span class="muted sm">${esc(x.category)} ·
+                  ${x.holdingCount || '—'} holdings</span></td>
+              ${f.map((y, j) => cell(i, j)).join('')}
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <p class="cardnote muted sm">Shaded above ${o.heavy} percent, where two
+      funds are largely the same holding bought twice. Click a figure for the
+      stocks behind it.${(o.missing || []).length
+        ? ` ${esc(o.missing.join(', '))} left out for want of a disclosed book.`
+        : ''}</p>
+    </section>`;
+
+  host.querySelectorAll('.ov-btn').forEach((b) =>
+    b.onclick = () => openOverlapPair(b.dataset.a, b.dataset.b, b));
+}
+
+async function openOverlapPair(a, b, opener) {
+  openModal('<div class="loading">Loading…</div>', opener);
+  let d;
+  try {
+    d = await get(`/overlap/pair?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`);
+  } catch (e) {
+    const box = document.querySelector('.modal');
+    if (box) box.innerHTML = `<div class="error">${esc(e.message)}</div>`;
+    return;
+  }
+  const box = document.querySelector('.modal');
+  if (!box) return;                       // closed while the request was in flight
+  box.innerHTML = `
+    <button class="modal-close" aria-label="Close">&times;</button>
+    <div class="ov-modal">
+      <h3>${esc(d.a.name)} and ${esc(d.b.name)}</h3>
+      <p class="muted sm">${num(d.overlap, 1)} percent of weight in common across
+      ${d.sharedNames} shared ${d.sharedNames === 1 ? 'stock' : 'stocks'},
+      out of ${d.a.holdingCount} and ${d.b.holdingCount} holdings. The common
+      column is the smaller of the two positions, which is the part that is
+      genuinely owned twice.</p>
+      <div class="tablewrap ov-modaltable">
+        <table class="grid dense">
+          <thead><tr>
+            <th>Stock</th><th>Sector</th>
+            <th class="r">${esc(d.a.name)}</th>
+            <th class="r">${esc(d.b.name)}</th>
+            <th class="r">Common</th>
+          </tr></thead>
+          <tbody>
+            ${d.shared.map((r) => `<tr>
+              <td>${esc(r.name)}</td>
+              <td class="muted sm">${esc(r.sector || '—')}</td>
+              <td class="r mono">${num(r.a, 2)}%</td>
+              <td class="r mono">${num(r.b, 2)}%</td>
+              <td class="r mono b">${num(r.common, 2)}%</td>
+            </tr>`).join('') || `<tr><td colspan="5" class="muted">
+              Nothing held in common.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  box.querySelector('.modal-close').onclick = closeModal;
 }
 
 /* ------------------------------------------------------------------- boot */

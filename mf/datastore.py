@@ -732,6 +732,69 @@ def compare_table(keys, marks=(), state=None):
     }
 
 
+# Above this, two funds are holding a large part of the same book. It is not a
+# verdict, it is the level at which a reader should want to know why they own
+# both, so the matrix marks it and leaves the judgement alone.
+OVERLAP_HEAVY = 40
+
+
+def compare_overlap(keys, state=None):
+    """Pairwise overlap across the selected funds, as a matrix.
+
+    Overlap is the weight the two books hold in common: for every stock, the
+    smaller of the two positions, summed. It answers "how much of this am I
+    buying twice", which is the question two funds in one portfolio raises.
+    """
+    state = state or load()
+    funds, missing = [], []
+    for k in keys[:MAX_COMPARE_FUNDS]:
+        f = state["byKey"].get(k)
+        if f and f.get("_book"):
+            funds.append(f)
+        elif f:
+            missing.append(f["name"])
+    matrix = [[None if i == j else pairwise_overlap(a["_book"], b["_book"])
+               for j, b in enumerate(funds)] for i, a in enumerate(funds)]
+    return {
+        "funds": [{"key": f["key"], "name": f["name"], "category": f["category"],
+                   "holdingCount": f.get("holdingCount")} for f in funds],
+        "matrix": matrix,
+        "missing": missing,
+        "heavy": OVERLAP_HEAVY,
+    }
+
+
+def overlap_pair(a_key, b_key, state=None):
+    """Every stock two funds both hold, with each side's weight and the part
+    that counts towards the overlap."""
+    state = state or load()
+    a, b = state["byKey"].get(a_key), state["byKey"].get(b_key)
+    if not a or not b:
+        return None
+    abook, bbook = a.get("_book") or [], b.get("_book") or []
+    bw = {x["name"]: x for x in bbook}
+    shared = []
+    for x in abook:
+        y = bw.get(x["name"])
+        if not y:
+            continue
+        shared.append({
+            "name": x["name"], "sector": x["sector"], "cap": x["cap"],
+            "a": round(x["weight"], 2), "b": round(y["weight"], 2),
+            "common": round(min(x["weight"], y["weight"]), 2),
+        })
+    shared.sort(key=lambda r: -r["common"])
+    return {
+        "a": {"key": a["key"], "name": a["name"], "category": a["category"],
+              "holdingCount": len(abook)},
+        "b": {"key": b["key"], "name": b["name"], "category": b["category"],
+              "holdingCount": len(bbook)},
+        "overlap": pairwise_overlap(abook, bbook),
+        "sharedNames": len(shared),
+        "shared": shared,
+    }
+
+
 def compare_growth(keys, marks=(), period="3y", state=None):
     """Every selected fund and mark on one rebased line chart.
 

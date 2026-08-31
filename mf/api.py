@@ -247,6 +247,21 @@ def compare_growth():
                                      request.args.get("period") or "3y"))
 
 
+@bp.get("/compare/overlap")
+def compare_overlap():
+    """How much of the same book the selected funds are holding."""
+    return jsonify(ds.compare_overlap(_csv("keys")))
+
+
+@bp.get("/overlap/pair")
+def overlap_pair():
+    """The stocks behind one cell of the overlap matrix."""
+    out = ds.overlap_pair(request.args.get("a") or "", request.args.get("b") or "")
+    if out is None:
+        return jsonify({"error": "unknown fund"}), 404
+    return jsonify(out)
+
+
 @bp.get("/compare/blocks")
 def compare_blocks():
     """Side by side on the model's own blocks. Analyst view only."""
