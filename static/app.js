@@ -65,8 +65,8 @@ function glossFor(label) {
 }
 
 /* A term with its meaning attached. The dotted underline is the affordance. */
-function term(label, extra) {
-  const meaning = glossFor(label);
+function term(label, extra, key) {
+  const meaning = glossFor(key || label);
   if (!meaning && !extra) return esc(label);
   const body = [meaning, extra].filter(Boolean).join(' ');
   return `<span class="term" data-gloss="${esc(body)}" tabindex="0">${esc(label)}</span>`;
@@ -1099,22 +1099,27 @@ const MAX_CMP_MARKS = 2;
 /* The table's rows, grouped the way the checkboxes group them. `dir` is which
    way is better, used to mark the leading fund in a row; beta has none, because
    a beta of 1.2 is not better or worse than 0.8, it is a different fund. */
+/* Column labels are short because the group heading above them already says
+   what they are: under "Rolling returns", a column called "3Y" is not
+   ambiguous, and "Median rolling 3Y" only makes the column three times wider
+   than the figure in it. The long name is kept for the glossary lookup.
+   [label, field, suffix, decimals, direction to win, glossary term] */
 const CMP_GROUPS = [
   { id: 'returns', label: 'Returns', note: 'annualised beyond one year', rows: [
     ['3M', 'return3M', '%', 1, 'high'], ['6M', 'return6M', '%', 1, 'high'],
     ['1Y', 'return1Y', '%', 1, 'high'], ['2Y', 'return2Y', '%', 1, 'high'],
     ['3Y', 'return3Y', '%', 1, 'high'], ['5Y', 'return5Y', '%', 1, 'high'],
     ['7Y', 'return7Y', '%', 1, 'high']] },
-  { id: 'rolling', label: 'Rolling returns', note: 'median of every window of that length', rows: [
-    ['Median rolling 3Y', 'medianRolling3Y', '%', 1, 'high'],
-    ['Median rolling 5Y', 'medianRolling5Y', '%', 1, 'high']] },
+  { id: 'rolling', label: 'Rolling returns', note: 'median of every window', rows: [
+    ['3Y', 'medianRolling3Y', '%', 1, 'high', 'median rolling return'],
+    ['5Y', 'medianRolling5Y', '%', 1, 'high', 'median rolling return']] },
   { id: 'risk', label: 'Risk metrics', note: 'three years', rows: [
     ['Sharpe', 'sharpe3Y', '', 2, 'high'], ['Sortino', 'sortino3Y', '', 2, 'high'],
-    ['Information ratio', 'informationRatio3Y', '', 2, 'high'],
+    ['Info ratio', 'informationRatio3Y', '', 2, 'high', 'information ratio'],
     ['Beta', 'beta3Y', '', 2, null]] },
-  { id: 'capture', label: 'Capture ratios', note: 'against the benchmark at 100', rows: [
-    ['Upside capture', 'upsideCapture3Y', '', 0, 'high'],
-    ['Downside capture', 'downsideCapture3Y', '', 0, 'low']] },
+  { id: 'capture', label: 'Capture ratios', note: 'benchmark at 100', rows: [
+    ['Up', 'upsideCapture3Y', '', 0, 'high', 'upside capture'],
+    ['Down', 'downsideCapture3Y', '', 0, 'low', 'downside capture']] },
 ];
 
 function cmpState() {
@@ -1355,28 +1360,44 @@ async function drawCmpTable() {
                            : null;
   });
 
+  // The first column of each group carries the rule that separates the blocks,
+  // so four sets of figures read as four sets rather than one long smear.
+  const sep = [];
+  groups.reduce((n, g) => { sep.push(n); return n + g.rows.length; }, 0);
+  const cls = (i) => sep.includes(i) ? ' cmp-gsep' : '';
+
+  /* Column widths come from a colgroup rather than the cells: the first row is
+     the group heading, whose colspans tell the fixed layout nothing about the
+     columns underneath, and it would otherwise hand a two column group the same
+     width as a seven column one. */
   wrap.innerHTML = `
     <table class="grid dense cmp-table">
+      <colgroup>
+        <col class="cmp-namecol">
+        ${cols.map(() => '<col>').join('')}
+      </colgroup>
       <thead>
         <tr class="cmp-grouphead">
           <th></th>
-          ${groups.map((g) => `<th colspan="${g.rows.length}" class="c">
-            ${esc(g.label)} <span class="muted sm">${esc(g.note)}</span></th>`).join('')}
+          ${groups.map((g) => `<th colspan="${g.rows.length}" class="c cmp-gsep">
+            ${esc(g.label)}
+            <span class="muted sm">${esc(g.note)}</span></th>`).join('')}
         </tr>
         <tr>
           <th class="cmp-namehead">Fund</th>
-          ${cols.map(([label]) => `<th class="r">${term(label)}</th>`).join('')}
+          ${cols.map(([label, , , , , gloss], i) =>
+            `<th class="r${cls(i)}">${term(label, null, gloss)}</th>`).join('')}
         </tr>
       </thead>
       <tbody>
         ${rows.map((r) => `<tr class="${r.fund ? '' : 'cmp-markrow'}">
-          <td class="cmp-name">
+          <td class="cmp-name" title="${esc(r.label)}">
             <span class="cmp-colhead"><i style="background:${r.ink}"></i>
-              ${esc(r.label)}</span>
+              <span class="cmp-nametext">${esc(r.label)}</span></span>
             <span class="muted sm">${esc(r.sub || '')}</span></td>
           ${cols.map(([, field, suffix, dp], i) => {
             const v = r.metrics[field];
-            return `<td class="r mono${
+            return `<td class="r mono${cls(i)}${
               best[i] !== null && r.fund && v === best[i] ? ' cmp-best' : ''}">${
               v == null ? '—' : num(v, dp) + suffix}</td>`;
           }).join('')}
@@ -1482,6 +1503,8 @@ async function openOverlapPair(a, b, opener) {
       genuinely owned twice.</p>
       <div class="tablewrap ov-modaltable">
         <table class="grid dense">
+          <colgroup><col><col class="ovm-sector"><col class="ovm-w">
+            <col class="ovm-w"><col class="ovm-w"></colgroup>
           <thead><tr>
             <th>Stock</th><th>Sector</th>
             <th class="r">${esc(d.a.name)}</th>

@@ -436,23 +436,32 @@ th.sortable.on .arrow { opacity: 1; }
 .cmp-group input { accent-color: var(--red); cursor: pointer; }
 
 /* The fund is the subject, so it holds the row and the metrics run across.
-   The name column stays put while the metrics scroll: a figure is meaningless
-   once the scheme it belongs to has slid off the left edge. */
+   Every metric column is the same narrow width, which puts each figure directly
+   under its own heading instead of drifting to the far side of a column sized
+   by the words above it. The name column stays put while the rest scrolls: a
+   figure means nothing once the scheme it belongs to has slid off the edge. */
+.cmp-table { table-layout: fixed; width: 100%; }
 .cmp-table th { vertical-align: bottom; white-space: nowrap; }
-.cmp-colhead { display: inline-flex; align-items: baseline; gap: 7px; }
+.cmp-table col { width: 78px; }
+.cmp-table col.cmp-namecol { width: 250px; }
+.cmp-table.dense td, .cmp-table.dense th { padding: 7px 9px; }
+.cmp-colhead { display: flex; align-items: baseline; gap: 7px; }
 .cmp-colhead i { width: 9px; height: 9px; border-radius: 50%; flex: none;
   position: relative; top: 1px; }
-.cmp-name { position: sticky; left: 0; z-index: 1; background: inherit;
-  min-width: 210px; }
+.cmp-name { position: sticky; left: 0; z-index: 1; background: inherit; }
 .cmp-namehead { position: sticky; left: 0; z-index: 1;
-  background: var(--surface-2); min-width: 210px; }
+  background: var(--surface-2); }
+.cmp-nametext { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cmp-name .muted { display: block; margin-left: 16px; }
 .cmp-grouphead th { font-family: var(--title); font-weight: 500; font-size: 12px;
-  background: var(--wash); border-bottom: 1px solid var(--grid);
-  padding-top: 8px; padding-bottom: 6px; }
+  text-align: center; background: var(--wash); white-space: normal;
+  border-bottom: 1px solid var(--grid); padding-top: 8px; padding-bottom: 6px; }
+.cmp-grouphead .muted { display: block; }
 .cmp-grouphead th:first-child { background: var(--surface-2); }
 .cmp-grouphead .muted { font-weight: 400; }
-.cmp-grouphead th + th { border-left: 1px solid var(--grid); }
+/* One rule at each group boundary, carried all the way down the body, so the
+   four sets of figures read as four sets. */
+.cmp-gsep { border-left: 1px solid var(--grid); }
 .cmp-markrow td { color: var(--text-muted); }
 .cmp-markrow .cmp-colhead { color: var(--text-secondary); }
 .cmp-best { font-weight: 700; color: var(--ink-strong); }
@@ -463,19 +472,21 @@ th.sortable.on .arrow { opacity: 1; }
 /* A grid of names against names. The columns are held narrow, and the heads
    wrap and clip rather than setting the width, so the matrix reads as a block
    of figures instead of a few numbers strewn across a page. */
-.ov-table { table-layout: fixed; width: auto; max-width: 100%; }
-.ov-table th, .ov-table td { width: 96px; }
-.ov-table .ov-namehead, .ov-table .ov-name { width: 250px; }
+.ov-table { table-layout: fixed; width: 100%; }
+.ov-table .ov-namehead, .ov-table .ov-name { width: 280px; text-align: left; }
 .ov-name { white-space: normal; }
-.ov-colhead { vertical-align: bottom; font-size: 11px; line-height: 1.25;
-  padding-bottom: 7px; }
-.ov-colhead span { display: -webkit-box; -webkit-line-clamp: 5;
-  -webkit-box-orient: vertical; overflow: hidden; white-space: normal;
-  overflow-wrap: anywhere; }
+/* Heads and figures are both centred. A matrix is a grid of readings, not a
+   column to be ranked, and centring keeps each number under its own heading
+   however wide the column ends up. */
+.grid th.ov-colhead { vertical-align: bottom; text-align: center; font-size: 11.5px;
+  line-height: 1.3; padding-bottom: 7px; }
+.ov-colhead span { display: -webkit-box; -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
+.ov-table td { text-align: center; }
 .ov-blank { color: var(--text-muted); }
 .ov-cell { padding: 0; }
 .ov-btn { font: inherit; font-family: var(--mono); font-size: 12.5px;
-  width: 100%; padding: 6px 10px; text-align: right; border: 0; cursor: pointer;
+  width: 100%; padding: 6px 10px; text-align: center; border: 0; cursor: pointer;
   background: none; color: inherit; }
 .ov-btn:hover { color: var(--red); text-decoration: underline; }
 .ov-heavy { background: rgba(204, 25, 25, 0.16); }
@@ -484,6 +495,12 @@ th.sortable.on .arrow { opacity: 1; }
 .ov-modal h3 { font-size: 18px; margin-bottom: 6px; padding-right: 28px; }
 .ov-modal > .muted { margin-bottom: 12px; max-width: 62ch; }
 .ov-modaltable { max-height: 52vh; overflow: auto; }
+/* Fixed columns so the two weights sit next to the common figure they produce,
+   rather than being pushed apart by whichever scheme has the longer name. */
+.ov-modaltable table { table-layout: fixed; }
+.ov-modaltable .grid.dense th { white-space: normal; vertical-align: bottom; }
+.ovm-sector { width: 150px; }
+.ovm-w { width: 108px; }
 .ov-modaltable thead th { position: sticky; top: 0; background: var(--surface-2);
   z-index: 1; }
 
