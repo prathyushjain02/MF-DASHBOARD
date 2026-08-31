@@ -78,7 +78,8 @@ _ROW_FIELDS = (
     "key", "name", "category", "amc", "fundManager", "band", "bandMeaning",
     "composite", "evidence", "overallRank", "categoryRank", "categoryCount",
     "tier", "tierSize", "aumCr", "nav", "navDate",
-    "return3M", "return6M", "return1Y", "return3Y", "return5Y",
+    "return3M", "return6M", "return1Y", "return2Y", "return3Y",
+    "return5Y", "return7Y",
     "medianRolling3Y", "medianRolling5Y",
     "sharpe3Y", "sortino3Y", "informationRatio3Y", "treynor3Y",
     "upsideCapture3Y", "downsideCapture3Y", "maxDrawdown3Y",
@@ -539,3 +540,262 @@ def meta_summary(state=None):
                            if state["funds"] else None),
         "build": state["meta"],
     }
+
+
+# ---------------------------------------------------------------------------
+# Compare
+# ---------------------------------------------------------------------------
+
+# What the benchmark picker offers. Each mark draws from the daily index series,
+# which is the only one fine-grained enough for a short window, and takes its
+# table numbers from the feed's own benchmark row where the feed publishes one.
+#
+# The two are not the same series and are deliberately not presented as one: the
+# daily line is a price index, the feed's row is a total return index. Where no
+# feed row exists the table shows nothing rather than borrowing a neighbouring
+# index, because Nifty Midcap 150 and BSE MidSmallCap are different exposures.
+COMPARE_MARKS = [
+    {"id": "Nifty 500", "metricsFrom": "Nifty 500 TRI"},
+    {"id": "Nifty 50", "metricsFrom": "Nifty 50 TRI"},
+    {"id": "Nifty Midcap 150", "metricsFrom": None},
+    {"id": "Nifty Smallcap 250", "metricsFrom": None},
+]
+
+# The columns the compare table can show, per fund and per mark.
+_COMPARE_METRICS = (
+    "return3M", "return6M", "return1Y", "return2Y", "return3Y", "return5Y",
+    "return7Y", "medianRolling3Y", "medianRolling5Y",
+    "sharpe3Y", "sortino3Y", "informationRatio3Y", "beta3Y",
+    "upsideCapture3Y", "downsideCapture3Y",
+)
+
+MAX_COMPARE_FUNDS = 5
+MAX_COMPARE_MARKS = 2
+
+
+# Only two of the four marks come with a published metric row. The other two are
+# read off their own series instead of being left blank: an empty column tells
+# the reader nothing, and the arithmetic behind a point to point return is not
+# the part of this that needs a vendor.
+_RETURN_WINDOWS = (("return3M", 91), ("return6M", 182), ("return1Y", 365),
+                   ("return2Y", 730), ("return3Y", 1095), ("return5Y", 1826),
+                   ("return7Y", 2557))
+_ANNUALISE_BEYOND = 400
+_MIN_ROLLING_WINDOWS = 12
+
+
+def _spacing(days):
+    """Median gap between observations, so a monthly series is not judged by the
+    tolerances of a daily one."""
+    gaps = sorted((_date.fromisoformat(b) - _date.fromisoformat(a)).days
+                  for a, b in zip(days, days[1:]))
+    return gaps[len(gaps) // 2] if gaps else 1
+
+
+def _nearest(days, vals, iso, tol):
+    """The observation closest to `iso`, if one lands close enough. A window
+    dated off a point a long way from where it should start is not the window it
+    claims to be, so it is dropped rather than approximated: a monthly series
+    cannot honestly answer a three month question."""
+    lo, hi = 0, len(days)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if days[mid] < iso:
+            lo = mid + 1
+        else:
+            hi = mid
+    want = _date.fromisoformat(iso)
+    best, gap = None, None
+    for i in (lo - 1, lo):
+        if 0 <= i < len(days) and vals[i]:
+            g = abs((_date.fromisoformat(days[i]) - want).days)
+            if gap is None or g < gap:
+                best, gap = vals[i], g
+    return best if gap is not None and gap <= tol else None
+
+
+def _window_return(days, vals, win_days, spacing, end):
+    """Point to point over `win_days`, annualised beyond a year, in the same
+    terms the funds' own return columns are stated."""
+    v1 = vals[end]
+    tol = min(max(7, spacing * 0.55), win_days * 0.08)
+    v0 = _nearest(days[:end + 1], vals[:end + 1],
+                  _shift(days[end], -win_days), tol)
+    if not v0 or not v1:
+        return None
+    growth_ = v1 / v0
+    if win_days > _ANNUALISE_BEYOND:
+        growth_ = growth_ ** (365.25 / win_days)
+    return round(100.0 * (growth_ - 1.0), 2)
+
+
+def _rolling_median(days, vals, win_days, spacing, end):
+    """Median of every window of that length, matching how the funds' own
+    rolling figures are stated."""
+    seen = []
+    for j in range(end, -1, -1):
+        if _shift(days[j], -win_days) < days[0]:
+            break
+        r = _window_return(days, vals, win_days, spacing, j)
+        if r is not None:
+            seen.append(r)
+    if len(seen) < _MIN_ROLLING_WINDOWS:
+        return None
+    return _median(seen)
+
+
+def _month_end_index(days):
+    """The last observation of the last complete month. Published figures are
+    stated to a month end, so a series read against them has to stop on one too
+    or the two columns answer questions about different windows."""
+    if not days:
+        return None
+    last = _date.fromisoformat(days[-1])
+    if (last + _timedelta(days=1)).month != last.month:
+        return len(days) - 1
+    month = days[-1][:7]
+    for i in range(len(days) - 1, -1, -1):
+        if days[i][:7] < month:
+            return i
+    return None
+
+
+def _series_metrics(series):
+    """Returns and rolling returns off an index series. Risk and capture are
+    left out: they need a benchmark to be measured against, and a benchmark
+    measured against itself is a row of ones."""
+    days, vals = series.get("d") or [], series.get("v") or []
+    end = _month_end_index(days)
+    if end is None or end < 8:
+        return None
+    spacing = _spacing(days)
+    out = {k: None for k in _COMPARE_METRICS}
+    for name, win in _RETURN_WINDOWS:
+        out[name] = _window_return(days, vals, win, spacing, end)
+    out["medianRolling3Y"] = _rolling_median(days, vals, 1095, spacing, end)
+    out["medianRolling5Y"] = _rolling_median(days, vals, 1826, spacing, end)
+    return out if any(v is not None for v in out.values()) else None
+
+
+def _mark_metrics(mark, state):
+    """Where a mark's figures come from: the published row for its total return
+    index where the feed carries one, otherwise the price index itself, read to
+    the same month end. A price index excludes dividends, so which basis was
+    used travels with the numbers rather than being buried in a footnote."""
+    row_ = (state.get("benchmarks") or {}).get(mark["metricsFrom"] or "")
+    if row_:
+        return {k: row_.get(k) for k in _COMPARE_METRICS}, mark["metricsFrom"]
+    navs = state.get("navs") or {}
+    m = _series_metrics((navs.get("indices") or {}).get(mark["id"]) or {})
+    if m:
+        return m, mark["id"] + " price index"
+    return None, None
+
+
+def compare_marks(state=None):
+    """The selectable benchmarks, with what each one can actually do."""
+    state = state or load()
+    navs = state.get("navs") or {}
+    indices = navs.get("indices") or {}
+    out = []
+    for m in COMPARE_MARKS:
+        series = indices.get(m["id"])
+        if not series:
+            continue
+        metrics, label = _mark_metrics(m, state)
+        out.append({
+            "id": m["id"],
+            "label": m["id"],
+            "from": series.get("d", [None])[0],
+            "metricsLabel": label,
+            "metrics": metrics,
+        })
+    return out
+
+
+def compare_table(keys, marks=(), state=None):
+    """Rows for the comparison table: the funds asked for, then the marks."""
+    state = state or load()
+    catalogue = {m["id"]: m for m in compare_marks(state)}
+    funds = [state["byKey"][k] for k in keys[:MAX_COMPARE_FUNDS]
+             if k in state["byKey"]]
+    return {
+        "funds": [{**row(f), "metrics": {k: f.get(k) for k in _COMPARE_METRICS}}
+                  for f in funds],
+        "marks": [{"id": m, "label": catalogue[m]["label"],
+                   "metricsLabel": catalogue[m]["metricsLabel"],
+                   "metrics": catalogue[m]["metrics"]}
+                  for m in marks[:MAX_COMPARE_MARKS] if m in catalogue],
+        "available": compare_marks(state),
+        "maxFunds": MAX_COMPARE_FUNDS,
+        "maxMarks": MAX_COMPARE_MARKS,
+    }
+
+
+def compare_growth(keys, marks=(), period="3y", state=None):
+    """Every selected fund and mark on one rebased line chart.
+
+    They must share a base date or the chart is not a comparison, so the window
+    is pulled forward to the youngest fund in the selection. That is reported
+    rather than done silently: adding a two year old fund to a five year window
+    shortens the whole picture, and the reader has to know it was their choice
+    that did it.
+    """
+    state = state or load()
+    navs = state.get("navs") or {}
+    fund_series = []
+    for k in keys[:MAX_COMPARE_FUNDS]:
+        f = state["byKey"].get(k)
+        s = (navs.get("funds") or {}).get(k)
+        if f and s and len(s.get("d") or []) >= 2:
+            fund_series.append((f, s))
+    if not fund_series:
+        return {"period": period, "series": [], "notes": [],
+                "unavailable": "No NAV history for the funds selected."}
+
+    period = period if period in PERIODS else "3y"
+    last = max(s["d"][-1] for _, s in fund_series)
+    if period == "all":
+        start = min(s["d"][0] for _, s in fund_series)
+    elif period == "ytd":
+        start = last[:4] + "-01-01"
+    else:
+        start = (_date.fromisoformat(last)
+                 - _timedelta(days=PERIODS[period])).isoformat()
+
+    # The youngest fund sets the floor for everyone.
+    youngest = max(s["d"][0] for _, s in fund_series)
+    notes = []
+    if youngest > start:
+        late = sorted((s["d"][0], f["name"]) for f, s in fund_series)[-1]
+        notes.append(f"Window starts at {_month_name(youngest)} because "
+                     f"{late[1]} has no history before it.")
+        start = youngest
+
+    out = []
+    for f, s in fund_series:
+        line = _rebased(s, start)
+        if line:
+            out.append({"code": "fund", "key": f["key"], "label": f["name"],
+                        "category": f.get("category"), **line})
+
+    catalogue = {m["id"]: m for m in compare_marks(state)}
+    limit = _shift(start, _START_SLACK_DAYS)
+    for mid in list(marks)[:MAX_COMPARE_MARKS]:
+        series = (navs.get("indices") or {}).get(mid)
+        if not series or mid not in catalogue:
+            continue
+        if series["d"][0] > limit:
+            notes.append(f"{mid} starts in {_month_name(series['d'][0])}, "
+                         f"so it cannot be drawn over this window.")
+            continue
+        line = _rebased(series, start)
+        if line:
+            out.append({"code": "mark", "key": mid, "label": mid, **line})
+
+    return {"period": period, "start": start, "end": last,
+            "series": out, "notes": notes,
+            "periods": [p for p in ("1m", "3m", "6m", "ytd", "1y", "3y", "5y", "all")
+                        if p in ("ytd", "all")
+                        or _has_room(min(s["d"][0] for _, s in fund_series),
+                                     last, PERIODS[p])]}

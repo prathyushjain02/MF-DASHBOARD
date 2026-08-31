@@ -1,7 +1,7 @@
 /* Mutual Fund Screener.
  *
  * Four views: the methodology page, the per-category shortlists, the full table
- * with a fund detail card, and a portfolio look-through.
+ * with a fund detail card, and a side by side comparison.
  *
  * The Client / Analyst toggle decides what the page is *for*, not just how much
  * of it shows.
@@ -653,7 +653,7 @@ function openFund(key) {
 }
 
 const VIEW_LABEL = { shortlist: 'category top funds', all: 'all funds',
-                     portfolio: 'portfolio', approach: 'how we look at funds' };
+                     compare: 'compare', approach: 'how we look at funds' };
 
 /* The fund page is a one page snapshot: a card per question, each showing the
    headline and nothing more. The detail behind every card is a click away in a
@@ -1081,100 +1081,300 @@ function openCardModal(code) {
   }
 }
 
-/* ------------------------------------------------------------ 4. portfolio */
+/* -------------------------------------------------------------- 4. compare */
 
-async function renderPortfolio(host) {
+/* Several funds on one rebased chart, then the same funds as columns of a table
+   the reader turns on a group at a time.
+ *
+ * The portfolio look-through this replaced answered a different question: what
+ * do I own once these are combined. Its endpoints are still there; only the tab
+ * is gone.
+ *
+ * Selection lives on `state` rather than in the DOM, so switching tabs and
+ * coming back does not lose the comparison. */
+
+const MAX_CMP_FUNDS = 5;
+const MAX_CMP_MARKS = 2;
+
+/* The table's rows, grouped the way the checkboxes group them. `dir` is which
+   way is better, used to mark the leading fund in a row; beta has none, because
+   a beta of 1.2 is not better or worse than 0.8, it is a different fund. */
+const CMP_GROUPS = [
+  { id: 'returns', label: 'Returns', note: 'annualised beyond one year', rows: [
+    ['3M', 'return3M', '%', 1, 'high'], ['6M', 'return6M', '%', 1, 'high'],
+    ['1Y', 'return1Y', '%', 1, 'high'], ['2Y', 'return2Y', '%', 1, 'high'],
+    ['3Y', 'return3Y', '%', 1, 'high'], ['5Y', 'return5Y', '%', 1, 'high'],
+    ['7Y', 'return7Y', '%', 1, 'high']] },
+  { id: 'rolling', label: 'Rolling returns', note: 'median of every window of that length', rows: [
+    ['Median rolling 3Y', 'medianRolling3Y', '%', 1, 'high'],
+    ['Median rolling 5Y', 'medianRolling5Y', '%', 1, 'high']] },
+  { id: 'risk', label: 'Risk metrics', note: 'three years', rows: [
+    ['Sharpe', 'sharpe3Y', '', 2, 'high'], ['Sortino', 'sortino3Y', '', 2, 'high'],
+    ['Information ratio', 'informationRatio3Y', '', 2, 'high'],
+    ['Beta', 'beta3Y', '', 2, null]] },
+  { id: 'capture', label: 'Capture ratios', note: 'against the benchmark at 100', rows: [
+    ['Upside capture', 'upsideCapture3Y', '', 0, 'high'],
+    ['Downside capture', 'downsideCapture3Y', '', 0, 'low']] },
+];
+
+function cmpState() {
+  if (!state.cmp) {
+    state.cmp = { keys: [], marks: [], period: '3y',
+                  groups: new Set(CMP_GROUPS.map((g) => g.id)) };
+  }
+  return state.cmp;
+}
+
+const cmpInk = (i) => Chart.COMPARE_INK[i % Chart.COMPARE_INK.length];
+
+async function renderCompare(host) {
+  const c = cmpState();
   host.innerHTML = `
     <section>
       <div class="section-head">
-        <h2>Portfolio</h2>
-        <p class="lede">Add schemes with weights to see the combined book: what it
-        actually owns once the funds are looked through, and how much of it is bought
-        twice.</p>
+        <h2>Compare</h2>
+        <p class="lede">Put up to ${MAX_CMP_FUNDS} funds on one chart, against up
+        to ${MAX_CMP_MARKS} benchmarks, and read them side by side.</p>
       </div>
-      <div class="pf-build">
-        <label>Add a fund
-          <input id="pf-lookup" type="search" placeholder="Type a scheme name" autocomplete="off">
-          <div id="pf-suggest" class="suggest" hidden></div>
-        </label>
-        <div id="pf-list" class="pf-list"></div>
-        <button id="pf-run" class="primary">Look through</button>
+
+      <div class="cmp-pickers">
+        <div class="cmp-pick">
+          <label class="cmp-lab" for="cmp-lookup">Funds
+            <span class="muted">up to ${MAX_CMP_FUNDS}</span></label>
+          <div class="cmp-search">
+            <input id="cmp-lookup" type="search" autocomplete="off"
+                   placeholder="Type a scheme name">
+            <div id="cmp-suggest" class="suggest" hidden></div>
+          </div>
+          <div id="cmp-chips" class="cmp-chips"></div>
+        </div>
+        <div class="cmp-pick">
+          <span class="cmp-lab">Benchmarks
+            <span class="muted">up to ${MAX_CMP_MARKS}</span></span>
+          <div id="cmp-marks" class="cmp-marks"></div>
+        </div>
       </div>
-      <div id="pf-out"></div>
+
+      <div id="cmp-body"></div>
     </section>`;
 
-  const picked = new Map();
-  const redraw = () => {
-    $('#pf-list').innerHTML = [...picked.entries()].map(([k, v]) => `
-      <div class="pf-row">
-        <span>${esc(v.name)}</span>
-        <input type="number" min="0" step="1" value="${v.weight}" data-k="${esc(k)}">
-        <span class="muted">%</span>
-        <button data-del="${esc(k)}" aria-label="Remove">×</button>
-      </div>`).join('') || '<p class="muted">Nothing added yet.</p>';
-    $('#pf-list').querySelectorAll('input').forEach((i) =>
-      i.onchange = () => { picked.get(i.dataset.k).weight = Number(i.value) || 0; });
-    $('#pf-list').querySelectorAll('[data-del]').forEach((b) =>
-      b.onclick = () => { picked.delete(b.dataset.del); redraw(); });
-  };
-  redraw();
+  const meta = await get('/compare');
+  c.available = meta.available || [];
+  drawCmpMarks();
+  wireCmpSearch();
+  drawCmpChips();
+  await drawCmpBody();
+  wireGlossary(host);
+}
 
-  const input = $('#pf-lookup'), box = $('#pf-suggest');
+function wireCmpSearch() {
+  const c = cmpState();
+  const input = $('#cmp-lookup'), box = $('#cmp-suggest');
+  if (!input) return;
   input.oninput = debounce(async () => {
     const q = input.value.trim();
     if (q.length < 2) { box.hidden = true; return; }
-    const data = await get('/funds?limit=10&hasHoldings=1&q=' + encodeURIComponent(q));
-    box.innerHTML = data.funds.map((f) => `
-      <div class="opt" data-k="${esc(f.key)}" data-n="${esc(f.name)}">
-        <span>${esc(f.name)}</span><span class="muted">${esc(f.category)}</span></div>`).join('');
-    box.hidden = !data.funds.length;
-    box.querySelectorAll('.opt').forEach((el) => el.onclick = () => {
-      picked.set(el.dataset.k, { name: el.dataset.n, weight: 10 });
-      box.hidden = true; input.value = ''; redraw();
+    const data = await get('/funds?limit=10&q=' + encodeURIComponent(q));
+    const rows = data.funds.filter((f) => !c.keys.includes(f.key));
+    box.innerHTML = rows.map((f) => `
+      <div class="opt" data-k="${esc(f.key)}">
+        <span>${esc(f.name)}</span><span class="muted">${esc(f.category)}</span></div>`).join('')
+      || '<div class="opt muted">Nothing else matches</div>';
+    box.hidden = false;
+    box.querySelectorAll('.opt[data-k]').forEach((el) => el.onclick = () => {
+      if (c.keys.length >= MAX_CMP_FUNDS) return;
+      c.keys.push(el.dataset.k);
+      box.hidden = true; input.value = '';
+      drawCmpChips(); drawCmpBody();
     });
   }, 200);
-
-  $('#pf-run').onclick = async () => {
-    const weights = {};
-    picked.forEach((v, k) => { if (v.weight > 0) weights[k] = v.weight; });
-    if (!Object.keys(weights).length) return;
-    const out = $('#pf-out');
-    out.innerHTML = '<div class="loading">Looking through…</div>';
-    const r = await fetch(API + '/portfolio', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ weights }),
-    }).then((x) => x.json());
-    renderLookThrough(out, r);
-  };
 }
 
-function renderLookThrough(host, r) {
+function drawCmpChips() {
+  const c = cmpState();
+  const host = $('#cmp-chips');
+  if (!host) return;
+  host.innerHTML = c.keys.map((k, i) => {
+    const name = (c.names && c.names[k]) || k;
+    return `<span class="cmp-chip"><i style="background:${cmpInk(i)}"></i>
+      ${esc(name)}<button data-del="${esc(k)}" aria-label="Remove">&times;</button></span>`;
+  }).join('') || '<span class="muted sm">No funds selected yet.</span>';
+  host.querySelectorAll('[data-del]').forEach((b) => b.onclick = () => {
+    c.keys = c.keys.filter((k) => k !== b.dataset.del);
+    drawCmpChips(); drawCmpBody();
+  });
+  const input = $('#cmp-lookup');
+  if (input) {
+    const full = c.keys.length >= MAX_CMP_FUNDS;
+    input.disabled = full;
+    input.placeholder = full ? `${MAX_CMP_FUNDS} is the maximum, remove one to add another`
+                             : 'Type a scheme name';
+  }
+}
+
+function drawCmpMarks() {
+  const c = cmpState();
+  const host = $('#cmp-marks');
+  if (!host) return;
+  host.innerHTML = (c.available || []).map((m) => {
+    const on = c.marks.includes(m.id);
+    return `<button class="cmp-mark${on ? ' on' : ''}" data-mark="${esc(m.id)}"
+      aria-pressed="${on}">${esc(m.label)}</button>`;
+  }).join('');
+  host.querySelectorAll('[data-mark]').forEach((b) => b.onclick = () => {
+    const id = b.dataset.mark;
+    if (c.marks.includes(id)) c.marks = c.marks.filter((x) => x !== id);
+    else if (c.marks.length < MAX_CMP_MARKS) c.marks.push(id);
+    else return;
+    drawCmpMarks(); drawCmpBody();
+  });
+}
+
+async function drawCmpBody() {
+  const c = cmpState();
+  const host = $('#cmp-body');
+  if (!host) return;
+  if (!c.keys.length) {
+    host.innerHTML = `<div class="cmp-empty">Add a fund above to start a
+      comparison.</div>`;
+    return;
+  }
   host.innerHTML = `
-    <div class="stats">
-      <div class="stat"><span class="k">Schemes</span><span class="v">${r.funds.length}</span></div>
-      <div class="stat"><span class="k">Distinct stocks</span><span class="v">${r.distinctStocks}</span></div>
-      <div class="stat"><span class="k">Top 10 weight</span><span class="v">${num(r.topTen, 1)}%</span></div>
-      <div class="stat"><span class="k">Heaviest overlap</span><span class="v">${
-        r.pairs.length ? num(r.pairs[0].overlap, 0) + '%' : '—'}</span></div>
+    <section class="snapcard chartcard cmp-chart">
+      <span class="snapcard-head">
+        <span class="snapcard-title">Growth of 100 rupees</span>
+        <span class="snapcard-sub" id="cmp-sub">rebased to zero at the start of
+          the window</span>
+      </span>
+      <div class="periodbar" id="cmp-periods" role="group" aria-label="Chart period"></div>
+      <div id="cmp-growth"></div>
+      <p class="cardnote muted sm" id="cmp-note"></p>
+    </section>
+
+    <div class="cmp-groupbar" id="cmp-groupbar">
+      ${CMP_GROUPS.map((g) => `
+        <label class="cmp-group"><input type="checkbox" data-group="${g.id}"
+          ${c.groups.has(g.id) ? 'checked' : ''}> ${esc(g.label)}</label>`).join('')}
     </div>
-    ${r.notes.length ? `<ul class="notes">${r.notes.map((n) =>
-      `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
-    <div class="two">
-      <div class="panel"><h4>Combined top holdings</h4><div id="lt-stocks" class="chart-host"></div></div>
-      <div class="panel"><h4>Sector exposure</h4><div id="lt-sectors" class="chart-host"></div></div>
-    </div>
-    <h4>Pairwise overlap</h4>
-    <table class="grid dense">
-      <thead><tr><th>Fund</th><th>Fund</th><th class="r">Overlap</th></tr></thead>
-      <tbody>${r.pairs.map((p) => `<tr><td>${esc(p.aName)}</td><td>${esc(p.bName)}</td>
-        <td class="r mono">${num(p.overlap, 0)}%</td></tr>`).join('')}</tbody>
-    </table>`;
-  Chart.bars($('#lt-stocks'), r.stocks.slice(0, 15).map((s) =>
-    ({ label: s.name, value: s.weight })),
-    { suffix: '%', decimals: 2, colorFor: (x) => Chart.seqColor(x.value / 6) });
-  Chart.bars($('#lt-sectors'), r.sectors.slice(0, 12).map((s) =>
-    ({ label: s.sector, value: s.weight })),
-    { suffix: '%', decimals: 1, colorFor: (x) => Chart.seqColor(x.value / 35) });
+    <div class="tablewrap" id="cmp-tablewrap"></div>`;
+
+  $('#cmp-groupbar').querySelectorAll('[data-group]').forEach((b) =>
+    b.onchange = () => {
+      if (b.checked) c.groups.add(b.dataset.group);
+      else c.groups.delete(b.dataset.group);
+      drawCmpTable();
+    });
+
+  await Promise.all([drawCmpGrowth(), drawCmpTable()]);
+}
+
+async function drawCmpGrowth() {
+  const c = cmpState();
+  const host = $('#cmp-growth');
+  if (!host) return;
+  host.innerHTML = '<div class="loading sm">Reading NAV history…</div>';
+  const qs = `keys=${c.keys.map(encodeURIComponent).join(',')}`
+    + `&marks=${c.marks.map(encodeURIComponent).join(',')}`
+    + `&period=${encodeURIComponent(c.period)}`;
+  const g = await get('/compare/growth?' + qs);
+  c.period = g.period || c.period;
+
+  const bar = $('#cmp-periods');
+  if (bar) {
+    bar.innerHTML = (g.periods || ['3y']).map((p) =>
+      `<button class="pbtn${p === c.period ? ' on' : ''}" data-period="${p}"
+        aria-pressed="${p === c.period}">${PERIOD_LABEL[p] || p}</button>`).join('');
+    bar.querySelectorAll('.pbtn').forEach((b) => b.onclick = () => {
+      c.period = b.dataset.period; drawCmpGrowth();
+    });
+  }
+
+  if (!g.series || !g.series.length) {
+    host.innerHTML = `<div class="empty">${esc(g.unavailable || 'No NAV history')}</div>`;
+    return;
+  }
+  /* Funds take the categorical set in the order they were added, so a fund keeps
+     its colour between the chip, the chart and the table. Benchmarks are grey
+     and dashed, which reads as the backdrop they are. */
+  let fi = 0;
+  const series = g.series.map((s) => s.code === 'fund'
+    ? { ...s, ink: cmpInk(fi++) }
+    : { ...s, ink: Chart.MARK_INK, dash: '5 3', width: 1.5 });
+  Chart.growthLines(host, series, { height: 300 });
+
+  c.names = Object.fromEntries(g.series.filter((s) => s.code === 'fund')
+    .map((s) => [s.key, s.label]));
+  drawCmpChips();
+
+  const sub = $('#cmp-sub');
+  if (sub) sub.textContent = `${fmtDay(g.start)} to ${fmtDay(g.end)}, `
+    + 'daily NAV rebased to zero';
+  const note = $('#cmp-note');
+  if (note) {
+    note.textContent = (g.notes || []).join(' ')
+      || 'Benchmarks are price indices, so they exclude dividends while a fund '
+         + 'NAV includes them.';
+  }
+}
+
+async function drawCmpTable() {
+  const c = cmpState();
+  const wrap = $('#cmp-tablewrap');
+  if (!wrap) return;
+  const qs = `keys=${c.keys.map(encodeURIComponent).join(',')}`
+    + `&marks=${c.marks.map(encodeURIComponent).join(',')}`;
+  const t = await get('/compare?' + qs);
+  const cols = [
+    ...t.funds.map((f, i) => ({ label: f.name, sub: f.category,
+                                metrics: f.metrics, ink: cmpInk(i), fund: true })),
+    ...t.marks.map((m) => ({ label: m.label,
+                             sub: m.metrics ? m.metricsLabel : 'no published metrics',
+                             metrics: m.metrics || {}, ink: Chart.MARK_INK })),
+  ];
+  const priced = cols.some((col) => /price index$/.test(col.sub || ''));
+  const groups = CMP_GROUPS.filter((g) => c.groups.has(g.id));
+  if (!groups.length) {
+    wrap.innerHTML = '<p class="muted sm">Tick a group above to show its metrics.</p>';
+    return;
+  }
+
+  const body = groups.map((g) => `
+    <tr class="cmp-grouprow"><td colspan="${cols.length + 1}">${esc(g.label)}
+      <span class="muted sm">${esc(g.note)}</span></td></tr>
+    ${g.rows.map(([label, field, suffix, dp, dir]) => {
+      const vals = cols.map((col) => col.metrics ? col.metrics[field] : null);
+      // The leader is marked among the funds only: a benchmark is the thing
+      // being measured against, not a competitor in the race.
+      const fundVals = vals.filter((v, i) => cols[i].fund && v != null);
+      let best = null;
+      if (dir && fundVals.length > 1) {
+        best = dir === 'high' ? Math.max(...fundVals) : Math.min(...fundVals);
+      }
+      return `<tr>
+        <td class="cmp-metric">${term(label)}</td>
+        ${vals.map((v, i) => `<td class="r mono${
+          best !== null && cols[i].fund && v === best ? ' cmp-best' : ''}">${
+          v == null ? '—' : num(v, dp) + suffix}</td>`).join('')}
+      </tr>`;
+    }).join('')}`).join('');
+
+  wrap.innerHTML = `
+    <table class="grid dense cmp-table">
+      <thead><tr>
+        <th></th>
+        ${cols.map((col) => `<th class="r">
+          <span class="cmp-colhead"><i style="background:${col.ink}"></i>
+            ${esc(col.label)}</span>
+          <span class="muted sm">${esc(col.sub || '')}</span></th>`).join('')}
+      </tr></thead>
+      <tbody>${body}</tbody>
+    </table>
+    <p class="muted sm">Returns are point to point and annualised beyond one year.
+    A bold figure is the best of the funds shown in that row; benchmarks are not
+    ranked against them.${priced ? ' A benchmark read off a price index excludes '
+      + 'dividends and carries returns only, because risk and capture have to be '
+      + 'measured against something.' : ''}</p>`;
+  wireGlossary(wrap);
 }
 
 /* ------------------------------------------------------------------- boot */
@@ -1187,7 +1387,7 @@ async function render() {
     else if (state.view === 'approach') await renderApproach(host);
     else if (state.view === 'shortlist') await renderShortlists(host);
     else if (state.view === 'all') await renderAll(host);
-    else await renderPortfolio(host);
+    else await renderCompare(host);
   } catch (e) {
     host.innerHTML = `<div class="error"><strong>Could not load.</strong>
       <span>${esc(e.message)}</span></div>`;

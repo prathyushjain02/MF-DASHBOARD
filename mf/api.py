@@ -228,12 +228,30 @@ def portfolio():
     return jsonify(lt)
 
 
+def _csv(name):
+    return [x for x in (request.args.get(name) or "").split(",") if x.strip()]
+
+
 @bp.get("/compare")
 def compare():
-    """Side by side on blocks and headline metrics."""
+    """The comparison table: the funds asked for, then the benchmarks, on the
+    metrics the table can show. Called with no keys it still answers, so the tab
+    can populate its pickers before anything is selected."""
+    return jsonify(ds.compare_table(_csv("keys"), _csv("marks")))
+
+
+@bp.get("/compare/growth")
+def compare_growth():
+    """Every selected fund and benchmark on one rebased line chart."""
+    return jsonify(ds.compare_growth(_csv("keys"), _csv("marks"),
+                                     request.args.get("period") or "3y"))
+
+
+@bp.get("/compare/blocks")
+def compare_blocks():
+    """Side by side on the model's own blocks. Analyst view only."""
     state = ds.load()
-    keys = [k for k in (request.args.get("keys") or "").split(",") if k.strip()]
-    funds_ = [state["byKey"][k] for k in keys if k in state["byKey"]]
+    funds_ = [state["byKey"][k] for k in _csv("keys") if k in state["byKey"]]
     if not funds_:
         return jsonify({"error": "no known keys"}), 400
     return jsonify({

@@ -158,6 +158,18 @@ const Chart = (() => {
   const GROWTH_INK = { fund: 'var(--series-2)', index: 'var(--series-1)',
                        category: 'var(--seq-300)' };
 
+  /* Up to five funds on one chart is past the point where a single hue ramp can
+     carry identity, so compare uses a categorical set chosen for separation
+     rather than for the house palette: brand red leads, then a teal, a slate, an
+     ochre and a plum. All are muted, and none of them is the grey the benchmark
+     lines use, so a fund is never mistaken for the market. */
+  const COMPARE_INK = ['#cc1919', '#1f6f8b', '#4c5966', '#b07c2a', '#6b4c8a'];
+  const MARK_INK = '#808083';
+
+  const inkOf = (s) => s.ink || GROWTH_INK[s.code] || 'var(--series-1)';
+  const dashOf = (s) => s.dash !== undefined ? s.dash
+    : (s.code === 'category' ? '5 3' : null);
+
   function growthLines(host, series, opts = {}) {
     const { height = 390, asOf = null } = opts;
     host.innerHTML = '';
@@ -216,9 +228,9 @@ const Chart = (() => {
       // dashed to separate them, which also reads correctly: it is a computed
       // line rather than something anyone can actually buy.
       svg.appendChild(el('path', {
-        d, fill: 'none', stroke: GROWTH_INK[s.code] || 'var(--series-1)',
-        'stroke-width': s.code === 'fund' ? 2 : 1.5,
-        'stroke-dasharray': s.code === 'category' ? '5 3' : null,
+        d, fill: 'none', stroke: inkOf(s),
+        'stroke-width': s.width || (s.code === 'fund' ? 2 : 1.5),
+        'stroke-dasharray': dashOf(s),
         'stroke-linejoin': 'round', 'stroke-linecap': 'round',
         'vector-effect': 'non-scaling-stroke',
       }));
@@ -230,7 +242,7 @@ const Chart = (() => {
                               opacity: 0 });
     svg.appendChild(rule);
     const dots = live.map((s) => {
-      const c = el('circle', { r: 3.5, fill: GROWTH_INK[s.code] || 'var(--series-1)',
+      const c = el('circle', { r: 3.5, fill: inkOf(s),
                                stroke: 'var(--surface-1)', 'stroke-width': 1.5,
                                opacity: 0 });
       svg.appendChild(c);
@@ -254,7 +266,7 @@ const Chart = (() => {
         dots[i].setAttribute('cy', y);
         dots[i].setAttribute('opacity', 1);
         rows.push(`<div class="tt-row"><span><i class="swatch" style="background:${
-          GROWTH_INK[s.code]}"></i>${s.label}</span><span>${
+          inkOf(s)}"></i>${s.label}</span><span>${
           (s.values[j] >= 0 ? '+' : '') + fmt(s.values[j], 1)}%</span></div>`);
       });
       if (shownX === null) return;
@@ -276,8 +288,9 @@ const Chart = (() => {
         const end = s.values[s.values.length - 1];
         const total = (end >= 0 ? '+' : '') + fmt(end, 1) + '%';
         const pa = annualised(s.days, end);
-        return `<span><i class="${s.code === 'category' ? 'dash' : ''}"
-          style="background:${GROWTH_INK[s.code]}"></i>${s.label}<span class="gk-nums"
+        return `<span><i class="${dashOf(s) ? 'dash' : ''}"
+          style="background:${inkOf(s)};border-top-color:${inkOf(s)}"></i>${
+          s.label}<span class="gk-nums"
           ><b>${total}</b>${pa === null ? ''
             : `<em>CAGR: ${(pa >= 0 ? '+' : '') + fmt(pa, 1)}%</em>`}</span></span>`;
       }).join('')}</div>`);
@@ -591,7 +604,7 @@ const Chart = (() => {
   }
   function seqInk(t) { return t > 0.6 ? '#ffffff' : 'var(--text-primary)'; }
 
-  return { bars, blockBar, growthLines,
+  return { bars, blockBar, growthLines, COMPARE_INK, MARK_INK,
            scatter, histogram, rangeStrip, funnel,
            seqColor, seqInk, hoverable, showTip, hideTip, fmt };
 })();

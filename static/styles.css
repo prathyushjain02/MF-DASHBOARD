@@ -393,72 +393,63 @@ th.sortable.on .arrow { opacity: 1; }
 .grid.dense td.mono, .grid.dense th.r { white-space: nowrap; }
 
 /* --------------------------------------------------------- portfolio */
-.pf-build { background: var(--zebra); border-top: 2px solid var(--red);
-  padding: 15px; margin-bottom: 18px; }
-.pf-build label { display: flex; flex-direction: column; gap: 3px; font-size: 11px;
-  color: var(--text-muted); position: relative; max-width: 420px;
-  font-family: var(--title); }
-.pf-build input[type="search"] { font: inherit; font-family: var(--sans);
-  font-size: 13px; padding: 5px 8px; border: 1px solid var(--border-strong);
-  background: var(--surface-2); color: var(--text-primary); }
-.pf-list { margin: 12px 0; display: grid; gap: 5px; max-width: 560px; }
-.pf-row { display: grid; grid-template-columns: 1fr 76px auto auto; gap: 8px;
-  align-items: center; font-size: 13px; }
-.pf-row input { font: inherit; font-family: var(--mono); padding: 4px 7px;
-  border: 1px solid var(--border-strong); background: var(--surface-2);
-  color: var(--text-primary); text-align: right; }
-.pf-row button { border: 0; background: transparent; color: var(--text-muted);
-  font-size: 17px; cursor: pointer; line-height: 1; }
+/* ======================================================== compare ==== */
+/* Two pickers over a shared chart and a table the reader turns on a group at a
+   time. The fund's colour is set once and repeated on its chip, its line and its
+   table column, so the eye can carry one fund across all three. */
+.cmp-pickers { display: grid; grid-template-columns: minmax(320px, 1fr) auto;
+  gap: 18px 26px; align-items: start; background: var(--zebra);
+  border-top: 2px solid var(--red); padding: 14px 16px 15px; }
+.cmp-lab { display: block; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--text-secondary); margin-bottom: 6px; }
+.cmp-lab .muted { text-transform: none; letter-spacing: 0; margin-left: 5px; }
+.cmp-search { position: relative; max-width: 380px; }
+.cmp-search input { font: inherit; font-family: var(--sans); font-size: 13px;
+  padding: 7px 10px; width: 100%; background: var(--surface-1);
+  border: 1px solid var(--border-strong); }
+.cmp-search input:disabled { background: var(--zebra); color: var(--text-muted); }
 
-.stats { display: grid; gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); margin-bottom: 14px; }
-.stat { background: var(--surface-2); border-top: 2px solid var(--red);
-  border-bottom: 1px solid var(--border); padding: 11px 13px; display: flex;
-  flex-direction: column; gap: 1px; }
-.stat .k { font-size: 11px; color: var(--text-muted); font-family: var(--title); }
-.stat .v { font-family: var(--mono); font-size: 21px; font-weight: 500; }
-.notes { padding-left: 0; list-style: none; margin: 0 0 16px; }
-.notes li { position: relative; padding-left: 18px; margin-bottom: 6px;
-  font-size: 12.5px; color: var(--text-primary); }
-.notes li::before { content: "o"; position: absolute; left: 2px; color: var(--red);
-  font-size: 10px; top: 1px; }
+.cmp-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.cmp-chip { display: inline-flex; align-items: center; gap: 7px; font-size: 12px;
+  padding: 4px 6px 4px 8px; background: var(--surface-1);
+  border: 1px solid var(--border); }
+.cmp-chip i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.cmp-chip button { border: 0; background: none; cursor: pointer; font: inherit;
+  font-size: 15px; line-height: 1; color: var(--text-muted); padding: 0 2px; }
+.cmp-chip button:hover { color: var(--red); }
 
-/* -------------------------------------------------------------- states */
-.loading, .empty { padding: 38px 0; text-align: center; color: var(--text-muted);
-  font-size: 13px; }
-.error { padding: 16px; background: var(--zebra); border-left: 3px solid var(--red);
-  display: flex; flex-direction: column; gap: 4px; }
-.error span { color: var(--text-secondary); font-family: var(--mono); font-size: 12px; }
+.cmp-marks { display: flex; flex-wrap: wrap; gap: 5px; }
+.cmp-mark { font: inherit; font-size: 12px; padding: 6px 11px; cursor: pointer;
+  background: var(--surface-1); color: var(--text-secondary);
+  border: 1px solid var(--border-strong); }
+.cmp-mark:hover { color: var(--text-primary); border-color: var(--slate); }
+.cmp-mark.on { background: var(--text-primary); border-color: var(--text-primary);
+  color: var(--surface-1); font-weight: 600; }
 
-/* ------------------------------------------------------------- tooltip */
-#tooltip {
-  position: fixed; z-index: 100; pointer-events: none; opacity: 0;
-  transition: opacity 0.1s; background: var(--surface-2); color: var(--text-primary);
-  border: 1px solid var(--border-strong); border-top: 2px solid var(--red);
-  padding: 8px 11px; font-size: 12px; max-width: 300px;
-  box-shadow: 0 4px 16px rgba(50, 49, 50, 0.14);
-}
-#tooltip .tt-row { display: flex; justify-content: space-between; gap: 16px; }
-#tooltip .tt-row span:last-child { font-family: var(--mono); }
-#tooltip .tt-note { color: var(--text-secondary); margin-top: 4px; }
+.cmp-empty { padding: 40px 0; color: var(--text-muted); font-size: 13px; }
+.cmp-chart { margin-top: 14px; cursor: default; }
+.cmp-chart:hover { background: var(--surface-2); border-top-color: var(--slate); }
 
-/* --------------------------------------------------------------- footer */
-#pagefoot { padding: 6px 34px 26px; display: flex; justify-content: space-between;
-  align-items: flex-end; color: var(--text-muted); font-size: 10.5px;
-  max-width: 1560px; margin: 0 auto; }
-#pagefoot .mark { color: var(--red); font-family: var(--title); font-size: 21px;
-  font-weight: 700; line-height: 0.9; }
+.cmp-groupbar { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 16px 0 10px; }
+.cmp-group { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
+  cursor: pointer; }
+.cmp-group input { accent-color: var(--red); cursor: pointer; }
 
-@media (max-width: 760px) {
-  #main { padding: 18px 16px 30px; }
-  #masthead { padding: 16px 16px 12px; }
-  #masthead::after { left: 16px; right: 16px; }
-  #tabs { padding: 0 8px; }
-  #pagefoot { padding: 6px 16px 20px; }
-  .masthead-right { align-items: flex-start; }
-  .pick { grid-template-columns: 26px 1fr; }
-  .pick-stats { grid-column: 2; }
-  .filterbar label:first-child input { min-width: 190px; }
+.cmp-table th { vertical-align: bottom; }
+.cmp-colhead { display: inline-flex; align-items: center; gap: 6px;
+  justify-content: flex-end; }
+.cmp-colhead i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.cmp-table th .muted { display: block; font-weight: 400; }
+.cmp-metric { white-space: nowrap; }
+/* A group heading inside the body, so one table carries four sections without
+   four separate tables and four sets of column widths to keep in step. */
+.cmp-grouprow td { background: var(--wash); font-family: var(--title);
+  font-weight: 500; font-size: 12px; padding-top: 9px; }
+.cmp-grouprow .muted { margin-left: 8px; font-weight: 400; }
+.cmp-best { font-weight: 700; color: var(--ink-strong); }
+
+@media (max-width: 860px) {
+  .cmp-pickers { grid-template-columns: 1fr; }
 }
 
 /* ==================================================== selection process ==== */
