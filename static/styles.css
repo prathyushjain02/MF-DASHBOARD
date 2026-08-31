@@ -460,18 +460,25 @@ th.sortable.on .arrow { opacity: 1; }
 /* ---- overlap matrix */
 .cmp-ovcard { margin-top: 18px; cursor: default; }
 .cmp-ovcard:hover { background: var(--surface-2); border-top-color: var(--slate); }
-/* The numeric columns are held narrow so the matrix reads as a block rather
-   than as figures scattered across a page width. */
-.ov-table { table-layout: fixed; }
-.ov-table th.r, .ov-table td.r, .ov-self { width: 92px; }
-.ov-table .cmp-namehead, .ov-table .cmp-name { width: auto; }
-.ov-self { background: var(--zebra); }
+/* A grid of names against names. The columns are held narrow, and the heads
+   wrap and clip rather than setting the width, so the matrix reads as a block
+   of figures instead of a few numbers strewn across a page. */
+.ov-table { table-layout: fixed; width: auto; max-width: 100%; }
+.ov-table th, .ov-table td { width: 96px; }
+.ov-table .ov-namehead, .ov-table .ov-name { width: 250px; }
+.ov-name { white-space: normal; }
+.ov-colhead { vertical-align: bottom; font-size: 11px; line-height: 1.25;
+  padding-bottom: 7px; }
+.ov-colhead span { display: -webkit-box; -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical; overflow: hidden; white-space: normal;
+  overflow-wrap: anywhere; }
+.ov-blank { color: var(--text-muted); }
 .ov-cell { padding: 0; }
 .ov-btn { font: inherit; font-family: var(--mono); font-size: 12.5px;
-  width: 100%; padding: 7px 10px; text-align: right; border: 0; cursor: pointer;
+  width: 100%; padding: 6px 10px; text-align: right; border: 0; cursor: pointer;
   background: none; color: inherit; }
 .ov-btn:hover { color: var(--red); text-decoration: underline; }
-.ov-heavy { background: rgba(204, 25, 25, 0.11); }
+.ov-heavy { background: rgba(204, 25, 25, 0.16); }
 .ov-heavy .ov-btn { font-weight: 600; }
 
 .ov-modal h3 { font-size: 18px; margin-bottom: 6px; padding-right: 28px; }

@@ -1408,44 +1408,49 @@ async function drawCmpOverlap() {
     return;
   }
 
-  /* Columns are numbered rather than named. Five scheme names across a header
-     is unreadable at any width, and the number is already in the row label. */
+  /* Overlap is symmetric, so only the upper triangle carries information and
+     the mirror image below it is the same numbers read backwards. The first
+     scheme never heads a column and the last never heads a row, which is what
+     leaves the staircase of empty cells down the left. */
+  const rows = f.slice(0, -1), cols = f.slice(1);
   const cell = (i, j) => {
-    const v = o.matrix[i][j];
-    if (i === j) return '<td class="ov-self"></td>';
-    if (v == null) return '<td class="r mono muted">—</td>';
+    if (j + 1 <= i) return '<td class="ov-blank r muted">–</td>';
+    const v = o.matrix[i][j + 1];
+    if (v == null) return '<td class="r mono muted">–</td>';
     return `<td class="r ov-cell${v >= o.heavy ? ' ov-heavy' : ''}">
-      <button class="ov-btn mono" data-a="${esc(f[i].key)}" data-b="${esc(f[j].key)}"
-        >${num(v, 1)}%</button></td>`;
+      <button class="ov-btn mono" data-a="${esc(f[i].key)}"
+        data-b="${esc(f[j + 1].key)}"
+        title="${esc(f[i].name)} and ${esc(f[j + 1].name)}"
+        >${num(v, 2)}</button></td>`;
   };
 
   host.innerHTML = `
     <section class="snapcard cmp-ovcard">
       <span class="snapcard-head">
-        <span class="snapcard-title">How much of the same book</span>
-        <span class="snapcard-sub">weight held in common, the smaller of the two
-          positions in every stock, summed</span>
+        <span class="snapcard-title">Stock overlap</span>
+        <span class="snapcard-sub">percent of weight held in common, the smaller
+          of the two positions in every stock, summed</span>
       </span>
       <div class="tablewrap">
         <table class="grid dense ov-table">
-          <thead><tr><th class="cmp-namehead">Fund</th>
-            ${f.map((x, i) => `<th class="r mono">${i + 1}</th>`).join('')}
+          <thead><tr>
+            <th class="ov-namehead">Scheme name</th>
+            ${cols.map((x) => `<th class="r ov-colhead" title="${esc(x.name)}">
+              <span>${esc(x.name)}</span></th>`).join('')}
           </tr></thead>
           <tbody>
-            ${f.map((x, i) => `<tr>
-              <td class="cmp-name"><span class="cmp-colhead">
+            ${rows.map((x, i) => `<tr>
+              <td class="ov-name"><span class="cmp-colhead">
                 <i style="background:${cmpInk(c.keys.indexOf(x.key))}"></i>
-                ${i + 1}. ${esc(x.name)}</span>
-                <span class="muted sm">${esc(x.category)} ·
-                  ${x.holdingCount || '—'} holdings</span></td>
-              ${f.map((y, j) => cell(i, j)).join('')}
+                ${esc(x.name)}</span></td>
+              ${cols.map((y, j) => cell(i, j)).join('')}
             </tr>`).join('')}
           </tbody>
         </table>
       </div>
-      <p class="cardnote muted sm">Shaded above ${o.heavy} percent, where two
-      funds are largely the same holding bought twice. Click a figure for the
-      stocks behind it.${(o.missing || []).length
+      <p class="cardnote muted sm">Shaded where a pair overlaps more than
+      ${o.heavy} percent, which is where two funds are largely the same holding
+      bought twice. Click a figure for the stocks behind it.${(o.missing || []).length
         ? ` ${esc(o.missing.join(', '))} left out for want of a disclosed book.`
         : ''}</p>
     </section>`;
