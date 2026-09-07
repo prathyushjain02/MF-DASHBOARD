@@ -738,6 +738,116 @@ def compare_table(keys, marks=(), state=None):
 OVERLAP_HEAVY = 40
 
 
+# What the export carries, beyond the metrics the table shows. A download is
+# read away from the screen that produced it, so it takes the identifying
+# fields with it rather than a column of anonymous numbers.
+_CSV_IDENTITY = (
+    ("Category", "category"), ("AMC", "amc"), ("Fund manager", "fundManager"),
+    ("Band", "band"), ("Composite", "composite"), ("Evidence", "evidence"),
+    ("Rank in category", "categoryRank"), ("Schemes in category", "categoryCount"),
+    ("AUM (Rs cr)", "aumCr"), ("Expense ratio %", "ter"),
+    ("NAV", "nav"), ("NAV date", "navDate"),
+)
+_CSV_METRICS = (
+    ("Return 3M %", "return3M"), ("Return 6M %", "return6M"),
+    ("Return 1Y %", "return1Y"), ("Return 2Y %", "return2Y"),
+    ("Return 3Y %", "return3Y"), ("Return 5Y %", "return5Y"),
+    ("Return 7Y %", "return7Y"),
+    ("Median rolling 3Y %", "medianRolling3Y"),
+    ("Median rolling 5Y %", "medianRolling5Y"),
+    ("Sharpe 3Y", "sharpe3Y"), ("Sortino 3Y", "sortino3Y"),
+    ("Information ratio 3Y", "informationRatio3Y"), ("Beta 3Y", "beta3Y"),
+    ("Upside capture 3Y", "upsideCapture3Y"),
+    ("Downside capture 3Y", "downsideCapture3Y"),
+    ("Max drawdown 3Y %", "maxDrawdown3Y"),
+    ("Standard deviation 3Y %", "stdDev3Y"),
+    ("Holdings", "holdingCount"), ("Top 10 weight %", "top10"),
+    ("Mandate fit", "mandateFit"), ("Differentiation", "differentiation"),
+)
+
+
+def compare_csv(keys, marks=(), period="3y", state=None):
+    """The whole comparison as rows of a spreadsheet: the schemes and their
+    figures, the overlap between every pair, and the rebased series behind the
+    chart. Three sections in one file, separated by a blank line and a title,
+    because what is on the screen is one comparison and splitting it across
+    three downloads only makes the reader reassemble it."""
+    state = state or load()
+    catalogue = {m["id"]: m for m in compare_marks(state)}
+    funds = [state["byKey"][k] for k in keys[:MAX_COMPARE_FUNDS]
+             if k in state["byKey"]]
+    picked = [m for m in marks[:MAX_COMPARE_MARKS] if m in catalogue]
+    g = compare_growth(keys, marks, period, state)
+
+    out = [["Mutual fund screener, compare"],
+           ["Built", (state.get("meta") or {}).get("builtAt")]]
+    if g.get("start"):
+        out.append(["Chart window", g["start"], g["end"]])
+    for n in g.get("notes") or []:
+        out.append(["Note", n])
+
+    # 1. One row per scheme.
+    out += [[], ["Metrics"],
+            ["Type", "Name", "Figures from"]
+            + [c[0] for c in _CSV_IDENTITY] + [c[0] for c in _CSV_METRICS]]
+    for f in funds:
+        out.append(["Fund", f["name"], "published record"]
+                   + [f.get(k) for _, k in _CSV_IDENTITY]
+                   + [f.get(k) for _, k in _CSV_METRICS])
+    for mid in picked:
+        m = catalogue[mid]
+        met = m["metrics"] or {}
+        out.append(["Benchmark", m["label"], m["metricsLabel"] or "not published"]
+                   + [None for _ in _CSV_IDENTITY]
+                   + [met.get(k) for _, k in _CSV_METRICS])
+
+    # 2. Every pair, once.
+    ov = compare_overlap(keys, state)
+    if len(ov["funds"]) > 1:
+        out += [[], ["Stock overlap, percent of weight held in common"],
+                ["Fund", "Fund", "Overlap %"]]
+        for i, a in enumerate(ov["funds"]):
+            for j, b in enumerate(ov["funds"]):
+                if j > i and ov["matrix"][i][j] is not None:
+                    out.append([a["name"], b["name"], ov["matrix"][i][j]])
+
+    # 3. The chart itself, at full resolution rather than the points drawn.
+    series = _csv_series(keys, picked, g.get("start"), state)
+    if series:
+        days = sorted({d for _, pairs in series for d in pairs})
+        out += [[], ["Growth of 100 rupees, percent from the start of the window"],
+                ["Date"] + [label for label, _ in series]]
+        for d in days:
+            out.append([d] + [pairs.get(d) for _, pairs in series])
+    return out
+
+
+def _csv_series(keys, marks, start, state):
+    """Each line of the chart as {date: percent}, undownsampled. The screen only
+    needs the few hundred points it can draw; a spreadsheet wants every one."""
+    if not start:
+        return []
+    navs = state.get("navs") or {}
+    out = []
+    for k in keys[:MAX_COMPARE_FUNDS]:
+        f, s = state["byKey"].get(k), (navs.get("funds") or {}).get(k)
+        if f and s:
+            out.append((f["name"], _rebased_map(s, start)))
+    for mid in marks:
+        s = (navs.get("indices") or {}).get(mid)
+        if s:
+            out.append((mid, _rebased_map(s, start)))
+    return [(label, pairs) for label, pairs in out if pairs]
+
+
+def _rebased_map(series, start_iso):
+    days, vals = _slice_from(series, start_iso)
+    if len(days) < 2 or not vals[0]:
+        return {}
+    base = vals[0]
+    return {d: round(100.0 * (v / base - 1.0), 2) for d, v in zip(days, vals)}
+
+
 def compare_overlap(keys, state=None):
     """Pairwise overlap across the selected funds, as a matrix.
 

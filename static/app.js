@@ -1260,6 +1260,8 @@ async function drawCmpBody() {
       ${CMP_GROUPS.map((g) => `
         <label class="cmp-group"><input type="checkbox" data-group="${g.id}"
           ${c.groups.has(g.id) ? 'checked' : ''}> ${esc(g.label)}</label>`).join('')}
+      <a id="cmp-csv" class="cmp-download" href="#" download
+         title="Every metric, the overlap between each pair, and the daily series behind the chart, whichever groups are ticked">Download CSV</a>
     </div>
     <div class="tablewrap" id="cmp-tablewrap"></div>
 
@@ -1273,6 +1275,21 @@ async function drawCmpBody() {
     });
 
   await Promise.all([drawCmpGrowth(), drawCmpTable(), drawCmpOverlap()]);
+}
+
+/* The export always carries the whole comparison, not the columns that happen
+   to be ticked: a spreadsheet is opened to look at something the screen was not
+   showing. */
+function cmpQuery(withPeriod) {
+  const c = cmpState();
+  return `keys=${c.keys.map(encodeURIComponent).join(',')}`
+    + `&marks=${c.marks.map(encodeURIComponent).join(',')}`
+    + (withPeriod ? `&period=${encodeURIComponent(c.period)}` : '');
+}
+
+function setCmpCsvHref() {
+  const a = $('#cmp-csv');
+  if (a) a.href = API + '/compare.csv?' + cmpQuery(true);
 }
 
 async function drawCmpGrowth() {
@@ -1312,6 +1329,7 @@ async function drawCmpGrowth() {
   c.names = Object.fromEntries(g.series.filter((s) => s.code === 'fund')
     .map((s) => [s.key, s.label]));
   drawCmpChips();
+  setCmpCsvHref();
 
   const sub = $('#cmp-sub');
   if (sub) sub.textContent = `${fmtDay(g.start)} to ${fmtDay(g.end)}, `

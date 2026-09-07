@@ -430,7 +430,12 @@ th.sortable.on .arrow { opacity: 1; }
 .cmp-chart { margin-top: 14px; cursor: default; }
 .cmp-chart:hover { background: var(--surface-2); border-top-color: var(--slate); }
 
-.cmp-groupbar { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 16px 0 10px; }
+.cmp-groupbar { display: flex; flex-wrap: wrap; align-items: center;
+  gap: 6px 20px; margin: 16px 0 10px; }
+.cmp-download { margin-left: auto; font-size: 12px; padding: 6px 12px;
+  border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text-secondary); text-decoration: none; }
+.cmp-download:hover { color: var(--red); border-color: var(--red); }
 .cmp-group { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
   cursor: pointer; }
 .cmp-group input { accent-color: var(--red); cursor: pointer; }

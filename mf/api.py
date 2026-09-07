@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, jsonify, request
+import csv as _csvmod
+import io
+from datetime import date
+
+from flask import Blueprint, Response, jsonify, request
 
 from . import datastore as ds
 from . import framework as fw
@@ -245,6 +249,33 @@ def compare_growth():
     """Every selected fund and benchmark on one rebased line chart."""
     return jsonify(ds.compare_growth(_csv("keys"), _csv("marks"),
                                      request.args.get("period") or "3y"))
+
+
+def _cell(v):
+    """A ratio carried at sixteen significant figures is noise, not precision:
+    it comes from a division, not from a measurement that fine."""
+    if v is None:
+        return ""
+    if isinstance(v, float):
+        return round(v, 4)
+    return v
+
+
+@bp.get("/compare.csv")
+def compare_download():
+    """The comparison as a spreadsheet. Served as a file rather than assembled
+    in the browser so the export and the screen cannot drift apart."""
+    rows = ds.compare_csv(_csv("keys"), _csv("marks"),
+                          request.args.get("period") or "3y")
+    buf = io.StringIO()
+    # Excel reads a bare UTF-8 file as the local codepage and mangles any name
+    # that is not plain ASCII. The byte order mark is what tells it otherwise.
+    buf.write("\ufeff")
+    _csvmod.writer(buf, lineterminator="\r\n").writerows(
+        [[_cell(v) for v in r] for r in rows])
+    name = f"compare-{date.today().isoformat()}.csv"
+    return Response(buf.getvalue(), mimetype="text/csv",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 
 @bp.get("/compare/overlap")
