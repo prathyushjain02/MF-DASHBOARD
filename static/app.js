@@ -457,17 +457,24 @@ const COLUMNS = [
   { field: 'category', label: 'Category', dir: 'asc', text: true },
   { field: 'band', label: 'Band', analyst: true, dir: 'asc', text: true },
   { field: 'composite', label: 'Composite', analyst: true, dir: 'desc', d: 1 },
-  { field: 'medianRolling3Y', label: 'Median rolling 3Y', dir: 'desc', d: 1 },
-  { field: 'medianRolling5Y', label: 'Median rolling 5Y', dir: 'desc', d: 1 },
+  { field: 'medianRolling3Y', label: 'Rolling 3Y', dir: 'desc', d: 1,
+    gloss: 'median rolling return' },
+  { field: 'medianRolling5Y', label: 'Rolling 5Y', dir: 'desc', d: 1,
+    gloss: 'median rolling return' },
   { field: 'rollingHitRate3Y', label: 'Hit rate', dir: 'desc', d: 0 },
   { field: 'return3Y', label: 'CAGR 3Y', dir: 'desc', d: 1 },
   { field: 'sortino3Y', label: 'Sortino', dir: 'desc', d: 2 },
-  { field: 'informationRatio3Y', label: 'Information Ratio', dir: 'desc', d: 2 },
-  { field: 'downsideCapture3Y', label: 'Downside capture', dir: 'asc', d: 0 },
-  { field: 'upsideCapture3Y', label: 'Upside capture', dir: 'desc', d: 0 },
-  { field: 'maxDrawdown3Y', label: 'Maximum drawdown', dir: 'desc', d: 1 },
-  { field: 'ter', label: 'Expense ratio', dir: 'asc', d: 2 },
-  { field: 'managerYears', label: 'Tenure on this scheme', dir: 'desc', d: 1 },
+  { field: 'informationRatio3Y', label: 'Info ratio', dir: 'desc', d: 2,
+    gloss: 'information ratio' },
+  { field: 'downsideCapture3Y', label: 'Down capture', dir: 'asc', d: 0,
+    gloss: 'downside capture' },
+  { field: 'upsideCapture3Y', label: 'Up capture', dir: 'desc', d: 0,
+    gloss: 'upside capture' },
+  { field: 'maxDrawdown3Y', label: 'Max drawdown', dir: 'desc', d: 1,
+    gloss: 'maximum drawdown' },
+  { field: 'ter', label: 'Expense', dir: 'asc', d: 2, gloss: 'expense ratio' },
+  { field: 'managerYears', label: 'Tenure', dir: 'desc', d: 1,
+    gloss: 'tenure on this scheme' },
   { field: 'aumCr', label: 'AUM', dir: 'desc', money: true },
   { field: 'evidence', label: 'Evidence', analyst: true, dir: 'desc', d: 0 },
 ];
@@ -581,13 +588,15 @@ async function loadTable() {
     <table class="grid dense sticky">
       <thead><tr>${cols.map((c) => `
         <th class="sortable${c.text || c.field === 'categoryRank' ? '' : ' r'}${
+          c.field === 'name' ? ' namecell' : ''}${
           filters.sort === c.field ? ' on' : ''}" data-sort="${esc(c.field)}"
-          title="Sort by ${esc(c.label)}">${term(c.label)}${arrow(c)}</th>`).join('')}
+          title="Sort by ${esc(c.label)}">${term(c.label, null, c.gloss)}${
+          arrow(c)}</th>`).join('')}
       </tr></thead>
       <tbody>${data.funds.map((f) => `
         <tr data-fund="${esc(f.key)}" tabindex="0">${cols.map((c) => {
           if (c.field === 'name') {
-            return `<td class="fundcell"><strong>${esc(f.name)}</strong>${f.flags.length
+            return `<td class="fundcell namecell"><strong>${esc(f.name)}</strong>${f.flags.length
               ? `<span class="flag sm analyst-only">${esc(f.flags[0])}</span>` : ''}</td>`;
           }
           if (c.field === 'category') return `<td class="muted">${esc(f.category)}</td>`;
