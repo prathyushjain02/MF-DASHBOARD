@@ -5,8 +5,11 @@ with two jobs: rank the funds in each category and surface the shortlist, then
 present that shortlist the way a client should see it, with a written rationale
 and the number kept behind an analyst toggle.
 
-240 actively managed equity schemes, scored on seven weighted blocks, every metric
-percentiled inside its own category.
+211 actively managed equity schemes in scope, 175 of them carrying a composite,
+scored on seven weighted blocks, every metric percentiled inside its own category.
+
+For the long account of what the project does, what the dashboard shows and why it
+is drawn the way it is, see [PROJECT.md](PROJECT.md).
 
 ## Running it
 
@@ -31,7 +34,7 @@ point at the repo, free plan is enough. `/health` is the health check path.
 | Return and consistency | 27% | Every median rolling return the feed carries, 1 through 10 years, plus the share of rolling 3Y windows that actually beat the benchmark. Longer windows weigh more. |
 | Risk adjusted | 24% | Sharpe, Sortino and Information Ratio at 3Y, 5Y, 7Y and 10Y. IR carries the most weight inside the block. |
 | Capture and drawdown | 18% | Upside capture, downside capture and maximum drawdown at 3Y, 5Y, 7Y and 10Y. Downside weighs more than upside. |
-| Portfolio | 12% | Effective number of stocks, cap mix fit to mandate, differentiation vs the category book. |
+| Portfolio | 12% | Cap mix fit to mandate, differentiation vs the category book. |
 | Manager | 8% | Tenure on this scheme and market cycles run. From the fund manager master. |
 | Track record length | 6% | Longer live history scores higher. A weight, not a gate. |
 | AUM, category adjusted | 5% | Size read against the mandate, on a different curve per category. |
@@ -48,8 +51,8 @@ Cap tops Flexicap here on merit, where a 5-year vintage gate would have discarde
 
 **AUM is scored by category.** Six distinct curves. Smallcap rewards nimble AUM and
 marks down size as a capacity risk; Midcap, Focused, Sectoral and Dividend Yield
-prefer a middle band; Largecap, Flexicap, Multicap, Large & Midcap, Value and ELSS
-reward scale with a floor for viability.
+prefer a middle band; Largecap, Flexicap, Multicap, Large & Midcap and Value
+reward scale with a floor for viability and a mild taper at the very top.
 
 ## House style
 
@@ -108,12 +111,14 @@ shortlist; it does not select.
 over the metrics it actually has, and every fund reports the share of the model's
 weight that was evidenced. The median fund now evidences 100%: every block scores.
 
-**2. Below 55% evidence a fund carries no composite at all.** It is reported as
+**2. Below 60% evidence a fund carries no composite at all.** It is reported as
 *Not rated*, keeps its block scores and all its data, and is excluded from ranking.
 Without this floor a fund with no return history at all tops its category on
 portfolio shape and size alone, because renormalising over two minor blocks
-produces a number that looks exactly like a real one. 15 of 240 schemes are Not
-rated on the current feed, almost all of them for having no quantitative history.
+produces a number that looks exactly like a real one. The floor sits at 60 because
+the risk adjusted and capture blocks are 42 points between them, and a fund we can
+measure for neither is not a fund we can rank. 36 of 211 in-scope schemes are Not
+rated on the current feed, almost all of them for having too short a history.
 
 ## Benchmarks
 
@@ -128,7 +133,7 @@ appear, because a proxy that is not named as one is worse than no comparison:
 
 | Category | Read against | |
 |---|---|---|
-| Flexicap, Multicap, Focused, Value / Contra, ELSS, Large & Midcap | Nifty 500 TRI | benchmark |
+| Flexicap, Multicap, Focused, Value / Contra, Large & Midcap, Dividend Yield | Nifty 500 TRI | benchmark |
 | Largecap | Nifty 50 TRI | index — 50 names against a mandate that runs to 100 |
 | Midcap, Smallcap | BSE MidSmallCap TRI | index — spans both mid and small |
 
@@ -157,11 +162,11 @@ in them.
 
 | Page | What it is |
 |---|---|
-| How we look at funds | The six-factor diamond: basic requirements 1 to 3, performance drivers 4 to 6. Click any factor for a modal explaining what it means, with live figures from the current universe. |
+| How we look at funds | The six-factor staircase: basic requirements 1 to 3, performance drivers 4 to 6. Click any step for a modal explaining what it means, with live figures from the current universe. |
 | Category top funds | A tile per category. Click one for its shortlist as a table: 3M, 6M, 1Y, 3Y and 5Y returns, median rolling 3Y and 5Y, AUM and the named managers. Click a fund name for its own page. |
 | All funds | Every scheme. Filter by search, category, AMC, band, minimum AUM, maximum downside capture, holdings and rated-only; sort on any column. Click a row for the fund page. |
 | Fund | A one-page snapshot: how it has done against its benchmark, what a holding period gave, how it behaves in a fall, what it holds, who runs it, size and cost. Every card opens its full detail in a modal. |
-| Portfolio | Look-through of a weighted set: combined book, sector exposure, pairwise overlap. |
+| Compare | Up to five funds against up to two benchmarks: one rebased chart, a metric table behind group checkboxes, a pairwise stock overlap matrix, and a CSV of the lot. |
 
 The **Client / Analyst toggle** decides what the page is for, not just how much of
 it shows.

@@ -676,7 +676,7 @@ GLOSSARY = {
         "there and reports it here.",
     "evidence":
         "The share of the model's total weight that could be scored for this fund. "
-        "Below 55 percent no composite is published at all.",
+        f"Below {MIN_EVIDENCE} percent no composite is published at all.",
     "percentile":
         "Rank within the fund's own category on that measure, 0 to 100, where 100 is "
         "the best in the category.",
