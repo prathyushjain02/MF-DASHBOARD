@@ -180,6 +180,7 @@ const Chart = (() => {
     const { height = 390, asOf = null } = opts;
     host.innerHTML = '';
     const live = (series || []).filter((s) => s.days && s.days.length > 1);
+    const ref = referenceOf(live);
     if (!live.length) { host.innerHTML = '<div class="empty">No NAV history</div>'; return; }
 
     const w = Math.max(320, host.clientWidth || 640);
@@ -297,12 +298,37 @@ const Chart = (() => {
         const end = s.values[s.values.length - 1];
         const total = (end >= 0 ? '+' : '') + fmt(end, 1) + '%';
         const pa = annualised(s.days, end);
+        const a = alphaOf(s, ref, end, pa);
         return `<span><i class="${dashOf(s) ? 'dash' : ''}"
           style="background:${inkOf(s)};border-top-color:${inkOf(s)}"></i>${
           s.label}<span class="gk-nums"
           ><b>${total}</b>${pa === null ? ''
-            : `<em>CAGR: ${(pa >= 0 ? '+' : '') + fmt(pa, 1)}%</em>`}</span></span>`;
+            : `<em>CAGR: ${(pa >= 0 ? '+' : '') + fmt(pa, 1)}%</em>`}${
+          s === ref ? '<em class="gk-ref">the benchmark</em>'
+            : a === null ? ''
+            : `<em class="gk-a ${a >= 0 ? 'up' : 'down'}" title="Percentage points ahead of ${ref.label} over this window, on the same basis as the figure above"
+                >&alpha; ${(a >= 0 ? '+' : '') + fmt(a, 1)}%</em>`}</span></span>`;
       }).join('')}</div>`);
+  }
+
+  /* The chart shows a fund clearing its benchmark; the eye can see it and then
+     has to work out by how much. This is that subtraction, done once and printed
+     where the reading happens, on whichever basis the row above it is stated:
+     annualised where a rate is shown, and on the window's own total where the
+     window is too short to annualise. Percentage points, not a ratio. */
+  function alphaOf(s, ref, end, pa) {
+    if (!ref || s === ref || s.code === 'mark' || s.code === 'index') return null;
+    const rEnd = ref.values[ref.values.length - 1];
+    const rPa = annualised(ref.days, rEnd);
+    if (pa !== null && rPa !== null) return pa - rPa;
+    return end - rEnd;
+  }
+
+  /* What everything else is measured against: the benchmark on a comparison, the
+     category's index on a fund's own page. The first one, where there are two. */
+  function referenceOf(live) {
+    return live.find((s) => s.code === 'index')
+        || live.find((s) => s.code === 'mark') || null;
   }
 
   /* Growth over a multi-year window is a cumulative number, and a cumulative

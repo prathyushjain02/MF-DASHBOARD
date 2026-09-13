@@ -356,7 +356,7 @@ whoever is reading it, and a portfolio of twelve is a real thing.
   benchmarks grey and dashed because they are the backdrop rather than entrants.
   The window is pulled forward to the youngest fund in the selection and says
   so: lines rebased on different days are not a comparison. The legend carries
-  each total with its CAGR beneath.
+  each total, its CAGR beneath, and **alpha** beneath that (see 6.3).
 - **The table.** Funds as rows, metrics as columns, in four groups behind
   checkboxes: returns 3M to 7Y, rolling 3Y and 5Y medians, risk metrics, capture
   ratios. The best figure in each column is marked among the funds only — a
@@ -502,6 +502,16 @@ Representation decisions that are worth stating:
 - **Beyond a year, returns are annualised** and the chart prints `CAGR:` beneath
   the absolute figure rather than beside it, so the two are not mistaken for each
   other.
+- **The gap to the benchmark is printed, not left to be subtracted.** A chart
+  shows a fund clearing its benchmark and the eye can see it, but the reader
+  then has to do the arithmetic to say by how much. Every legend entry carries
+  its alpha in percentage points, stated on the same basis as the figure above
+  it: annualised where a rate is shown, on the window's own total where the
+  window is too short to annualise. The line everything is measured against
+  labels itself *the benchmark* in its own entry rather than repeating its name
+  on every other one, and a negative alpha takes the accent colour. The
+  reference is the category's index on a fund's page and the first benchmark on
+  a comparison.
 - **The category average is a line, not a band.** It is dashed, because it is a
   reference and not a fund you could have bought.
 - **Capture is drawn against 100**, the benchmark's own level, with downside in

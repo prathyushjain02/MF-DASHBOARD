@@ -752,6 +752,12 @@ body.modal-open { overflow: hidden; }
   align-items: flex-start; line-height: 1.3; }
 .growthkey em { font-family: var(--mono); font-style: normal; font-size: 10.5px;
   color: var(--text-muted); white-space: nowrap; }
+/* The gap to the benchmark, printed rather than left to the reader to subtract
+   off the chart. Stated in percentage points on the same basis as the figure
+   above it, and given the weight of a finding rather than of a footnote. */
+.growthkey .gk-a { font-weight: 600; color: var(--text-secondary); }
+.growthkey .gk-a.down { color: var(--red); }
+.growthkey .gk-ref { font-family: var(--sans); font-size: 10px; font-style: italic; }
 .chart.growth { width: 100%; }
 .crosshair { stroke: var(--axis); stroke-width: 1; stroke-dasharray: 3 3; }
 #tooltip .swatch { width: 8px; height: 8px; border-radius: 50%;
@@ -928,7 +934,7 @@ body.modal-open { overflow: hidden; }
   /* One sheet is the brief, and the chart is the only thing on the page that can
      give up room without a figure being lost, so it gives up most of it. */
   .cmp-chart { margin-top: 4px; }
-  #cmp-growth svg, .chart.growth { max-height: 104px; }
+  #cmp-growth svg, .chart.growth { max-height: 88px; }
   #cmp-growth { margin: 0; }
   .snapcard { padding: 5px 8px 6px; gap: 2px; }
   .snapcard-title { font-size: 11px; }
@@ -953,6 +959,8 @@ body.modal-open { overflow: hidden; }
   .cmp-table, .ov-table { min-width: 0; }
   .snapcard { border: 1px solid var(--border); box-shadow: none; }
   .growthkey { font-size: 9px; }
+  .growthkey .gk-nums { line-height: 1.12; }
+  .growthkey em { font-size: 8px; }
   .cardnote, .muted.sm { font-size: 8.5px; }
   .pf-stats .v { font-size: 17px; }
   a[href]::after { content: none !important; }
