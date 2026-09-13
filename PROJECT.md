@@ -309,6 +309,8 @@ category's **benchmark travels in the table footer**, on the same columns, so
 every row above it can be read against the same line rather than against a
 number held somewhere else.
 
+Funds can be **ticked** in this table and carried to Compare. See 5.7.
+
 ### 5.3 All funds
 
 Every in-scope scheme, filterable by search, category, AMC, band, minimum AUM,
@@ -346,7 +348,9 @@ seven weighted blocks with coverage on each, plus the flags.
 
 ### 5.5 Compare
 
-Up to five funds against up to two benchmarks.
+Any number of funds against up to two benchmarks. There is no ceiling on the
+funds: past a handful the chart is a thicket, but that is a judgement for
+whoever is reading it, and a portfolio of twelve is a real thing.
 
 - **The chart.** Every selection rebased to zero on one day, funds in colour,
   benchmarks grey and dashed because they are the backdrop rather than entrants.
@@ -362,11 +366,58 @@ Up to five funds against up to two benchmarks.
   *how much of this am I buying twice*, which is the question two funds in one
   portfolio actually raises. Above 40% the cell is shaded. Every figure opens
   the stocks behind it, with each fund's weight and the common part.
-- **Download CSV.** The whole comparison as a spreadsheet: every metric for
-  every selection whatever the checkboxes say, the overlap for each pair, and
-  the chart's series at full resolution.
+- **Download CSV** and **PDF.** See 5.8.
 
-### 5.6 The Client / Analyst toggle
+### 5.6 A portfolio
+
+**Make this a portfolio** turns the selection into a weighted holding.
+
+Weights are entered in **rupees or percent** — the same question once the total
+is divided out, so the form takes either, shows each line's share as it is
+typed, and nothing has to add to a round number. *Split evenly* is there for the
+common case.
+
+What changes once there is one:
+
+- **One line.** The portfolio is drawn bold and black, its holdings hidden
+  behind a *show holdings* switch that brings them back thin and pale. Any
+  benchmark stays available. The line is **bought once at the start of the
+  window and held**, so the weights drift: no rebalancing is assumed, because
+  assuming one would quietly add a return the investor never earned.
+- **A row of its own.** The portfolio leads the metric table, with its returns
+  and rolling medians read off its own series rather than averaged from the
+  holdings — averaging point-to-point returns of things bought on different days
+  is not a portfolio return. Risk and capture stay blank for the same reason a
+  price index's do: they need a benchmark to be measured against.
+- **What it actually holds.** A look-through card: **effective holdings**, the
+  inverse Herfindahl of the combined book, beside the distinct name count, the
+  top-10 weight and the largest sector. Four funds of sixty names each are not
+  240 positions, because they own many of the same ones, and the plain count
+  will not say so.
+
+### 5.7 Ticking funds anywhere
+
+Every row in **Category top funds** and **All funds** carries a tick box. A bar
+appears at the foot of the page as soon as anything is ticked — *N funds
+selected · Compare · Clear* — and the selection survives moving between the two
+tabs, so a comparison can be built out of two different lists without writing
+any names down. The order things were ticked in is kept, because it decides the
+colour each one takes on the chart.
+
+### 5.8 Taking it away
+
+- **CSV.** The whole comparison as a spreadsheet: every metric for every
+  selection whatever the checkboxes say, the overlap for each pair, and the
+  chart's series at full resolution. With a portfolio on, it also carries the
+  portfolio's own row, each holding's weight, the effective holdings, the
+  combined book's largest 25 names and the sector exposure.
+- **PDF.** A print stylesheet lays the page out to **one A4 landscape sheet** —
+  chart, metric table, look-through and overlap — and strips everything that is
+  a control rather than a finding. The button opens the print dialog, where
+  *Save as PDF* produces the file. The PDF is the page itself rather than a
+  second rendering of it that could drift.
+
+### 5.9 The Client / Analyst toggle
 
 The toggle decides what the page is *for*, not just how much of it shows.
 
@@ -527,6 +578,8 @@ of the weights anywhere.
 | `GET /api/mf/overlap/pair` | The stocks behind one matrix cell |
 | `GET /api/mf/compare/blocks` | Side by side on the model's own blocks |
 | `GET /api/mf/compare.csv` | The whole comparison as a spreadsheet |
+| `GET /api/mf/portfolio/growth` | The weighted holding as one line, with its holdings |
+| `GET /api/mf/portfolio/lookthrough` | What the combination holds, and how many positions it behaves like |
 | `GET /health` | Health check, used by the deploy platform |
 
 The front end is three files and no framework: `index.html`, `styles.css`,

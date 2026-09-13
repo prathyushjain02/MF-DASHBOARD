@@ -24,7 +24,7 @@
 const API = '/api/mf';
 const $ = (s, r = document) => r.querySelector(s);
 const state = { mode: 'client', view: 'shortlist', fw: null, meta: null, fund: null,
-                category: null, returnView: null, gloss: {} };
+                category: null, returnView: null, gloss: {}, picked: [] };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
   (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -116,6 +116,70 @@ function setView(v) {
   $('#tabs').querySelectorAll('button').forEach((b) =>
     b.classList.toggle('on', b.dataset.view === v));
   render();
+}
+
+/* ------------------------------------------------------------- selection */
+
+/* Funds are ticked where they are found and carried to the compare tab, so the
+   reader can build a comparison out of two different lists without writing any
+   names down. The order they were ticked in is kept, because it decides the
+   colour each one takes on the chart. */
+const isPicked = (k) => state.picked.includes(k);
+
+function togglePick(key) {
+  state.picked = isPicked(key)
+    ? state.picked.filter((k) => k !== key)
+    : [...state.picked, key];
+  drawPickbar();
+  document.querySelectorAll(`[data-pick="${CSS.escape(key)}"]`)
+    .forEach((b) => { b.checked = isPicked(key); });
+}
+
+function pickBox(key) {
+  return `<input type="checkbox" class="pickbox" data-pick="${esc(key)}"
+    ${isPicked(key) ? 'checked' : ''} aria-label="Select for comparison">`;
+}
+
+/* One handler on the table rather than one per row, so a redraw cannot leave
+   half the boxes wired. The click is stopped before it reaches the row, which
+   would otherwise open the fund. */
+function wirePicks(root) {
+  root.addEventListener('click', (e) => {
+    const box = e.target.closest('[data-pick]');
+    if (!box) return;
+    e.stopPropagation();
+    togglePick(box.dataset.pick);
+  });
+}
+
+function drawPickbar() {
+  let bar = $('#pickbar');
+  // Not on the compare tab: the selection has arrived, the chips are the record
+  // of it now, and a bar floating over the chart is in the way.
+  if (!state.picked.length || state.view === 'compare') {
+    if (bar) bar.remove();
+    return;
+  }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'pickbar';
+    document.body.appendChild(bar);
+  }
+  const n = state.picked.length;
+  bar.innerHTML = `
+    <span class="pickbar-n"><b>${n}</b> ${n === 1 ? 'fund' : 'funds'} selected</span>
+    <button class="pickbar-go" id="pick-compare">Compare</button>
+    <button class="pickbar-clear" id="pick-clear">Clear</button>`;
+  $('#pick-compare').onclick = () => {
+    cmpState().keys = [...state.picked];
+    cmpState().weights = null;
+    setView('compare');
+  };
+  $('#pick-clear').onclick = () => {
+    state.picked = [];
+    drawPickbar();
+    document.querySelectorAll('[data-pick]').forEach((b) => { b.checked = false; });
+  };
 }
 
 /* ------------------------------------------- 1. how we look at funds */
@@ -397,6 +461,7 @@ function drawCategoryPanel(category) {
       <table class="grid dense">
         <thead>
           <tr>
+            <th class="pickcell" rowspan="2"></th>
             <th rowspan="2">Fund</th>
             <th class="r grouped" colspan="5">Returns</th>
             <th class="r grouped" colspan="2">${term('Median rolling return')}</th>
@@ -412,6 +477,7 @@ function drawCategoryPanel(category) {
         </thead>
         <tbody>${c.funds.map((f) => `
           <tr>
+            <td class="pickcell">${pickBox(f.key)}</td>
             <td class="fundcell">
               <button class="fundlink" data-fund="${esc(f.key)}">${esc(f.name)}</button>
               <span class="muted sm">${esc(f.amc || '')}</span>
@@ -425,10 +491,11 @@ function drawCategoryPanel(category) {
             <td class="r mono roll">${num(f.medianRolling5Y, 1)}</td>
             <td class="r mono">${cr(f.aumCr)}</td>
             <td class="mgr">${esc(f.fundManager || '—')}</td>
-          </tr>`).join('') || '<tr><td colspan="10" class="muted">No scored funds in this category.</td></tr>'}
+          </tr>`).join('') || '<tr><td colspan="11" class="muted">No scored funds in this category.</td></tr>'}
         </tbody>
         ${c.benchmark ? `<tfoot>
           <tr class="bmrow">
+            <td class="pickcell"></td>
             <td class="fundcell">
               <span class="bmname">${esc(c.benchmark.name)}</span>
               <span class="muted sm">${c.benchmark.kind === 'index'
@@ -452,6 +519,7 @@ function drawCategoryPanel(category) {
     life. Click a fund for the full view.</p>`;
   panel.querySelectorAll('[data-fund]').forEach((el) =>
     el.onclick = () => openFund(el.dataset.fund));
+  wirePicks(panel);
   wireGlossary(panel);
 }
 
@@ -596,7 +664,9 @@ async function loadTable() {
       sorted by ${esc(COLUMNS.find((c) => c.field === filters.sort)?.label || filters.sort)}
       ${filters.dir === 'asc' ? 'ascending' : 'descending'}</div>
     <table class="grid dense sticky">
-      <thead><tr>${cols.map((c) => `
+      <thead><tr>
+        <th class="pickcell"></th>
+        ${cols.map((c) => `
         <th class="sortable${c.text || c.field === 'categoryRank' ? '' : ' r'}${
           c.field === 'name' ? ' namecell' : ''}${
           filters.sort === c.field ? ' on' : ''}" data-sort="${esc(c.field)}"
@@ -604,7 +674,9 @@ async function loadTable() {
           arrow(c)}</th>`).join('')}
       </tr></thead>
       <tbody>${data.funds.map((f) => `
-        <tr data-fund="${esc(f.key)}" tabindex="0">${cols.map((c) => {
+        <tr data-fund="${esc(f.key)}" tabindex="0">
+          <td class="pickcell">${pickBox(f.key)}</td>
+          ${cols.map((c) => {
           if (c.field === 'name') {
             return `<td class="fundcell namecell"><strong>${esc(f.name)}</strong>${f.flags.length
               ? `<span class="flag sm analyst-only">${esc(f.flags[0])}</span>` : ''}</td>`;
@@ -622,7 +694,11 @@ async function loadTable() {
   wrap.querySelectorAll('th[data-sort]').forEach((th) =>
     th.onclick = () => sortBy(th.dataset.sort));
   wrap.querySelectorAll('[data-fund]').forEach((el) =>
-    el.onclick = () => openFund(el.dataset.fund));
+    el.onclick = (e) => {
+      if (e.target.closest('.pickcell')) return;   // ticking is not opening
+      openFund(el.dataset.fund);
+    });
+  wirePicks(wrap);
   wireGlossary(wrap);
 }
 
@@ -1112,7 +1188,9 @@ function openCardModal(code) {
  * Selection lives on `state` rather than in the DOM, so switching tabs and
  * coming back does not lose the comparison. */
 
-const MAX_CMP_FUNDS = 5;
+/* No ceiling on the funds. Past a handful the chart is a thicket, but that is a
+   judgement for whoever is reading it: a portfolio of twelve is a real thing. */
+const MAX_CMP_FUNDS = Infinity;
 const MAX_CMP_MARKS = 2;
 
 /* The table's rows, grouped the way the checkboxes group them. `dir` is which
@@ -1143,11 +1221,19 @@ const CMP_GROUPS = [
 
 function cmpState() {
   if (!state.cmp) {
-    state.cmp = { keys: [], marks: [], period: '3y',
+    state.cmp = { keys: [], marks: [], period: '3y', weights: null, holdings: false,
                   groups: new Set(CMP_GROUPS.map((g) => g.id)) };
   }
   return state.cmp;
 }
+
+/* The weights travel in the query string as key:amount, so a portfolio view can
+   be linked, exported and printed without a body to post. */
+const cmpWeightQuery = () => {
+  const w = cmpState().weights;
+  return w ? '&w=' + Object.entries(w)
+    .map(([k, v]) => `${encodeURIComponent(k)}:${v}`).join(',') : '';
+};
 
 const cmpInk = (i) => Chart.COMPARE_INK[i % Chart.COMPARE_INK.length];
 
@@ -1157,14 +1243,14 @@ async function renderCompare(host) {
     <section>
       <div class="section-head">
         <h2>Compare</h2>
-        <p class="lede">Put up to ${MAX_CMP_FUNDS} funds on one chart, against up
-        to ${MAX_CMP_MARKS} benchmarks, and read them side by side.</p>
+        <p class="lede">Put funds on one chart against up to ${MAX_CMP_MARKS}
+        benchmarks, read them side by side, and weight them into a portfolio.</p>
       </div>
 
       <div class="cmp-pickers">
         <div class="cmp-pick">
           <label class="cmp-lab" for="cmp-lookup">Funds
-            <span class="muted">up to ${MAX_CMP_FUNDS}</span></label>
+            <span class="muted">tick them in any list, or search here</span></label>
           <div class="cmp-search">
             <input id="cmp-lookup" type="search" autocomplete="off"
                    placeholder="Type a scheme name">
@@ -1228,12 +1314,7 @@ function drawCmpChips() {
     drawCmpChips(); drawCmpBody();
   });
   const input = $('#cmp-lookup');
-  if (input) {
-    const full = c.keys.length >= MAX_CMP_FUNDS;
-    input.disabled = full;
-    input.placeholder = full ? `${MAX_CMP_FUNDS} is the maximum, remove one to add another`
-                             : 'Type a scheme name';
-  }
+  if (input) input.placeholder = 'Type a scheme name';
 }
 
 function drawCmpMarks() {
@@ -1266,11 +1347,22 @@ async function drawCmpBody() {
   host.innerHTML = `
     <section class="snapcard chartcard cmp-chart">
       <span class="snapcard-head">
-        <span class="snapcard-title">Growth of 100 rupees</span>
+        <span class="snapcard-title">${c.weights ? 'Portfolio, growth of 100 rupees'
+          : 'Growth of 100 rupees'}</span>
         <span class="snapcard-sub" id="cmp-sub">rebased to zero at the start of
           the window</span>
       </span>
-      <div class="periodbar" id="cmp-periods" role="group" aria-label="Chart period"></div>
+      <div class="cmp-bar">
+        <div class="periodbar" id="cmp-periods" role="group" aria-label="Chart period"></div>
+        <div class="cmp-pfbtns">
+          ${c.weights ? `
+            <label class="cmp-group"><input type="checkbox" id="cmp-holdings"
+              ${c.holdings ? 'checked' : ''}> Show holdings</label>
+            <button class="cmp-ghost" id="cmp-editpf">Edit weights</button>
+            <button class="cmp-ghost" id="cmp-clearpf">Clear portfolio</button>`
+          : `<button class="cmp-ghost strong" id="cmp-makepf">Make this a portfolio</button>`}
+        </div>
+      </div>
       <div id="cmp-growth"></div>
       <p class="cardnote muted sm" id="cmp-note"></p>
     </section>
@@ -1281,6 +1373,8 @@ async function drawCmpBody() {
           ${c.groups.has(g.id) ? 'checked' : ''}> ${esc(g.label)}</label>`).join('')}
       <a id="cmp-csv" class="cmp-download" href="#" download
          title="Every metric, the overlap between each pair, and the daily series behind the chart, whichever groups are ticked">Download CSV</a>
+      <button id="cmp-pdf" class="cmp-download"
+         title="Lays the comparison out on one sheet and opens the print dialog, where Save as PDF gives you the file">PDF</button>
     </div>
     <div class="tablewrap" id="cmp-tablewrap"></div>
 
@@ -1292,6 +1386,16 @@ async function drawCmpBody() {
       else c.groups.delete(b.dataset.group);
       drawCmpTable();
     });
+
+  const on = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
+  /* The print stylesheet lays this page out as one sheet in the house format, so
+     the PDF is the page rather than a second rendering of it that could drift. */
+  on('#cmp-pdf', () => window.print());
+  on('#cmp-makepf', () => openWeights());
+  on('#cmp-editpf', () => openWeights());
+  on('#cmp-clearpf', () => { c.weights = null; c.holdings = false; drawCmpBody(); });
+  const hold = $('#cmp-holdings');
+  if (hold) hold.onchange = () => { c.holdings = hold.checked; drawCmpGrowth(); };
 
   await Promise.all([drawCmpGrowth(), drawCmpTable(), drawCmpOverlap()]);
 }
@@ -1308,7 +1412,7 @@ function cmpQuery(withPeriod) {
 
 function setCmpCsvHref() {
   const a = $('#cmp-csv');
-  if (a) a.href = API + '/compare.csv?' + cmpQuery(true);
+  if (a) a.href = API + '/compare.csv?' + cmpQuery(true) + cmpWeightQuery();
 }
 
 async function drawCmpGrowth() {
@@ -1319,7 +1423,9 @@ async function drawCmpGrowth() {
   const qs = `keys=${c.keys.map(encodeURIComponent).join(',')}`
     + `&marks=${c.marks.map(encodeURIComponent).join(',')}`
     + `&period=${encodeURIComponent(c.period)}`;
-  const g = await get('/compare/growth?' + qs);
+  const g = c.weights
+    ? await get('/portfolio/growth?' + qs + cmpWeightQuery())
+    : await get('/compare/growth?' + qs);
   c.period = g.period || c.period;
 
   const bar = $('#cmp-periods');
@@ -1340,12 +1446,18 @@ async function drawCmpGrowth() {
      its colour between the chip, the chart and the table. Benchmarks are grey
      and dashed, which reads as the backdrop they are. */
   let fi = 0;
-  const series = g.series.map((s) => s.code === 'fund'
-    ? { ...s, ink: cmpInk(fi++) }
-    : { ...s, ink: Chart.MARK_INK, dash: '5 3', width: 1.5 });
+  const series = g.series.map((s) => {
+    if (s.code === 'fund') return { ...s, ink: cmpInk(fi++) };
+    // In portfolio mode the holdings are what the line is made of, not lines in
+    // their own right, so they sit behind it thin and pale until asked for.
+    if (s.code === 'holding') return { ...s, ink: cmpInk(fi++), width: 1, faint: true };
+    if (s.code === 'portfolio') return { ...s, ink: 'var(--ink-strong)', width: 2.6 };
+    return { ...s, ink: Chart.MARK_INK, dash: '5 3', width: 1.5 };
+  }).filter((s) => s.code !== 'holding' || c.holdings);
   Chart.growthLines(host, series, { height: 300 });
 
-  c.names = Object.fromEntries(g.series.filter((s) => s.code === 'fund')
+  c.names = Object.fromEntries(g.series
+    .filter((s) => s.code === 'fund' || s.code === 'holding')
     .map((s) => [s.key, s.label]));
   drawCmpChips();
   setCmpCsvHref();
@@ -1367,12 +1479,19 @@ async function drawCmpTable() {
   if (!wrap) return;
   const qs = `keys=${c.keys.map(encodeURIComponent).join(',')}`
     + `&marks=${c.marks.map(encodeURIComponent).join(',')}`;
-  const t = await get('/compare?' + qs);
+  const t = await get('/compare?' + qs + cmpWeightQuery());
 
   /* A fund is the subject here, so it gets the row: the eye runs along one
      scheme's record left to right, and down a single metric to rank on it.
      Benchmarks sit underneath the funds, in the same columns. */
   const rows = [
+    /* The portfolio leads, because once there is one it is the subject and the
+       holdings underneath are what it is made of. It is not marked best in any
+       column: a weighted average of the rows below it is not competing with
+       them. */
+    ...(t.portfolio ? [{ label: t.portfolio.label, sub: t.portfolio.metricsLabel,
+                         metrics: t.portfolio.metrics, ink: 'var(--ink-strong)',
+                         lead: true }] : []),
     ...t.funds.map((f, i) => ({ key: f.key, label: f.name, sub: f.category,
                                 metrics: f.metrics, ink: cmpInk(i), fund: true })),
     ...t.marks.map((m) => ({ label: m.label,
@@ -1427,7 +1546,8 @@ async function drawCmpTable() {
         </tr>
       </thead>
       <tbody>
-        ${rows.map((r) => `<tr class="${r.fund ? '' : 'cmp-markrow'}">
+        ${rows.map((r) => `<tr class="${
+          r.lead ? 'cmp-leadrow' : r.fund ? '' : 'cmp-markrow'}">
           <td class="cmp-name" title="${esc(r.label)}">
             <span class="cmp-colhead"><i style="background:${r.ink}"></i>
               <span class="cmp-nametext">${esc(r.label)}</span></span>
@@ -1449,6 +1569,104 @@ async function drawCmpTable() {
   wireGlossary(wrap);
 }
 
+/* ------------------------------------------------------------- portfolio */
+
+/* Weights are entered in whichever unit the reader thinks in. Rupees are what
+   somebody actually holds; percentages are what an allocation is written as.
+   Both are the same question once the total is divided out, so the form takes
+   either and shows the share each line comes to as it is typed. Nothing has to
+   add up to a round number. */
+function openWeights(opener) {
+  const c = cmpState();
+  const names = c.names || {};
+  const unit = c.unit || '%';
+  const existing = c.weights || {};
+  const rows = c.keys.map((k) => ({ key: k, name: names[k] || k,
+                                    value: existing[k] ?? '' }));
+
+  openModal(`
+    <div class="wt">
+      <h3>Weights</h3>
+      <p class="muted sm">Enter what each holding is worth, or what share of the
+      whole it is. The two are read the same way: the total is divided out, so
+      the figures do not have to add to a hundred or to any round sum.</p>
+      <div class="wt-units segmented" role="group" aria-label="Units">
+        <button data-unit="%" class="${unit === '%' ? 'on' : ''}">Percent</button>
+        <button data-unit="INR" class="${unit === 'INR' ? 'on' : ''}">Rupees</button>
+      </div>
+      <div class="wt-rows">
+        ${rows.map((r, i) => `
+          <label class="wt-row">
+            <span class="wt-name"><i style="background:${cmpInk(i)}"></i>
+              ${esc(r.name)}</span>
+            <input type="number" min="0" step="any" data-w="${esc(r.key)}"
+                   value="${esc(r.value)}" inputmode="decimal">
+            <span class="wt-share" data-share="${esc(r.key)}">—</span>
+          </label>`).join('')}
+      </div>
+      <div class="wt-foot">
+        <span class="wt-total" id="wt-total">Nothing entered yet</span>
+        <span class="wt-actions">
+          <button class="cmp-ghost" id="wt-even">Split evenly</button>
+          <button class="wt-create" id="wt-create" disabled>Create</button>
+        </span>
+      </div>
+    </div>`, opener);
+
+  const box = document.querySelector('.modal');
+  const inputs = [...box.querySelectorAll('[data-w]')];
+  let u = unit;
+
+  const read = () => Object.fromEntries(inputs
+    .map((el) => [el.dataset.w, parseFloat(el.value)])
+    .filter(([, v]) => Number.isFinite(v) && v > 0));
+
+  function refresh() {
+    const w = read();
+    const total = Object.values(w).reduce((a, b) => a + b, 0);
+    inputs.forEach((el) => {
+      const share = total ? (w[el.dataset.w] || 0) / total * 100 : null;
+      box.querySelector(`[data-share="${CSS.escape(el.dataset.w)}"]`).textContent =
+        share ? num(share, 1) + '%' : '—';
+    });
+    const n = Object.keys(w).length;
+    /* Rupees here are rupees. The `cr` helper formats a fund's size, which is
+       already in crore, and running an amount through it turns five lakh into
+       five lakh crore. */
+    $('#wt-total').textContent = !n ? 'Nothing entered yet'
+      : u === 'INR' ? `${n} holdings, INR ${num(total, 0)} in total`
+                    : `${n} holdings, entered as ${num(total, 1)}`;
+    $('#wt-create').disabled = n < 1;
+  }
+
+  inputs.forEach((el) => el.oninput = refresh);
+  box.querySelectorAll('[data-unit]').forEach((b) => b.onclick = () => {
+    u = b.dataset.unit;
+    c.unit = u;
+    box.querySelectorAll('[data-unit]').forEach((x) =>
+      x.classList.toggle('on', x === b));
+    refresh();
+  });
+  $('#wt-even').onclick = () => {
+    const each = u === 'INR' ? 100000 : (100 / inputs.length);
+    inputs.forEach((el) => { el.value = u === 'INR' ? each : each.toFixed(1); });
+    refresh();
+  };
+  $('#wt-create').onclick = () => {
+    const w = read();
+    if (!Object.keys(w).length) return;
+    // Stored as shares of the whole, so the unit is a thing the form worried
+    // about and not a thing the rest of the app has to carry around.
+    const total = Object.values(w).reduce((a, b) => a + b, 0);
+    c.weights = Object.fromEntries(Object.entries(w)
+      .map(([k, v]) => [k, Math.round(v / total * 10000) / 100]));
+    c.holdings = false;
+    closeModal();
+    drawCmpBody();
+  };
+  refresh();
+}
+
 /* --------------------------------------------------------------- overlap */
 
 async function drawCmpOverlap() {
@@ -1456,7 +1674,7 @@ async function drawCmpOverlap() {
   const host = $('#cmp-overlap');
   if (!host) return;
   const o = await get('/compare/overlap?keys='
-    + c.keys.map(encodeURIComponent).join(','));
+    + c.keys.map(encodeURIComponent).join(',') + cmpWeightQuery());
   const f = o.funds || [];
   if (f.length < 2) {
     host.innerHTML = f.length && (o.missing || []).length
@@ -1482,7 +1700,35 @@ async function drawCmpOverlap() {
         >${num(v, 2)}</button></td>`;
   };
 
+  /* With weights on it, the question stops being "how alike are these two" and
+     becomes "what does the combination actually hold". Effective holdings is the
+     number that answers it: four funds of sixty names each are not two hundred
+     and forty positions, because they own many of the same ones. */
+  const pf = o.portfolio;
   host.innerHTML = `
+    ${pf ? `<section class="snapcard cmp-pfcard">
+      <span class="snapcard-head">
+        <span class="snapcard-title">What the portfolio holds</span>
+        <span class="snapcard-sub">every holding's book added together at its weight</span>
+      </span>
+      <div class="pf-stats">
+        <div><span class="k">${term('Effective holdings')}</span>
+             <span class="v">${num(pf.effectiveStocks, 1)}</span>
+             <span class="s">of ${pf.distinctStocks} distinct names</span></div>
+        <div><span class="k">${term('Top 10 weight')}</span>
+             <span class="v">${num(pf.topTen, 1)}%</span>
+             <span class="s">largest ${esc((pf.stocks[0] || {}).name || '—')}
+               at ${num((pf.stocks[0] || {}).weight, 1)}%</span></div>
+        <div><span class="k">Largest sector</span>
+             <span class="v">${num((pf.sectors[0] || {}).weight, 1)}%</span>
+             <span class="s">${esc((pf.sectors[0] || {}).sector || '—')}</span></div>
+      </div>
+      <p class="cardnote muted sm">Effective holdings is the inverse Herfindahl of
+      the combined book: what the portfolio behaves like it holds once the same
+      names bought twice are counted once and the small positions are counted for
+      what they are.</p>
+    </section>` : ''}
+
     <section class="snapcard cmp-ovcard">
       <span class="snapcard-head">
         <span class="snapcard-title">Stock overlap</span>
@@ -1579,6 +1825,7 @@ async function render() {
     host.innerHTML = `<div class="error"><strong>Could not load.</strong>
       <span>${esc(e.message)}</span></div>`;
   }
+  drawPickbar();          // the selection survives moving between tabs
 }
 
 (async function boot() {

@@ -236,12 +236,52 @@ def _csv(name):
     return [x for x in (request.args.get(name) or "").split(",") if x.strip()]
 
 
+def _weights():
+    """Weights off the query string as `key:amount,key:amount`. Amounts may be
+    rupees or percentages; the model divides the total out either way."""
+    out = {}
+    for part in _csv("w"):
+        key, _, val = part.partition(":")
+        v = _f(val)
+        if key.strip() and v is not None and v > 0:
+            out[key.strip()] = v
+    return out
+
+
+@bp.get("/portfolio/growth")
+def portfolio_growth():
+    """The weighted holding as one line, with its holdings and any benchmarks."""
+    return jsonify(ds.portfolio_growth(_weights(), _csv("marks"),
+                                       request.args.get("period") or "3y"))
+
+
+@bp.get("/portfolio/lookthrough")
+def portfolio_lookthrough():
+    """What the combination actually holds: the stocks, the sectors, how
+    concentrated it is once the funds are added together, and how many positions
+    it behaves like it holds."""
+    w = _weights()
+    if not w:
+        return jsonify({"error": "pass weights"}), 400
+    return jsonify(ds.look_through(w))
+
+
 @bp.get("/compare")
 def compare():
     """The comparison table: the funds asked for, then the benchmarks, on the
     metrics the table can show. Called with no keys it still answers, so the tab
     can populate its pickers before anything is selected."""
-    return jsonify(ds.compare_table(_csv("keys"), _csv("marks")))
+    out = ds.compare_table(_csv("keys"), _csv("marks"))
+    # A portfolio has no published record, so its row is read off its own series.
+    # Risk and capture stay blank for the same reason a price index's do: they
+    # need a benchmark to be measured against.
+    w = _weights()
+    if w:
+        m = ds.portfolio_metrics(w)
+        if m:
+            out["portfolio"] = {"label": "Portfolio", "metricsLabel": "from its own series",
+                                "metrics": m}
+    return jsonify(out)
 
 
 @bp.get("/compare/growth")
@@ -266,7 +306,8 @@ def compare_download():
     """The comparison as a spreadsheet. Served as a file rather than assembled
     in the browser so the export and the screen cannot drift apart."""
     rows = ds.compare_csv(_csv("keys"), _csv("marks"),
-                          request.args.get("period") or "3y")
+                          request.args.get("period") or "3y",
+                          weights=_weights() or None)
     buf = io.StringIO()
     # Excel reads a bare UTF-8 file as the local codepage and mangles any name
     # that is not plain ASCII. The byte order mark is what tells it otherwise.
@@ -281,7 +322,14 @@ def compare_download():
 @bp.get("/compare/overlap")
 def compare_overlap():
     """How much of the same book the selected funds are holding."""
-    return jsonify(ds.compare_overlap(_csv("keys")))
+    out = ds.compare_overlap(_csv("keys"))
+    w = _weights()
+    if w:
+        lt = ds.look_through(w)
+        out["portfolio"] = {k: lt[k] for k in
+                            ("effectiveStocks", "distinctStocks", "topTen",
+                             "stocks", "sectors", "capMix", "funds")}
+    return jsonify(out)
 
 
 @bp.get("/overlap/pair")

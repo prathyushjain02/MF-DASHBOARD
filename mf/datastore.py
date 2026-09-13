@@ -408,7 +408,28 @@ def look_through(weights, state=None):
         "capMix": {k: round(v, 1) for k, v in cap.items()},
         "pairs": pairs,
         "topTen": round(sum(v for _, v in top[:10]), 1),
+        "effectiveStocks": effective_stocks(v for _, v in top),
     }
+
+
+def effective_stocks(weights_pct):
+    """How many stocks the book behaves like it holds.
+
+    The inverse Herfindahl of the position weights. A book of 200 names where
+    ten of them are two thirds of the money does not behave like 200 positions,
+    and the count alone will not say so. Equal weights give back the plain
+    count; concentration pulls it down.
+
+    This is the number worth reading across a portfolio rather than a fund:
+    holding four funds that each own 60 names is not 240 positions, because
+    they own many of the same ones.
+    """
+    ws = [w / 100.0 for w in weights_pct if w and w > 0]
+    tot = sum(ws)
+    if not ws or tot <= 0:
+        return None
+    ws = [w / tot for w in ws]                  # the invested book, renormalised
+    return round(1.0 / sum(w * w for w in ws), 1)
 
 
 def _median(vals):
@@ -569,8 +590,17 @@ _COMPARE_METRICS = (
     "upsideCapture3Y", "downsideCapture3Y",
 )
 
-MAX_COMPARE_FUNDS = 5
+# The comparison takes as many funds as the reader wants to put in it. Past a
+# handful the chart is a thicket and the table scrolls a long way, but that is
+# the reader's call to make and not a rule to enforce: a portfolio of twelve is
+# a real thing somebody wants to look at. Benchmarks stay at two, because they
+# are the backdrop and a third line of grey dashes reads as noise.
+MAX_COMPARE_FUNDS = None
 MAX_COMPARE_MARKS = 2
+
+
+def _cap(seq, n):
+    return list(seq) if n is None else list(seq)[:n]
 
 
 # Only two of the four marks come with a published metric row. The other two are
@@ -717,7 +747,7 @@ def compare_table(keys, marks=(), state=None):
     """Rows for the comparison table: the funds asked for, then the marks."""
     state = state or load()
     catalogue = {m["id"]: m for m in compare_marks(state)}
-    funds = [state["byKey"][k] for k in keys[:MAX_COMPARE_FUNDS]
+    funds = [state["byKey"][k] for k in _cap(keys, MAX_COMPARE_FUNDS)
              if k in state["byKey"]]
     return {
         "funds": [{**row(f), "metrics": {k: f.get(k) for k in _COMPARE_METRICS}}
@@ -725,7 +755,7 @@ def compare_table(keys, marks=(), state=None):
         "marks": [{"id": m, "label": catalogue[m]["label"],
                    "metricsLabel": catalogue[m]["metricsLabel"],
                    "metrics": catalogue[m]["metrics"]}
-                  for m in marks[:MAX_COMPARE_MARKS] if m in catalogue],
+                  for m in _cap(marks, MAX_COMPARE_MARKS) if m in catalogue],
         "available": compare_marks(state),
         "maxFunds": MAX_COMPARE_FUNDS,
         "maxMarks": MAX_COMPARE_MARKS,
@@ -766,7 +796,7 @@ _CSV_METRICS = (
 )
 
 
-def compare_csv(keys, marks=(), period="3y", state=None):
+def compare_csv(keys, marks=(), period="3y", state=None, weights=None):
     """The whole comparison as rows of a spreadsheet: the schemes and their
     figures, the overlap between every pair, and the rebased series behind the
     chart. Three sections in one file, separated by a blank line and a title,
@@ -774,10 +804,11 @@ def compare_csv(keys, marks=(), period="3y", state=None):
     three downloads only makes the reader reassemble it."""
     state = state or load()
     catalogue = {m["id"]: m for m in compare_marks(state)}
-    funds = [state["byKey"][k] for k in keys[:MAX_COMPARE_FUNDS]
+    funds = [state["byKey"][k] for k in _cap(keys, MAX_COMPARE_FUNDS)
              if k in state["byKey"]]
-    picked = [m for m in marks[:MAX_COMPARE_MARKS] if m in catalogue]
-    g = compare_growth(keys, marks, period, state)
+    picked = [m for m in _cap(marks, MAX_COMPARE_MARKS) if m in catalogue]
+    g = (portfolio_growth(weights, marks, period, state) if weights
+         else compare_growth(keys, marks, period, state))
 
     out = [["Mutual fund screener, compare"],
            ["Built", (state.get("meta") or {}).get("builtAt")]]
@@ -790,8 +821,16 @@ def compare_csv(keys, marks=(), period="3y", state=None):
     out += [[], ["Metrics"],
             ["Type", "Name", "Figures from"]
             + [c[0] for c in _CSV_IDENTITY] + [c[0] for c in _CSV_METRICS]]
+    if weights:
+        shares, total = normalise_weights(weights)
+        pm = portfolio_metrics(weights, state) or {}
+        out.append(["Portfolio", "Portfolio", "from its own series"]
+                   + [None for _ in _CSV_IDENTITY]
+                   + [pm.get(k) for _, k in _CSV_METRICS])
     for f in funds:
-        out.append(["Fund", f["name"], "published record"]
+        w = f" at {round(shares.get(f['key'], 0), 2)}%" if weights else ""
+        out.append([("Holding" + w) if weights else "Fund",
+                    f["name"], "published record"]
                    + [f.get(k) for _, k in _CSV_IDENTITY]
                    + [f.get(k) for _, k in _CSV_METRICS])
     for mid in picked:
@@ -802,6 +841,17 @@ def compare_csv(keys, marks=(), period="3y", state=None):
                    + [met.get(k) for _, k in _CSV_METRICS])
 
     # 2. Every pair, once.
+    if weights:
+        lt = look_through(normalise_weights(weights)[0], state)
+        out += [[], ["What the portfolio holds"],
+                ["Effective holdings", lt["effectiveStocks"]],
+                ["Distinct names", lt["distinctStocks"]],
+                ["Top 10 weight %", lt["topTen"]]]
+        out += [[], ["Combined book, largest 25"], ["Stock", "Weight %"]]
+        out += [[r["name"], r["weight"]] for r in lt["stocks"]]
+        out += [[], ["Sector exposure"], ["Sector", "Weight %"]]
+        out += [[r["sector"], r["weight"]] for r in lt["sectors"]]
+
     ov = compare_overlap(keys, state)
     if len(ov["funds"]) > 1:
         out += [[], ["Stock overlap, percent of weight held in common"],
@@ -813,6 +863,10 @@ def compare_csv(keys, marks=(), period="3y", state=None):
 
     # 3. The chart itself, at full resolution rather than the points drawn.
     series = _csv_series(keys, picked, g.get("start"), state)
+    if weights and g.get("start"):
+        line, _ = portfolio_series(normalise_weights(weights)[0], g["start"], state)
+        if line:
+            series = [("Portfolio", _rebased_map(line, g["start"]))] + series
     if series:
         days = sorted({d for _, pairs in series for d in pairs})
         out += [[], ["Growth of 100 rupees, percent from the start of the window"],
@@ -829,7 +883,7 @@ def _csv_series(keys, marks, start, state):
         return []
     navs = state.get("navs") or {}
     out = []
-    for k in keys[:MAX_COMPARE_FUNDS]:
+    for k in _cap(keys, MAX_COMPARE_FUNDS):
         f, s = state["byKey"].get(k), (navs.get("funds") or {}).get(k)
         if f and s:
             out.append((f["name"], _rebased_map(s, start)))
@@ -848,6 +902,147 @@ def _rebased_map(series, start_iso):
     return {d: round(100.0 * (v / base - 1.0), 2) for d, v in zip(days, vals)}
 
 
+# ---------------------------------------------------------------------------
+# Portfolio
+# ---------------------------------------------------------------------------
+#
+# A set of funds with weights against it, read as one holding.
+
+def normalise_weights(weights):
+    """Whatever the reader typed, as shares of the whole that sum to 100.
+
+    They may be amounts in rupees or percentages, and percentages typed by hand
+    rarely sum to exactly a hundred. Both are the same question once the total
+    is divided out, so the shape is taken from the numbers and the units are
+    the reader's business.
+    """
+    clean = {}
+    for k, v in (weights or {}).items():
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            continue
+        if f > 0:
+            clean[k] = f
+    total = sum(clean.values())
+    if not total:
+        return {}, 0.0
+    return {k: 100.0 * v / total for k, v in clean.items()}, total
+
+
+def _series_at_or_before(days, vals, iso):
+    """Step function: the last NAV published on or before this date. A fund that
+    did not report on a day has not lost its value, it simply has not published,
+    so the portfolio carries the last price forward rather than dropping the day."""
+    lo, hi = 0, len(days)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if days[mid] <= iso:
+            lo = mid + 1
+        else:
+            hi = mid
+    i = lo - 1
+    return vals[i] if i >= 0 else None
+
+
+def portfolio_series(weights, start, state=None):
+    """The weighted holding as one daily series, indexed to 1.0 at `start`.
+
+    Bought once at the start and held. Each holding's value moves with its own
+    NAV and the weights drift from there, which is what actually happens to a
+    portfolio nobody rebalances. No rebalancing is assumed because assuming one
+    would quietly add a return the investor never earned.
+    """
+    state = state or load()
+    navs = (state.get("navs") or {}).get("funds") or {}
+    legs, missing = [], []
+    for key, w in weights.items():
+        s = navs.get(key)
+        base = _series_at_or_before(s["d"], s["v"], start) if s else None
+        if not s or not base:
+            missing.append(key)
+            continue
+        legs.append({"key": key, "w": w / 100.0, "s": s, "base": base})
+    if not legs:
+        return None, missing
+
+    days = sorted({d for leg in legs for d in leg["s"]["d"] if d >= start})
+    out = []
+    for d in days:
+        v = 0.0
+        for leg in legs:
+            nav = _series_at_or_before(leg["s"]["d"], leg["s"]["v"], d)
+            if nav is None:
+                v = None
+                break
+            v += leg["w"] * nav / leg["base"]
+        if v is not None:
+            out.append((d, v))
+    if len(out) < 2:
+        return None, missing
+    scale = sum(leg["w"] for leg in legs) or 1.0
+    return ({"d": [d for d, _ in out], "v": [v / scale for _, v in out]}, missing)
+
+
+def portfolio_growth(weights, marks=(), period="3y", state=None):
+    """The portfolio as one line, its holdings behind it, and any benchmarks.
+
+    The window is set by the holdings exactly as it is for a comparison: a
+    portfolio cannot start before the youngest thing in it.
+    """
+    state = state or load()
+    shares, _ = normalise_weights(weights)
+    if not shares:
+        return {"period": period, "series": [], "notes": [],
+                "unavailable": "No weights given."}
+
+    g = compare_growth(list(shares), marks, period, state)
+    if not g.get("series"):
+        return g
+    start = g["start"]
+    series, missing = portfolio_series(shares, start, state)
+    if not series:
+        g["notes"] = list(g.get("notes") or []) + [
+            "No NAV history for the holdings, so the portfolio cannot be drawn."]
+        return g
+
+    line = _rebased(series, start)
+    holdings = [dict(x, code="holding") for x in g["series"] if x["code"] == "fund"]
+    marks_ = [x for x in g["series"] if x["code"] == "mark"]
+    notes = list(g.get("notes") or [])
+    if missing:
+        names = [(state["byKey"].get(k) or {}).get("name", k) for k in missing]
+        notes.append(f"{', '.join(names)} left out of the line for want of NAV "
+                     f"history over this window, so the weights behind it are the "
+                     f"rest of the portfolio rescaled.")
+    notes.append("Bought once at the start of the window and held, so the weights "
+                 "drift with the holdings. No rebalancing is assumed.")
+
+    return {
+        **g,
+        "series": [{"code": "portfolio", "key": "_portfolio", "label": "Portfolio",
+                    **line}] + holdings + marks_,
+        "notes": notes,
+        "weights": {k: round(v, 2) for k, v in shares.items()},
+    }
+
+
+def portfolio_metrics(weights, state=None):
+    """The portfolio's own returns, read off its own series rather than averaged
+    off the holdings': averaging point to point returns of things bought on
+    different days is not a portfolio return."""
+    state = state or load()
+    shares, _ = normalise_weights(weights)
+    if not shares:
+        return None
+    navs = (state.get("navs") or {}).get("funds") or {}
+    firsts = [navs[k]["d"][0] for k in shares if navs.get(k) and navs[k].get("d")]
+    if not firsts:
+        return None
+    series, _ = portfolio_series(shares, max(firsts), state)
+    return _series_metrics(series) if series else None
+
+
 def compare_overlap(keys, state=None):
     """Pairwise overlap across the selected funds, as a matrix.
 
@@ -857,7 +1052,7 @@ def compare_overlap(keys, state=None):
     """
     state = state or load()
     funds, missing = [], []
-    for k in keys[:MAX_COMPARE_FUNDS]:
+    for k in _cap(keys, MAX_COMPARE_FUNDS):
         f = state["byKey"].get(k)
         if f and f.get("_book"):
             funds.append(f)
@@ -917,7 +1112,7 @@ def compare_growth(keys, marks=(), period="3y", state=None):
     state = state or load()
     navs = state.get("navs") or {}
     fund_series = []
-    for k in keys[:MAX_COMPARE_FUNDS]:
+    for k in _cap(keys, MAX_COMPARE_FUNDS):
         f = state["byKey"].get(k)
         s = (navs.get("funds") or {}).get(k)
         if f and s and len(s.get("d") or []) >= 2:
@@ -954,7 +1149,7 @@ def compare_growth(keys, marks=(), period="3y", state=None):
 
     catalogue = {m["id"]: m for m in compare_marks(state)}
     limit = _shift(start, _START_SLACK_DAYS)
-    for mid in list(marks)[:MAX_COMPARE_MARKS]:
+    for mid in _cap(marks, MAX_COMPARE_MARKS):
         series = (navs.get("indices") or {}).get(mid)
         if not series or mid not in catalogue:
             continue

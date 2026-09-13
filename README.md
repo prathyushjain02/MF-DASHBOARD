@@ -164,9 +164,9 @@ in them.
 |---|---|
 | How we look at funds | The six-factor staircase: basic requirements 1 to 3, performance drivers 4 to 6. Click any step for a modal explaining what it means, with live figures from the current universe. |
 | Category top funds | A tile per category. Click one for its shortlist as a table: 3M, 6M, 1Y, 3Y and 5Y returns, median rolling 3Y and 5Y, AUM and the named managers. Click a fund name for its own page. |
-| All funds | Every scheme. Filter by search, category, AMC, band, minimum AUM, maximum downside capture, holdings and rated-only; sort on any column. Click a row for the fund page. |
+| All funds | Every scheme. Filter by search, category, AMC, band, minimum AUM, maximum downside capture, holdings and rated-only; sort on any column. Click a row for the fund page, or tick it to carry into Compare. |
 | Fund | A one-page snapshot: how it has done against its benchmark, what a holding period gave, how it behaves in a fall, what it holds, who runs it, size and cost. Every card opens its full detail in a modal. |
-| Compare | Up to five funds against up to two benchmarks: one rebased chart, a metric table behind group checkboxes, a pairwise stock overlap matrix, and a CSV of the lot. |
+| Compare | Any number of funds against up to two benchmarks: one rebased chart, a metric table behind group checkboxes, a pairwise stock overlap matrix, and a CSV or one page PDF of the lot. Weight the selection and it becomes a portfolio: one line, its own row in the table, and a look-through with effective holdings. |
 
 The **Client / Analyst toggle** decides what the page is for, not just how much of
 it shows.

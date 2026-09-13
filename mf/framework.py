@@ -643,6 +643,10 @@ GLOSSARY = {
         "The worst *peak to trough* fall over the period.",
         "The loss an investor had to *sit through*, so size a position against it.",
     ],
+    "effective holdings": [
+        "What the book behaves like it holds, rather than how many names are in it.",
+        "Ten names that are two thirds of the money is *not* a two hundred stock portfolio.",
+    ],
     "top 10 weight": [
         "Share of the equity book held in its *ten largest* positions.",
         "Higher means more *conviction* and more *single stock risk*.",

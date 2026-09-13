@@ -163,7 +163,13 @@ const Chart = (() => {
      rather than for the house palette: brand red leads, then a teal, a slate, an
      ochre and a plum. All are muted, and none of them is the grey the benchmark
      lines use, so a fund is never mistaken for the market. */
-  const COMPARE_INK = ['#cc1919', '#1f6f8b', '#4c5966', '#b07c2a', '#6b4c8a'];
+  /* Identity, not magnitude, so this one set is categorical rather than a ramp.
+     Eight of them: the brand red leads, the rest are held apart in hue and kept
+     within a narrow lightness band so no line reads as more important than
+     another. Past eight the set repeats, which is the point at which a chart of
+     individual lines has stopped being readable anyway. */
+  const COMPARE_INK = ['#cc1919', '#1f6f8b', '#4c5966', '#b07c2a', '#6b4c8a',
+                       '#2f7d5f', '#a8455f', '#3a4a7a'];
   const MARK_INK = '#808083';
 
   const inkOf = (s) => s.ink || GROWTH_INK[s.code] || 'var(--series-1)';
@@ -231,6 +237,9 @@ const Chart = (() => {
         d, fill: 'none', stroke: inkOf(s),
         'stroke-width': s.width || (s.code === 'fund' ? 2 : 1.5),
         'stroke-dasharray': dashOf(s),
+        // A holding drawn behind the portfolio it belongs to is context, not a
+        // competing line, so it is held back rather than given equal weight.
+        opacity: s.faint ? 0.45 : 1,
         'stroke-linejoin': 'round', 'stroke-linecap': 'round',
         'vector-effect': 'non-scaling-stroke',
       }));

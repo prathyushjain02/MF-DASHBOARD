@@ -449,10 +449,58 @@ th.sortable.on .arrow { opacity: 1; }
 
 .cmp-groupbar { display: flex; flex-wrap: wrap; align-items: center;
   gap: 6px 20px; margin: 16px 0 10px; }
-.cmp-download { margin-left: auto; font-size: 12px; padding: 6px 12px;
+.cmp-download { font-size: 12px; padding: 6px 12px; font-family: inherit;
   border: 1px solid var(--border); background: var(--surface-2);
-  color: var(--text-secondary); text-decoration: none; }
+  color: var(--text-secondary); text-decoration: none; cursor: pointer; }
 .cmp-download:hover { color: var(--red); border-color: var(--red); }
+#cmp-csv { margin-left: auto; }
+
+/* ---- portfolio */
+.cmp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.cmp-pfbtns { display: flex; align-items: center; gap: 8px 14px; margin-left: auto; }
+.cmp-ghost { font: inherit; font-size: 12px; padding: 5px 11px; cursor: pointer;
+  background: var(--surface-2); border: 1px solid var(--border-strong);
+  color: var(--text-secondary); }
+.cmp-ghost:hover { color: var(--red); border-color: var(--red); }
+.cmp-ghost.strong { border-color: var(--red); color: var(--red); font-weight: 500; }
+.cmp-ghost.strong:hover { background: var(--red); color: #fff; }
+.cmp-leadrow td { background: var(--wash); font-weight: 500; }
+.cmp-leadrow .cmp-name { background: var(--wash); }
+
+.cmp-pfcard { margin-top: 18px; cursor: default; }
+.cmp-pfcard:hover { background: var(--surface-2); border-top-color: var(--slate); }
+.pf-stats { display: grid; gap: 10px 26px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-top: 4px; }
+.pf-stats > div { display: flex; flex-direction: column; gap: 1px; }
+.pf-stats .k { font-size: 11px; color: var(--text-muted); font-family: var(--title); }
+.pf-stats .v { font-family: var(--mono); font-size: 23px; font-weight: 500;
+  line-height: 1.15; }
+.pf-stats .s { font-size: 11.5px; color: var(--text-secondary); }
+
+/* ---- the weights form */
+.wt h3 { font-size: 18px; margin-bottom: 5px; padding-right: 28px; }
+.wt > .muted { max-width: 58ch; margin-bottom: 12px; }
+.wt-units { margin-bottom: 12px; }
+.wt-rows { display: grid; gap: 5px; }
+.wt-row { display: grid; grid-template-columns: 1fr 110px 54px; gap: 10px;
+  align-items: center; font-size: 13px; }
+.wt-name { display: flex; align-items: center; gap: 7px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.wt-name i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.wt-row input { font: inherit; font-family: var(--mono); font-size: 13px;
+  padding: 5px 8px; text-align: right; border: 1px solid var(--border-strong);
+  background: var(--surface-2); color: var(--text-primary); width: 100%; }
+.wt-share { font-family: var(--mono); font-size: 12px; color: var(--text-muted);
+  text-align: right; }
+.wt-foot { display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--grid); }
+.wt-total { font-size: 12px; color: var(--text-secondary); }
+.wt-actions { display: flex; gap: 8px; }
+.wt-create { font: inherit; font-size: 12.5px; padding: 6px 16px; cursor: pointer;
+  background: var(--red); color: #fff; border: 1px solid var(--red); }
+.wt-create:disabled { background: var(--zebra); color: var(--text-muted);
+  border-color: var(--border); cursor: not-allowed; }
 .cmp-group { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
   cursor: pointer; }
 .cmp-group input { accent-color: var(--red); cursor: pointer; }
@@ -717,6 +765,28 @@ body.modal-open { overflow: hidden; }
   display: flex; flex-direction: column; gap: 4px; }
 .error span { color: var(--text-secondary); font-family: var(--mono); font-size: 12px; }
 
+/* ------------------------------------------------------------ selection */
+/* A tick beside every fund in every list, and a bar that appears once anything
+   is ticked. The bar is fixed to the foot because the lists are long and the
+   selection has to stay reachable from wherever the reader has scrolled to. */
+.pickcell { width: 34px; padding-right: 0 !important; text-align: center; }
+.pickbox { accent-color: var(--red); cursor: pointer; width: 14px; height: 14px;
+  vertical-align: middle; }
+
+#pickbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px;
+  z-index: 90; display: flex; align-items: center; gap: 14px;
+  background: var(--text-primary); color: var(--surface-2);
+  border-top: 2px solid var(--red); padding: 9px 12px 9px 16px;
+  box-shadow: 0 6px 22px rgba(50, 49, 50, 0.28); font-size: 12.5px; }
+.pickbar-n b { font-family: var(--mono); font-size: 14px; }
+#pickbar button { font: inherit; font-size: 12px; cursor: pointer;
+  padding: 6px 13px; border: 1px solid transparent; }
+.pickbar-go { background: var(--red); color: #fff; }
+.pickbar-go:hover { background: #b31616; }
+.pickbar-clear { background: none; color: var(--surface-2);
+  border-color: rgba(255, 255, 255, 0.35) !important; }
+.pickbar-clear:hover { border-color: var(--surface-2) !important; }
+
 /* ------------------------------------------------------------- tooltip */
 /* Fixed, above everything, and transparent to the pointer: the box follows the
    cursor, so a tooltip that could be hovered would chase itself off the screen. */
@@ -826,4 +896,64 @@ body.modal-open { overflow: hidden; }
   .pick { grid-template-columns: 26px 1fr; }
   .pick-stats { grid-column: 2; }
   .filterbar label:first-child input { min-width: 190px; }
+}
+
+
+/* ============================================================== print ==== */
+/* The PDF is this page, laid out for a sheet, rather than a second rendering
+   that could drift from what the reader is looking at. Everything that is a
+   control rather than a finding comes out: tabs, pickers, checkboxes, the
+   buttons themselves. What is left is the chart, the table and the overlap. */
+@page { size: A4 landscape; margin: 8mm; }
+
+@media print {
+  html, body { background: #fff; }
+  #masthead { padding: 0 0 8px; }
+  #masthead::after { display: none; }
+  #tabs, #viewtoggle, #pickbar, #tooltip, .modal-backdrop,
+  .cmp-pickers, .cmp-pfbtns, .periodbar, .cmp-groupbar, .cmp-download,
+  .backlink, .chart-more, .snapcard-go { display: none !important; }
+  #main { padding: 0; max-width: none; }
+  .brand h1 { font-size: 19px; }
+  .brand p, .lede { font-size: 11px; }
+  .section-head { margin-bottom: 4px; padding-bottom: 2px; }
+  .section-head::after { display: none; }
+  #masthead { padding: 0 0 4px; }
+  .brand p { display: none; }
+
+  /* Nothing may break across a page: a table split mid body reads as two
+     tables that disagree. */
+  .snapcard, .cmp-ovcard, .cmp-pfcard, table, tr, .tablewrap {
+    break-inside: avoid; page-break-inside: avoid; }
+  /* One sheet is the brief, and the chart is the only thing on the page that can
+     give up room without a figure being lost, so it gives up most of it. */
+  .cmp-chart { margin-top: 4px; }
+  #cmp-growth svg, .chart.growth { max-height: 104px; }
+  #cmp-growth { margin: 0; }
+  .snapcard { padding: 5px 8px 6px; gap: 2px; }
+  .snapcard-title { font-size: 11px; }
+  .snapcard-sub { font-size: 8px; }
+  .lede, .caveat { display: none !important; }
+  h2 { font-size: 15px; }
+  .growthkey { gap: 2px 12px; margin-top: 2px; }
+  .pf-stats { gap: 2px 20px; margin-top: 0; }
+  .pf-stats .k, .pf-stats .s { font-size: 8px; }
+  .cmp-ovcard, .cmp-pfcard { margin-top: 5px; }
+  .cmp-table, .ov-table { margin-top: 2px; }
+  p.muted.sm, .cardnote { margin: 1px 0 0; }
+  #cmp-tablewrap, #cmp-overlap { margin-top: 5px; }
+  .pf-stats .v { font-size: 14px; }
+  section, .snapcard { margin-bottom: 0; }
+  .grid.dense td, .grid.dense th { padding: 1px 5px; font-size: 8.5px; }
+  .cmp-name .muted, .ov-colhead { font-size: 7.5px; }
+  .cmp-table col { width: 52px; }
+  .cmp-table col.cmp-namecol { width: 150px; }
+  .cmp-name, .cmp-namehead { position: static; }
+  .tablewrap { overflow: visible; }
+  .cmp-table, .ov-table { min-width: 0; }
+  .snapcard { border: 1px solid var(--border); box-shadow: none; }
+  .growthkey { font-size: 9px; }
+  .cardnote, .muted.sm { font-size: 8.5px; }
+  .pf-stats .v { font-size: 17px; }
+  a[href]::after { content: none !important; }
 }
