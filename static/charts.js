@@ -293,35 +293,52 @@ const Chart = (() => {
     svg.appendChild(hit);
     host.appendChild(svg);
 
+    /* Past a year the rate leads and the window's total follows it. A three year
+       chart reading "+94%" beside a fund page that says 24.9 is the same fund
+       twice in two different currencies, and the one the rest of the dashboard
+       is stated in should be the one in bold. Inside a year there is nothing to
+       annualise, so the total stands alone. */
+    const sign = (v) => (v >= 0 ? '+' : '') + fmt(v, 1) + '%';
     host.insertAdjacentHTML('beforeend',
       `<div class="growthkey">${live.map((s) => {
         const end = s.values[s.values.length - 1];
-        const total = (end >= 0 ? '+' : '') + fmt(end, 1) + '%';
         const pa = annualised(s.days, end);
-        const a = alphaOf(s, ref, end, pa);
         return `<span><i class="${dashOf(s) ? 'dash' : ''}"
           style="background:${inkOf(s)};border-top-color:${inkOf(s)}"></i>${
-          s.label}<span class="gk-nums"
-          ><b>${total}</b>${pa === null ? ''
-            : `<em>CAGR: ${(pa >= 0 ? '+' : '') + fmt(pa, 1)}%</em>`}${
-          s === ref ? '<em class="gk-ref">the benchmark</em>'
-            : a === null ? ''
-            : `<em class="gk-a ${a >= 0 ? 'up' : 'down'}" title="Percentage points ahead of ${ref.label} over this window, on the same basis as the figure above"
-                >&alpha; ${(a >= 0 ? '+' : '') + fmt(a, 1)}%</em>`}</span></span>`;
-      }).join('')}</div>`);
+          s.label}<span class="gk-nums">${pa === null
+            ? `<b>${sign(end)}</b>`
+            : `<b>${sign(pa)}<small> p.a.</small></b>
+               <em>Total: ${sign(end)}</em>`}</span></span>`;
+      }).join('')}</div>${alphaTable(live, ref, sign)}`);
   }
 
   /* The chart shows a fund clearing its benchmark; the eye can see it and then
-     has to work out by how much. This is that subtraction, done once and printed
-     where the reading happens, on whichever basis the row above it is stated:
-     annualised where a rate is shown, and on the window's own total where the
-     window is too short to annualise. Percentage points, not a ratio. */
-  function alphaOf(s, ref, end, pa) {
-    if (!ref || s === ref || s.code === 'mark' || s.code === 'index') return null;
+     has to work out by how much. This is that subtraction, done once, and kept
+     out of the key: a third figure under every name turned the key into a wall
+     of numbers with the one that answers the question buried in it. It sits in
+     its own small table instead, stated on one basis for every row, which is the
+     only way a column of them can be read down. */
+  function alphaTable(live, ref, sign) {
+    if (!ref) return '';
     const rEnd = ref.values[ref.values.length - 1];
     const rPa = annualised(ref.days, rEnd);
-    if (pa !== null && rPa !== null) return pa - rPa;
-    return end - rEnd;
+    const rows = live
+      .filter((s) => s !== ref && s.code !== 'mark' && s.code !== 'index')
+      .map((s) => {
+        const end = s.values[s.values.length - 1];
+        const pa = annualised(s.days, end);
+        return { label: s.label, ink: inkOf(s),
+                 a: (pa !== null && rPa !== null) ? pa - rPa : end - rEnd };
+      });
+    if (!rows.length) return '';
+    return `<table class="alphatab">
+      <caption>Alpha over ${ref.label}<span>${rPa === null
+        ? 'over this window' : 'a year'}</span></caption>
+      ${rows.map((r) => `<tr>
+        <td><i style="background:${r.ink}"></i>${r.label}</td>
+        <td class="${r.a >= 0 ? 'up' : 'down'}">${sign(r.a)}</td>
+      </tr>`).join('')}
+    </table>`;
   }
 
   /* What everything else is measured against: the benchmark on a comparison, the
