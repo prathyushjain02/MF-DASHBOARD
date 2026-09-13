@@ -573,113 +573,136 @@ NOT_SCORED_WHY = {
 # Every technical term the dashboard prints has an entry here, and the UI attaches
 # it on hover. A number nobody can read is not disclosure.
 
+# Each entry is two short points, because a definition nobody finishes reading is
+# not disclosure either. The first says what the number is, the second says how to
+# read it or what it will not tell you. `*stars*` mark the words that carry the
+# point; the dashboard renders them bold and escapes everything else, so an entry
+# can emphasise without being able to inject markup.
 GLOSSARY = {
-    "median rolling return":
-        "Take every possible window of the stated length across the fund's life, work "
-        "out the annualised return of each, and report the middle one. It answers "
-        "'what did a typical holding period actually deliver', instead of the single "
-        "answer you get from one start date to one end date.",
-    "rolling 3y windows beating benchmark":
-        "Of all the three year windows in the fund's life, the share where it finished "
-        "ahead of its benchmark. A fund can carry a strong median while losing most "
-        "windows, if one great stretch pulls the average up. This separates the two.",
-    "cagr":
-        "Compound annual growth rate: the single yearly rate that would have taken you "
-        "from the start value to the end value. It depends entirely on the two dates "
-        "chosen, which is why it is shown here for context rather than scored.",
-    "calendar year to date":
-        "Return from 1 January of the current year to the data date.",
-    "calendar years beating benchmark":
-        "The share of completed calendar years in which the fund finished ahead of its "
-        "benchmark.",
-    "sharpe":
-        "Return above the risk free rate, divided by total volatility. Higher is "
-        "better: it is how much return the fund earned for each unit of bumpiness. It "
-        "treats upward and downward moves as equally bad, which is its main weakness.",
-    "sortino":
-        "Like Sharpe, but it only counts downward volatility. Usually the fairer "
-        "measure, because investors do not mind the fund going up sharply.",
-    "information ratio":
-        "Return above the benchmark, divided by how much the fund's path wanders away "
-        "from the benchmark. It is return per unit of active risk, which is precisely "
-        "what an active management fee is charged for. This is why it carries the most "
-        "weight inside the risk adjusted block.",
-    "treynor":
-        "Return above the risk free rate per unit of market sensitivity (beta), rather "
-        "than per unit of total volatility.",
-    "beta":
-        "How much the fund tends to move when the market moves. Beta of 1 means it "
-        "moves with the market, below 1 means it is steadier, above 1 means it swings "
-        "harder. It measures sensitivity, not skill.",
-    "standard deviation":
-        "How much the fund's returns bounce around their own average. Higher means a "
-        "rougher ride, in both directions.",
-    "semi standard deviation":
-        "The same idea as standard deviation but counting only returns below the "
-        "average, so it measures the rough part of the ride rather than all of it.",
-    "upside capture":
-        "In the months the benchmark rose, how much of that rise the fund captured. "
-        "110 means it gained 10 percent more than the benchmark in up months.",
-    "downside capture":
-        "In the months the benchmark fell, how much of that fall the fund took. 85 "
-        "means it lost 15 percent less than the benchmark in down months, so lower is "
-        "better. Below zero means the fund actually rose while the benchmark fell.",
-    "capture ratio":
-        "Upside capture divided by downside capture. Above 100 means the fund captures "
-        "more of the rises than it does of the falls.",
-    "maximum drawdown":
-        "The worst peak to trough fall over the period. This is the loss an investor "
-        "would have had to sit through, and it is the number to size a position "
-        "against rather than the average year.",
-    "top 10 weight":
-        "Share of the equity book held in its ten largest positions. Higher means more "
-        "conviction and more single stock risk.",
-    "mandate fit":
-        "Whether the disclosed book meets the SEBI minimums for its category. 100 means "
-        "full compliance, anything less is the size of the shortfall.",
-    "differentiation":
-        "How little the fund's book overlaps the average portfolio of its category. "
-        "High means you are buying something the category does not already give you.",
-    "cash and others":
-        "The share of the fund not invested in equities: cash, treasury bills, TREPS "
-        "and receivables. Concentration and overlap here are computed on the invested "
-        "book, so this sits outside them.",
-    "aum":
-        "Assets under management, the size of the fund in crore.",
-    "net flow over 1y":
-        "Money in minus money out over the last year, as a share of where the fund "
-        "started. Large positive flows into a small or mid cap fund are a capacity "
-        "question, not just a popularity one.",
-    "expense ratio":
-        "The annual fee, already deducted from every return figure shown here.",
-    "live track record":
-        "How long the fund has actually been running. Where a named manager has run it "
-        "since before the return series begins, that appointment date is used, because "
-        "a manager cannot have run a fund before it existed.",
-    "tenure on this scheme":
-        "How long the longest serving current manager has run this particular fund. Not "
-        "years in the industry.",
-    "market cycles run":
-        "How many peak to trough falls of at least 12 percent in the broad market the "
-        "manager has run this fund through. The falls are found in the index's own "
-        "monthly history rather than taken from a list.",
-    "decile":
-        "Where the fund sits in its category on that measure, 1 being the best tenth "
-        "and 10 the worst.",
-    "composite":
-        "The weighted total of the seven block scores, out of 100. It orders a "
-        "shortlist. It does not select, and a gap of less than three points is not a "
-        "real difference.",
-    "coverage":
-        "How much of a block could actually be measured for this fund. Missing inputs "
-        "are never filled with a middle value; the block simply reweights over what is "
-        "there and reports it here.",
-    "evidence":
-        "The share of the model's total weight that could be scored for this fund. "
-        f"Below {MIN_EVIDENCE} percent no composite is published at all.",
-    "percentile":
-        "Rank within the fund's own category on that measure, 0 to 100, where 100 is "
-        "the best in the category.",
+    "median rolling return": [
+        "Every window of that length across the fund's life, with the *middle one* reported.",
+        "Answers what a *typical holding period* gave, not what one lucky start date gave.",
+    ],
+    "rolling 3y windows beating benchmark": [
+        "Share of all three year windows where the fund *finished ahead* of its benchmark.",
+        "Separates a fund that wins *often* from one that won *once by a lot*.",
+    ],
+    "cagr": [
+        "The single yearly rate that takes you from the *start value to the end value*.",
+        "Depends entirely on the *two dates chosen*, which is why it is context here and not scored.",
+    ],
+    "calendar year to date": [
+        "Return from *1 January* of the current year to the data date.",
+        "A part year figure, so it is *not annualised* and not comparable to a CAGR.",
+    ],
+    "calendar years beating benchmark": [
+        "Share of *completed calendar years* the fund finished ahead of its benchmark.",
+        "January boundaries are arbitrary, so read it beside the *rolling hit rate*.",
+    ],
+    "sharpe": [
+        "Return above the risk free rate, per unit of *total volatility*.",
+        "Treats a sharp *rise as badly as a fall*, which is its main weakness.",
+    ],
+    "sortino": [
+        "Sharpe, but counting only *downward* volatility.",
+        "Usually the *fairer* measure: nobody minds the fund going up sharply.",
+    ],
+    "information ratio": [
+        "Return above the benchmark, per unit of *active risk* taken away from it.",
+        "Precisely what an *active fee* buys, so it carries the most weight in its block.",
+    ],
+    "treynor": [
+        "Return above the risk free rate per unit of *market sensitivity*, not total volatility.",
+        "Shown, *not scored*: it tracks Sharpe closely once beta is stable.",
+    ],
+    "beta": [
+        "How much the fund moves when the *market* moves. One means it moves with it.",
+        "Measures *sensitivity, not skill*. A high beta fund is not a better fund.",
+    ],
+    "standard deviation": [
+        "How far returns *bounce around their own average*.",
+        "Counts up and down moves alike, so a *strong rally* raises it too.",
+    ],
+    "semi standard deviation": [
+        "Standard deviation counting only the returns *below the average*.",
+        "Measures the *rough part* of the ride rather than all of it.",
+    ],
+    "upside capture": [
+        "In the months the benchmark *rose*, how much of that rise the fund caught.",
+        "*110* means it gained ten percent more than the benchmark in up months.",
+    ],
+    "downside capture": [
+        "In the months the benchmark *fell*, how much of that fall the fund took.",
+        "*Lower is better*: 85 means it lost fifteen percent less than the benchmark.",
+    ],
+    "capture ratio": [
+        "Upside capture divided by downside capture.",
+        "*Above 100* means the fund catches more of the rises than it does of the falls.",
+    ],
+    "maximum drawdown": [
+        "The worst *peak to trough* fall over the period.",
+        "The loss an investor had to *sit through*, so size a position against it.",
+    ],
+    "top 10 weight": [
+        "Share of the equity book held in its *ten largest* positions.",
+        "Higher means more *conviction* and more *single stock risk*.",
+    ],
+    "mandate fit": [
+        "Whether the disclosed book meets the *SEBI minimums* for its category.",
+        "*100 is full compliance*; anything less is the size of the shortfall.",
+    ],
+    "differentiation": [
+        "How little the book *overlaps the average portfolio* of its category.",
+        "High means you are buying something the category *does not already give you*.",
+    ],
+    "cash and others": [
+        "The share *not invested in equities*: cash, treasury bills, TREPS and receivables.",
+        "Concentration and overlap are computed on the *invested book*, so this sits outside them.",
+    ],
+    "aum": [
+        "*Assets under management*: the size of the fund, in crore.",
+        "Read *against the mandate*, since nimble for one category is sub scale for another.",
+    ],
+    "net flow over 1y": [
+        "Money in minus money out over the year, as a share of where the fund *started*.",
+        "Large inflows into a small or mid cap fund are a *capacity* question, not just a popular one.",
+    ],
+    "expense ratio": [
+        "The annual fee, *already deducted* from every return figure shown here.",
+        "The *direct plan* figure. The feed carries it for under half the universe.",
+    ],
+    "live track record": [
+        "How long the fund has *actually been running*.",
+        "A *weight, not a gate*: a short record counts for less, it does not exclude the fund.",
+    ],
+    "tenure on this scheme": [
+        "How long the *longest serving* current manager has run this particular fund.",
+        "Not years in the industry: a record belongs to the *people who produced it*.",
+    ],
+    "market cycles run": [
+        "Falls of at least *12 percent* in the broad market that the manager ran this fund through.",
+        "Found in the *index's own history*, rather than taken from a remembered list.",
+    ],
+    "decile": [
+        "Where the fund sits in its category on that measure, *1 being the best tenth*.",
+        "Ranked *within the category only*, never against the whole universe.",
+    ],
+    "composite": [
+        "The *weighted total* of the seven block scores, out of 100.",
+        "It *orders a shortlist*. A gap of under three points is not a real difference.",
+    ],
+    "coverage": [
+        "How much of a block could *actually be measured* for this fund.",
+        "Missing inputs are *never filled* with a middle value; the block reweights over what is there.",
+    ],
+    "evidence": [
+        "The share of the model's *total weight* that could be scored for this fund.",
+        f"Below *{MIN_EVIDENCE} percent* no composite is published at all.",
+    ],
+    "percentile": [
+        "Rank *within the fund's own category* on that measure, 0 to 100.",
+        "*100 is the best* in the category. Nothing here is scored on an absolute scale.",
+    ],
 }
 
 # ---------------------------------------------------------------------------

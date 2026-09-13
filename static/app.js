@@ -64,18 +64,28 @@ function glossFor(label) {
   return hit ? g[hit] : null;
 }
 
-/* A term with its meaning attached. The dotted underline is the affordance. */
+/* A term with its meaning attached. The dotted underline is the affordance.
+   An entry is a short list of points, carried through the attribute joined on a
+   pipe: no entry contains one, and the build checks that. */
 function term(label, extra, key) {
-  const meaning = glossFor(key || label);
-  if (!meaning && !extra) return esc(label);
-  const body = [meaning, extra].filter(Boolean).join(' ');
-  return `<span class="term" data-gloss="${esc(body)}" tabindex="0">${esc(label)}</span>`;
+  const meaning = glossFor(key || label) || [];
+  const points = [...meaning, ...(extra ? [extra] : [])];
+  if (!points.length) return esc(label);
+  return `<span class="term" data-gloss="${esc(points.join('|'))}"
+    tabindex="0">${esc(label)}</span>`;
+}
+
+/* Escape first, then turn *stars* into bold. Doing it in that order means a
+   glossary entry can emphasise a phrase without being able to inject markup. */
+function glossHtml(text) {
+  return esc(text).replace(/\*([^*]+)\*/g, '<b>$1</b>');
 }
 
 function wireGlossary(root) {
   root.querySelectorAll('[data-gloss]').forEach((el) => {
     const html = `<strong>${esc(el.textContent.trim())}</strong>
-      <div class="tt-note">${esc(el.dataset.gloss)}</div>`;
+      <ul class="tt-note">${el.dataset.gloss.split('|')
+        .map((p) => `<li>${glossHtml(p)}</li>`).join('')}</ul>`;
     el.addEventListener('mouseenter', (e) => Chart.showTip(e, html));
     el.addEventListener('mousemove', (e) => Chart.showTip(e, html));
     el.addEventListener('mouseleave', Chart.hideTip);
