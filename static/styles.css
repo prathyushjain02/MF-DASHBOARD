@@ -1,88 +1,206 @@
-/* Mutual Fund Screener — Avendus Wealth Management house style.
+/* Mutual Fund Screener — the Avendus design system.
  *
- * Colour and type follow the Avendus landscape template:
+ * Built to the single-file reference for Avendus and Avendus Wealth Management,
+ * which traces back to the PowerPoint master: its declared colour scheme, its
+ * font scheme, the "Color Scheme And Type" spec slide and the formatting
+ * guidelines. Everything below is that system's own tokens under that system's
+ * own names, with the names this dashboard already used kept as aliases so a
+ * rule written against either resolves to the same value.
  *
- *   Primary   #000000  #323132  #708090  #C3DFF4  #CC1919  #808083
- *   Type      Univia Pro (titles) / Franklin Gothic (body)
+ * The non-negotiables the system states, and where they land here:
  *
- * Two notes on applying a slide template to charts.
+ *   Square corners        radius 0 everywhere. The only round things left are
+ *                         the radio-style controls the platform draws itself.
+ *   No shadows            except an on-screen menu or dialog. Nothing at rest.
+ *   Rules, not cards      structure comes from hairlines. A block is opened by
+ *                         a rule and closed by one; no box, no fill, no lift.
+ *   One emphasis          Franklin Gothic Medium in red, inline. Never bold
+ *                         black, italic, underline or caps.
+ *   Sentence case         headings, labels, buttons.
+ *   10 pt floor           body copy never smaller. Footnotes at 8 to 9 pt are
+ *                         the stated exception.
+ *   One red per view      one primary button, one accent figure, one red series.
  *
- * 1. The template's Chart Colour Sequence (#A6A6A6 #F8D0D1 #A6B0BA #C3DFF4
- *    #F9A1A3 #EBEAEB) is a set of pastel fills for bar segments that carry their
- *    own value labels. Tested as a categorical data palette it fails on
- *    lightness band, chroma floor and normal-vision separation: #C3DFF4 against
- *    #A6B0BA is dE 13.9, below the 15 floor for full colour vision. It is used
- *    here only where a direct label sits on the mark.
+ * The faces are the licensed ones, subset and self-hosted: Univia Pro for
+ * display and Franklin Gothic for text, the pairing the master declares. The
+ * Google substitutes the reference falls back to are kept in the stacks for a
+ * browser that fails to load them.
  *
- * 2. Almost every chart here encodes magnitude rather than identity, so it wants
- *    a sequential ramp. --seq-* is built from the brand's own blue and slate and
- *    is monotonic in OKLab lightness (0.956 down to 0.315), which is the correct
- *    test for a sequential scale.
- *
- * Quality bands run blue to red through a neutral grey, a diverging pair using
- * the brand's own accent rather than an off-brand green, and every use ships
- * with a text label beside the swatch.
- *
- * Light only. The template is a printed identity in a fixed palette, and a dark
- * rendering of it was a second set of tokens to keep honest for no one who
- * actually reads this, so `color-scheme: light` pins the page and every colour
- * below is the one the brand specifies.
+ * A note on figures. The system reserves monospace for code, and this file no
+ * longer sets a table in it: ITC Franklin Gothic Std draws its digits on a
+ * single width already, so a column of them aligns on the text face itself.
  */
+
+/* Display: Univia Pro. Titles only, never a paragraph. */
+/* The system names Ultra Light for the 80 pt section number. At the size a
+   headline figure is set here that face is a ghost, so Light carries weight 300
+   and Ultra Light is kept at 200 for anything genuinely display-sized. */
+@font-face { font-family: "Avendus Display"; font-style: normal; font-weight: 200;
+  font-display: swap; src: url("/static/fonts/univia-ultralight.woff2") format("woff2"),
+  local("Univia Pro Ultra Light"), local("UniviaPro-UltraLight"); }
+@font-face { font-family: "Avendus Display"; font-style: normal; font-weight: 300;
+  font-display: swap; src: url("/static/fonts/univia-light.woff2") format("woff2"),
+  local("Univia Pro Light"), local("UniviaPro-Light"); }
+@font-face { font-family: "Avendus Display"; font-style: normal; font-weight: 400;
+  font-display: swap; src: url("/static/fonts/univia-book.woff2") format("woff2"),
+  local("Univia Pro Book"), local("UniviaPro-Book"); }
+@font-face { font-family: "Avendus Display"; font-style: normal; font-weight: 500;
+  font-display: swap; src: url("/static/fonts/univia-medium.woff2") format("woff2"),
+  local("Univia Pro Medium"), local("UniviaPro-Medium"); }
+
+/* Text: ITC Franklin Gothic Std. Everything that is not a title. */
+@font-face { font-family: "Avendus Text"; font-style: normal; font-weight: 400;
+  font-display: swap; src: url("/static/fonts/franklin-book.woff2") format("woff2"),
+  local("ITC Franklin Gothic Std Book"), local("FranklinGothic-Book"); }
+@font-face { font-family: "Avendus Text"; font-style: normal; font-weight: 500;
+  font-display: swap; src: url("/static/fonts/franklin-medium.woff2") format("woff2"),
+  local("ITC Franklin Gothic Std Medium"), local("FranklinGothic-Medium"); }
+@font-face { font-family: "Avendus Text"; font-style: normal; font-weight: 600;
+  font-display: swap; src: url("/static/fonts/franklin-demi.woff2") format("woff2"),
+  local("ITC Franklin Gothic Std Demi"), local("FranklinGothic-Demi"); }
 
 :root {
   color-scheme: light;
 
-  /* Brand primaries */
-  --ink:            #323132;
-  --ink-strong:     #000000;
-  --slate:          #708090;
-  --red:            #cc1919;
+  /* ---- Brand primaries ---- */
+  --av-red:       #cc1919;
+  --av-ink:       #000000;
+  --av-graphite:  #323132;
+  --av-slate:     #708090;
+  --av-grey:      #808083;
+  --av-sky:       #c3dff4;
+  --av-white:     #ffffff;
 
-  /* Surfaces */
-  --surface-1:      #ffffff;
-  --surface-2:      #ffffff;
-  --plane:          #ffffff;
-  --zebra:          #f4f4f4;
-  --wash:           #f0f6fc;
-  --grid:           #ebeaeb;
-  --axis:           #a6a6a6;
-  --border:         #e3e2e3;
-  --border-strong:  #c9c8c9;
+  /* ---- Red, from the mark's own gradient ---- */
+  --av-red-100: #ce0000;
+  --av-red-200: #cd2026;
+  --av-red-300: #ca2027;
+  --av-red-700: #6a2021;
 
-  /* Text roles */
-  --text-primary:   #323132;
-  --text-secondary: #708090;
-  --text-muted:     #808083;
+  /* ---- Neutrals ---- */
+  --av-grey-050: #f2f2f2;
+  --av-grey-100: #ebeaeb;
+  --av-grey-200: #cfcfd0;
+  --av-grey-300: #bfbfbf;
+  --av-grey-400: #a6a6a6;
+  --av-grey-500: #808084;
+  --av-steel-200: #a6b0ba;
+  --av-steel-500: #6d8092;
+  --av-steel-700: #5f6d7b;
 
-  /* Sequential ramp: brand blue and slate, light to dark, monotonic lightness */
-  --seq-100: #e8f2fb;
-  --seq-200: #c3dff4;
-  --seq-300: #93b2cc;
-  --seq-450: #708090;
-  --seq-550: #4c5966;
-  --seq-700: #323132;
+  /* ---- Chart sequence, in the system's fixed order ---- */
+  --av-chart-1: #ebeaeb;
+  --av-chart-2: #f8d0d1;
+  --av-chart-3: #f9a1a3;
+  --av-chart-4: #a6a6a6;
+  --av-chart-5: #a6b0ba;
+  --av-chart-6: #c3dff4;
+  --av-chart-accent: #cc1919;
+  --av-data-positive: #00b050;
+  --av-data-warning:  #f26b43;
+  --av-data-negative: #c00000;
 
-  /* Categorical, fixed order, never cycled. Used only where the mark carries a
-     direct label, per the note above. */
-  --series-1: #708090;
-  --series-2: #cc1919;
-  --series-3: #93b2cc;
-  --series-4: #a6a6a6;
-  --series-5: #f9a1a3;
+  /* ---- Semantic aliases ---- */
+  --text-primary:       var(--av-graphite);
+  --text-title:         var(--av-graphite);
+  --text-content-title: var(--av-ink);
+  --text-subtitle:      var(--av-slate);
+  --text-secondary:     var(--av-grey);
+  --text-highlight:     var(--av-red);
+  --text-inverse:       var(--av-white);
 
-  /* Status */
-  --good:     #4c5966;
-  --warning:  #a6b0ba;
-  --serious:  #f9a1a3;
-  --critical: #cc1919;
-  --good-text: #323132;
+  --surface-page:         var(--av-white);
+  --surface-subtle:       var(--av-grey-050);
+  --surface-fill:         var(--av-grey-100);
+  --surface-accent-soft:  var(--av-sky);
+  --surface-accent:       var(--av-red);
+
+  --rule-strong: var(--av-ink);
+  --rule-soft:   var(--av-grey-200);
+  --rule-accent: var(--av-red);
+  --link-color:  var(--av-red);
+  --link-color-hover: var(--av-red-700);
+  --focus-ring:  var(--av-red);
+
+  /* ---- Type ---- */
+  --font-display: "Avendus Display", "Univia Pro", Jost, "Avenir Next",
+                  "Century Gothic", sans-serif;
+  --font-text: "Avendus Text", "ITC Franklin Gothic Std Book", "Franklin Gothic Book",
+               "Libre Franklin", "Franklin Gothic", Helvetica, Arial, sans-serif;
+  --font-mono: "Courier New", ui-monospace, monospace;
+
+  --fw-ultralight: 200; --fw-light: 300; --fw-regular: 400; --fw-medium: 500;
+
+  --text-xs: 12px;  --text-sm: 13px;  --text-base: 15px; --text-md: 17px;
+  --text-lg: 21px;  --text-xl: 28px;  --text-2xl: 36px;  --text-3xl: 48px;
+
+  --lh-tight: 0.9; --lh-snug: 1.15; --lh-body: 1.4; --lh-loose: 1.6;
+  --ls-title: 0.005em; --ls-body: 0; --ls-eyebrow: 0.14em;
+
+  /* ---- Space ---- */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 24px; --space-6: 32px; --space-7: 48px; --space-8: 64px;
+  --screen-max: 1560px; --screen-gutter: 24px;
+
+  /* ---- Borders, radii, shadow ---- */
+  --radius-none: 0px; --radius-sm: 2px; --radius-circle: 50%;
+  --border-hairline: 1px; --border-rule: 1.5px; --border-thick: 3px;
+  --border-default: 1px solid var(--rule-soft);
+  --border-strong:  1px solid var(--rule-strong);
+  --border-accent:  2px solid var(--rule-accent);
+  --shadow-menu:   0 4px 16px rgba(50, 49, 50, 0.12);
+  --shadow-dialog: 0 12px 40px rgba(50, 49, 50, 0.18);
+
+  /* ---- Motion: opacity and colour only ---- */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast: 120ms; --duration-base: 180ms;
+  --transition-default: all var(--duration-base) var(--ease-standard);
+
+  /* ---- Names this dashboard was written against, kept as aliases ---- */
+  --ink:            var(--av-graphite);
+  --ink-strong:     var(--av-ink);
+  --slate:          var(--av-slate);
+  --red:            var(--av-red);
+  --surface-1:      var(--av-white);
+  --surface-2:      var(--av-white);
+  --plane:          var(--av-white);
+  /* Banding is gone from the tables, so these two are now only what the system
+     calls a faint panel on screen: a filter bar, a flag, a selected state. */
+  --zebra:          var(--av-grey-050);
+  --wash:           var(--av-grey-050);
+  --grid:           var(--av-grey-200);
+  --axis:           var(--av-grey-400);
+  --border:         var(--av-grey-200);
+  --border-strong:  var(--av-grey-300);
+  --text-muted:     var(--av-grey);
+
+  /* Magnitude wants a ramp and the brand publishes none, so this is built from
+     the brand's own steel and graphite: desaturated, monotonic in lightness,
+     and quiet enough that the red accent is still the thing read first. */
+  --seq-100: var(--av-grey-100);
+  --seq-200: var(--av-grey-200);
+  --seq-300: var(--av-steel-200);
+  --seq-450: var(--av-steel-500);
+  --seq-550: var(--av-steel-700);
+  --seq-700: var(--av-graphite);
+
+  /* The system's own chart sequence. Fixed order, not reordered, not extended. */
+  --series-1: var(--av-chart-4);
+  --series-2: var(--av-chart-accent);
+  --series-3: var(--av-chart-5);
+  --series-4: var(--av-chart-6);
+  --series-5: var(--av-chart-3);
+
+  --good:      var(--av-steel-700);
+  --warning:   var(--av-steel-200);
+  --serious:   var(--av-chart-3);
+  --critical:  var(--av-red);
+  --good-text: var(--av-graphite);
 
   --radius: 0;
-  --title: "Univia Pro", "Avenir Next", "Century Gothic", "URW Gothic",
-           system-ui, -apple-system, sans-serif;
-  --sans: "Franklin Gothic Book", "Libre Franklin", "Franklin Gothic Medium",
-          "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  --title: var(--font-display);
+  --sans:  var(--font-text);
+  --mono:  var(--font-text);   /* figures set on the text face, already tabular */
 }
 
 * { box-sizing: border-box; }
@@ -119,7 +237,7 @@ a { color: var(--red); }
   border: 0; background: transparent; color: var(--text-secondary);
   padding: 6px 18px; font: inherit; font-size: 12.5px; cursor: pointer;
 }
-.segmented button.on { background: var(--red); color: #fff; font-weight: 500; }
+.segmented button.on { background: var(--red); color: var(--text-inverse); font-weight: 500; }
 
 /* ----------------------------------------------------------------- tabs */
 #tabs { display: flex; padding: 0 34px; background: var(--surface-1);
@@ -165,8 +283,10 @@ section { margin-bottom: 32px; }
   font-size: 11px; top: 1px; }
 
 /* --------------------------------------------------------------- tables */
-/* Template table: red rule top and bottom, red underline beneath the heading
-   row, zebra body, no outer box, square corners. */
+/* The system's own table: 1.5 px red rules bracketing the heading row, 1 px
+   grey hairlines between the rows, no fills and no banding. The rules do the
+   work a box and a zebra used to do, which is the point the system makes
+   everywhere: structure comes from hairlines. */
 .grid { width: 100%; border-collapse: collapse; font-size: 13px;
   background: var(--surface-2); border: 0; border-top: 1.5px solid var(--red);
   border-bottom: 1.5px solid var(--red); }
@@ -179,10 +299,9 @@ section { margin-bottom: 32px; }
 /* `.grid th` sets text-align left and outranks a bare `.r`, which left every
    numeric header sitting over the wrong edge of its column. */
 .grid th.r { text-align: right; }
-.grid tbody tr:nth-child(odd) { background: var(--zebra); }
 .grid tbody tr:last-child td { border-bottom: 0; }
 .grid tbody tr[data-fund] { cursor: pointer; }
-.grid tbody tr[data-fund]:hover { background: var(--wash); }
+.grid tbody tr[data-fund]:hover { background: var(--surface-subtle); }
 .grid.dense td, .grid.dense th { padding: 6px 10px; font-size: 12.5px; }
 .grid tr.sub td { padding-top: 0; }
 .grid tr.sub { background: var(--surface-2) !important; }
@@ -193,13 +312,12 @@ section { margin-bottom: 32px; }
 .grid.sticky thead th { position: sticky; top: 0; z-index: 2; }
 /* Eighteen columns will not fit any screen, so the table scrolls sideways and
    the scheme name is pinned: a row of figures with the name scrolled off the
-   left edge belongs to nobody. The background is set per row rather than
-   inherited, because an even row's own background is transparent and the
-   columns would slide underneath the name in plain sight. */
+   left edge belongs to nobody. It carries the page's own white rather than
+   inheriting, because a transparent cell would let the columns slide underneath
+   the name in plain sight. */
 .grid .namecell { position: sticky; left: 0; z-index: 1;
   background: var(--surface-2); }
-.grid tbody tr:nth-child(odd) .namecell { background: var(--zebra); }
-.grid tbody tr[data-fund]:hover .namecell { background: var(--wash); }
+.grid tbody tr[data-fund]:hover .namecell { background: var(--surface-subtle); }
 /* Matched at the same weight as the sticky header rule above, which would
    otherwise hold the pinned heading at the same level as its neighbours and let
    them paint straight over it. */
@@ -260,7 +378,7 @@ section { margin-bottom: 32px; }
   border-top: 3px solid var(--border-strong); position: relative;
   display: flex; flex-direction: column; gap: 7px; }
 .tile:hover { border-color: var(--border-strong); background: var(--zebra); }
-.tile.on { border-top-color: var(--red); background: var(--wash); }
+.tile.on { border-top-color: var(--red); background: var(--surface-accent-soft); }
 .tile h3 { font-size: 13.5px; font-weight: 500; }
 .tile-open { position: absolute; right: 12px; top: 8px; color: var(--red);
   font-size: 13px; opacity: 0; }
@@ -325,7 +443,7 @@ button.ghost { font: inherit; font-size: 12px; padding: 6px 14px;
 button.ghost:hover { color: var(--red); border-color: var(--red); }
 button.primary { font: inherit; font-family: var(--title); font-size: 13px;
   font-weight: 500; padding: 7px 18px; border: 0; background: var(--red);
-  color: #fff; cursor: pointer; }
+  color: var(--text-inverse); cursor: pointer; }
 
 /* -------------------------------------------------------- detail card */
 .detail { position: relative; background: var(--surface-2);
@@ -418,7 +536,9 @@ th.sortable.on .arrow { opacity: 1; }
   gap: 18px 26px; align-items: start; background: var(--zebra);
   border-top: 2px solid var(--red); padding: 14px 16px 15px; }
 .cmp-lab { display: block; font-size: 11px; text-transform: uppercase;
-  letter-spacing: 0.06em; color: var(--text-secondary); margin-bottom: 6px; }
+  letter-spacing: var(--ls-eyebrow); color: var(--text-secondary);
+  font-family: var(--font-text); font-weight: var(--fw-medium);
+  margin-bottom: 6px; }
 .cmp-lab .muted { text-transform: none; letter-spacing: 0; margin-left: 5px; }
 .cmp-search { position: relative; max-width: 380px; }
 .cmp-search input { font: inherit; font-family: var(--sans); font-size: 13px;
@@ -430,7 +550,7 @@ th.sortable.on .arrow { opacity: 1; }
 .cmp-chip { display: inline-flex; align-items: center; gap: 7px; font-size: 12px;
   padding: 4px 6px 4px 8px; background: var(--surface-1);
   border: 1px solid var(--border); }
-.cmp-chip i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.cmp-chip i { width: 9px; height: 9px; flex: none; }
 .cmp-chip button { border: 0; background: none; cursor: pointer; font: inherit;
   font-size: 15px; line-height: 1; color: var(--text-muted); padding: 0 2px; }
 .cmp-chip button:hover { color: var(--red); }
@@ -445,7 +565,7 @@ th.sortable.on .arrow { opacity: 1; }
 
 .cmp-empty { padding: 40px 0; color: var(--text-muted); font-size: 13px; }
 .cmp-chart { margin-top: 14px; cursor: default; }
-.cmp-chart:hover { background: var(--surface-2); border-top-color: var(--slate); }
+.cmp-chart:hover { border-top-color: var(--av-grey-200); }
 
 .cmp-groupbar { display: flex; flex-wrap: wrap; align-items: center;
   gap: 6px 20px; margin: 16px 0 10px; }
@@ -463,12 +583,12 @@ th.sortable.on .arrow { opacity: 1; }
   color: var(--text-secondary); }
 .cmp-ghost:hover { color: var(--red); border-color: var(--red); }
 .cmp-ghost.strong { border-color: var(--red); color: var(--red); font-weight: 500; }
-.cmp-ghost.strong:hover { background: var(--red); color: #fff; }
+.cmp-ghost.strong:hover { background: var(--red); color: var(--text-inverse); }
 .cmp-leadrow td { background: var(--wash); font-weight: 500; }
 .cmp-leadrow .cmp-name { background: var(--wash); }
 
 .cmp-pfcard { margin-top: 18px; cursor: default; }
-.cmp-pfcard:hover { background: var(--surface-2); border-top-color: var(--slate); }
+.cmp-pfcard:hover { border-top-color: var(--av-grey-200); }
 .pf-stats { display: grid; gap: 10px 26px;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-top: 4px; }
 .pf-stats > div { display: flex; flex-direction: column; gap: 1px; }
@@ -486,7 +606,7 @@ th.sortable.on .arrow { opacity: 1; }
   align-items: center; font-size: 13px; }
 .wt-name { display: flex; align-items: center; gap: 7px; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap; }
-.wt-name i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.wt-name i { width: 9px; height: 9px; flex: none; }
 .wt-row input { font: inherit; font-family: var(--mono); font-size: 13px;
   padding: 5px 8px; text-align: right; border: 1px solid var(--border-strong);
   background: var(--surface-2); color: var(--text-primary); width: 100%; }
@@ -498,7 +618,7 @@ th.sortable.on .arrow { opacity: 1; }
 .wt-total { font-size: 12px; color: var(--text-secondary); }
 .wt-actions { display: flex; gap: 8px; }
 .wt-create { font: inherit; font-size: 12.5px; padding: 6px 16px; cursor: pointer;
-  background: var(--red); color: #fff; border: 1px solid var(--red); }
+  background: var(--red); color: var(--text-inverse); border: 1px solid var(--red); }
 .wt-create:disabled { background: var(--zebra); color: var(--text-muted);
   border-color: var(--border); cursor: not-allowed; }
 .cmp-group { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
@@ -516,7 +636,7 @@ th.sortable.on .arrow { opacity: 1; }
 .cmp-table col.cmp-namecol { width: 250px; }
 .cmp-table.dense td, .cmp-table.dense th { padding: 7px 9px; }
 .cmp-colhead { display: flex; align-items: baseline; gap: 7px; }
-.cmp-colhead i { width: 9px; height: 9px; border-radius: 50%; flex: none;
+.cmp-colhead i { width: 9px; height: 9px; flex: none;
   position: relative; top: 1px; }
 .cmp-name { position: sticky; left: 0; z-index: 1; background: inherit; }
 .cmp-namehead { position: sticky; left: 0; z-index: 1;
@@ -538,7 +658,7 @@ th.sortable.on .arrow { opacity: 1; }
 
 /* ---- overlap matrix */
 .cmp-ovcard { margin-top: 18px; cursor: default; }
-.cmp-ovcard:hover { background: var(--surface-2); border-top-color: var(--slate); }
+.cmp-ovcard:hover { border-top-color: var(--av-grey-200); }
 /* A grid of names against names. The columns are held narrow, and the heads
    wrap and clip rather than setting the width, so the matrix reads as a block
    of figures instead of a few numbers strewn across a page. */
@@ -615,7 +735,7 @@ th.sortable.on .arrow { opacity: 1; }
 body.modal-open { overflow: hidden; }
 .modal { position: relative; background: var(--surface-2); width: 100%;
   max-width: 860px; border-top: 3px solid var(--red);
-  box-shadow: 0 18px 48px rgba(50, 49, 50, 0.28); padding: 22px 26px 26px;
+  box-shadow: var(--shadow-dialog); padding: 22px 26px 26px;
   outline: none; }
 .modal-close { position: absolute; top: 10px; right: 14px; border: 0;
   background: transparent; font-size: 24px; line-height: 1; color: var(--text-muted);
@@ -657,8 +777,7 @@ body.modal-open { overflow: hidden; }
 .grid th.grouped { text-align: center; border-bottom: 1px solid var(--border);
   font-size: 11px; color: var(--text-secondary); font-weight: 400; }
 .grid th.sub2 { border-bottom: 1px solid var(--red); font-size: 11px; }
-.grid td.roll { background: var(--wash); }
-.grid tbody tr:nth-child(odd) td.roll { background: #e8f0f8; }
+.grid td.roll { background: var(--surface-subtle); }
 .grid td.mgr { font-size: 11.5px; color: var(--text-secondary); max-width: 210px;
   white-space: normal; }
 .fundlink { display: block; font: inherit; font-family: var(--title);
@@ -697,8 +816,7 @@ body.modal-open { overflow: hidden; }
   align-items: stretch; }
 .snapshot > * { min-width: 0; }
 .snapcard.chartcard { grid-column: 1; grid-row: 1 / span 3; cursor: default; }
-.snapcard.chartcard:hover { background: var(--surface-2);
-  border-top-color: var(--slate); }
+.snapcard.chartcard:hover { border-top-color: var(--av-grey-200); }
 /* The score bar is the model's own, not one of the six, so it runs the full
    width underneath rather than taking a card slot. */
 .snapshot > [data-card="score"] { grid-column: 1 / -1; }
@@ -729,7 +847,7 @@ body.modal-open { overflow: hidden; }
 .periodbar { display: flex; flex-wrap: wrap; gap: 3px; margin: 2px 0 6px; }
 .pbtn { font: inherit; font-size: 11px; padding: 3px 9px; cursor: pointer;
   background: var(--surface-1); color: var(--text-muted);
-  border: 1px solid var(--border); border-radius: 2px; }
+  border: 1px solid var(--border); }
 .pbtn:hover { color: var(--text-primary); border-color: var(--slate); }
 /* The selected state inverts against the page rather than being painted a fixed
    dark. A literal white label sat on a light --ink-strong in dark mode and the
@@ -739,8 +857,9 @@ body.modal-open { overflow: hidden; }
 .growthkey { display: flex; flex-wrap: wrap; gap: 5px 16px; margin-top: 8px;
   font-size: 11.5px; color: var(--text-muted); }
 .growthkey span { display: inline-flex; align-items: baseline; gap: 6px; }
-.growthkey i { width: 9px; height: 9px; border-radius: 50%; display: inline-block;
-  flex: none; }
+/* Square, like everything else the brand draws. The one round control in the
+   system is a radio, and the platform draws that itself. */
+.growthkey i { width: 9px; height: 9px; display: inline-block; flex: none; }
 /* The dashed series gets a dashed swatch, so the key matches the line. */
 .growthkey i.dash { width: 14px; height: 0; border-radius: 0;
   background: none !important; border-top: 2px dashed var(--seq-300); }
@@ -766,7 +885,8 @@ body.modal-open { overflow: hidden; }
   max-width: 100%; margin: 0 1px 3px auto; border: 1px solid var(--border);
   border-top: 2px solid var(--slate); padding: 5px 9px 4px; }
 .alphatab caption { text-align: left; font-family: var(--title); font-size: 10px;
-  text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: var(--ls-eyebrow);
+  color: var(--text-muted);
   padding: 0 0 3px; white-space: nowrap; }
 .alphatab caption span { text-transform: none; letter-spacing: 0;
   font-family: var(--sans); margin-left: 6px; }
@@ -774,12 +894,12 @@ body.modal-open { overflow: hidden; }
 .alphatab td:first-child { padding-right: 18px; white-space: nowrap; }
 .alphatab td:last-child { text-align: right; font-family: var(--mono);
   font-weight: 600; color: var(--text-primary); }
-.alphatab td i { width: 7px; height: 7px; border-radius: 50%; flex: none;
+.alphatab td i { width: 7px; height: 7px; flex: none;
   display: inline-block; margin-right: 6px; }
 .alphatab td.down { color: var(--red); }
 .chart.growth { width: 100%; }
 .crosshair { stroke: var(--axis); stroke-width: 1; stroke-dasharray: 3 3; }
-#tooltip .swatch { width: 8px; height: 8px; border-radius: 50%;
+#tooltip .swatch { width: 8px; height: 8px;
   display: inline-block; margin-right: 6px; }
 
 /* -------------------------------------------------------------- states */
@@ -802,12 +922,14 @@ body.modal-open { overflow: hidden; }
   z-index: 90; display: flex; align-items: center; gap: 14px;
   background: var(--text-primary); color: var(--surface-2);
   border-top: 2px solid var(--red); padding: 9px 12px 9px 16px;
-  box-shadow: 0 6px 22px rgba(50, 49, 50, 0.28); font-size: 12.5px; }
+  box-shadow: var(--shadow-menu); font-size: 12.5px; }
 .pickbar-n b { font-family: var(--mono); font-size: 14px; }
 #pickbar button { font: inherit; font-size: 12px; cursor: pointer;
   padding: 6px 13px; border: 1px solid transparent; }
-.pickbar-go { background: var(--red); color: #fff; }
-.pickbar-go:hover { background: #b31616; }
+.pickbar-go { background: var(--red); color: var(--text-inverse); }
+/* Hover lightens the red, press darkens it. The system names both. */
+.pickbar-go:hover { background: var(--av-red-300); }
+.pickbar-go:active { background: var(--av-red-700); }
 .pickbar-clear { background: none; color: var(--surface-2);
   border-color: rgba(255, 255, 255, 0.35) !important; }
 .pickbar-clear:hover { border-color: var(--surface-2) !important; }
@@ -820,7 +942,7 @@ body.modal-open { overflow: hidden; }
   transition: opacity 0.1s; background: var(--surface-2); color: var(--text-primary);
   border: 1px solid var(--border-strong); border-top: 2px solid var(--red);
   padding: 8px 11px; font-size: 12px; max-width: 300px;
-  box-shadow: 0 4px 16px rgba(50, 49, 50, 0.14);
+  box-shadow: var(--shadow-menu);
 }
 #tooltip .tt-row { display: flex; justify-content: space-between; gap: 16px; }
 #tooltip .tt-row span:last-child { font-family: var(--mono); }
@@ -833,18 +955,28 @@ body.modal-open { overflow: hidden; }
 #tooltip .tt-note li::before { content: ""; position: absolute; left: 0; top: 7px;
   width: 3px; height: 3px; background: var(--red); }
 #tooltip .tt-note b { color: var(--text-primary); font-weight: 600; }
-.snapcard { display: flex; flex-direction: column; gap: 5px; text-align: left;
-  font: inherit; cursor: pointer; padding: 9px 12px 10px; width: 100%;
-  background: var(--surface-2); border: 1px solid var(--border);
-  border-top: 2px solid var(--slate); }
+/* Rules, not cards. The system is explicit that structure comes from hairlines
+   and that a block is closed by a rule at its foot, so a panel here is opened by
+   a 2 px rule and closed by a 1 px one with nothing down the sides and no fill
+   behind it. Hover moves the opening rule to red and nothing else moves: the
+   system's motion language is opacity and colour, never lift or scale. */
+.snapcard { display: flex; flex-direction: column; gap: var(--space-1);
+  text-align: left; font: inherit; cursor: pointer; width: 100%;
+  padding: var(--space-2) 0 var(--space-3);
+  background: none; border: 0;
+  border-top: 2px solid var(--av-grey-200);
+  border-bottom: 1px solid var(--rule-soft);
+  transition: border-color var(--duration-fast) var(--ease-standard); }
 .snapcard:hover, .snapcard:focus-visible { border-top-color: var(--red);
-  background: var(--zebra); outline: none; }
+  outline: none; }
+.snapcard:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 /* Title, then sub-title, with the affordance arrow held to the right edge.
    Grid auto-placement had put the arrow first and pushed the title right. */
 .snapcard-head { display: grid; grid-template-columns: 1fr auto;
   grid-template-areas: "title go" "sub go"; gap: 1px 10px; align-items: start; }
-.snapcard-title { grid-area: title; font-family: var(--title); font-weight: 500;
-  font-size: 14px; color: var(--ink-strong); }
+.snapcard-title { grid-area: title; font-family: var(--font-display);
+  font-weight: var(--fw-medium); font-size: 15px; line-height: var(--lh-snug);
+  color: var(--text-content-title); }
 .snapcard-sub { grid-area: sub; font-size: 11.5px; color: var(--text-muted);
   line-height: 1.35; }
 .snapcard-go { grid-area: go; align-self: center; color: var(--text-muted);
@@ -932,7 +1064,7 @@ body.modal-open { overflow: hidden; }
 @page { size: A4 landscape; margin: 8mm; }
 
 @media print {
-  html, body { background: #fff; }
+  html, body { background: var(--surface-page); }
   #masthead { padding: 0 0 8px; }
   #masthead::after { display: none; }
   #tabs, #viewtoggle, #pickbar, #tooltip, .modal-backdrop,
@@ -953,7 +1085,7 @@ body.modal-open { overflow: hidden; }
   /* One sheet is the brief, and the chart is the only thing on the page that can
      give up room without a figure being lost, so it gives up most of it. */
   .cmp-chart { margin-top: 4px; }
-  #cmp-growth svg, .chart.growth { max-height: 76px; }
+  #cmp-growth svg, .chart.growth { max-height: 62px; }
   #cmp-growth { margin: 0; }
   .snapcard { padding: 5px 8px 6px; gap: 2px; }
   .snapcard-title { font-size: 11px; }
@@ -988,3 +1120,51 @@ body.modal-open { overflow: hidden; }
   .pf-stats .v { font-size: 17px; }
   a[href]::after { content: none !important; }
 }
+
+
+/* ================================================= design system pass ==== */
+/* The rules below finish applying the system to components this dashboard had
+   before it: the roles type plays, the one round thing left, the focus ring,
+   and the headline figure treatment the system calls a StatBlock. */
+
+/* Titles are Univia and only Univia; body is Franklin and only Franklin. The
+   system is explicit that neither face does the other's job. */
+h1, h2, h3, h4, h5, .snapcard-title, .section-head h2, .catpanel-head h3,
+.tile h3, .np-head h3, .wt h3, .ov-modal h3 {
+  font-family: var(--font-display); font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-title); }
+h1, .brand h1 { font-weight: var(--fw-regular); line-height: var(--lh-tight); }
+.brand p { font-family: var(--font-display); font-weight: var(--fw-regular);
+  color: var(--text-subtitle); }
+
+/* A headline figure: Univia at light weight, tabular figures, tight leading.
+   The system sets its StatBlock this way and these are the same object. */
+.bigstat .v, .pf-stats .v, .np-live .np-headline, .detail-score .big,
+.fundhead-score .big, .ratiogrid .v, .alphatab td:last-child, .pick-band .composite {
+  font-family: var(--font-display); font-weight: var(--fw-light);
+  font-feature-settings: "tnum" 1, "lnum" 1; line-height: 0.95;
+  letter-spacing: 0; }
+.bigstat .v, .pf-stats .v { font-size: var(--text-xl); }
+.np-live .np-headline { font-size: var(--text-2xl); }
+.ratiogrid .v, .fundhead-score .big, .detail-score .big { font-size: var(--text-lg); }
+.alphatab td:last-child { font-weight: var(--fw-medium); font-size: var(--text-sm); }
+
+/* Emphasis has exactly one form: Franklin Medium in red, inline. */
+.hi, .term-emphasis { font-family: var(--font-text); font-weight: var(--fw-medium);
+  color: var(--text-highlight); font-style: normal; }
+
+/* Focus is always visible and always the same: 2 px red, 2 px clear of the
+   control. Nothing in the system removes it. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* Hover moves colour, press darkens it, and nothing moves or grows. */
+a { color: var(--link-color); text-decoration: none; }
+a:hover { color: var(--link-color-hover); text-decoration: underline;
+  text-underline-offset: 3px; }
+
+/* The radio is the one round control the system keeps; everything else,
+   including anything a browser rounds by default, is square. */
+input[type="radio"] { border-radius: var(--radius-circle); }
+input, select, textarea, button, .pill, .chip, .flag, .tile, .tag {
+  border-radius: var(--radius-none); }

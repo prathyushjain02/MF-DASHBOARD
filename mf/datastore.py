@@ -481,11 +481,11 @@ def process_stats(state=None):
             "headline": f"{caps}",
             "caption": "funds sit where size starts to work against the mandate",
             "rows": [
-                ["Median fund size", f"INR {aum_med:,.0f} cr" if aum_med else "n/a"],
+                ["Median fund size", f"rs {aum_med:,.0f} cr" if aum_med else "n/a"],
                 ["Largest fund",
-                 f"INR {max((f.get('aumCr') or 0) for f in funds):,.0f} cr"],
+                 f"rs {max((f.get('aumCr') or 0) for f in funds):,.0f} cr"],
                 ["Smallest rated fund",
-                 f"INR {min((f.get('aumCr') or 0) for f in rated):,.0f} cr" if rated else "n/a"],
+                 f"rs {min((f.get('aumCr') or 0) for f in rated):,.0f} cr" if rated else "n/a"],
                 ["Size curves in use", "Six, one per category shape"],
             ],
         },
@@ -775,7 +775,7 @@ _CSV_IDENTITY = (
     ("Category", "category"), ("AMC", "amc"), ("Fund manager", "fundManager"),
     ("Band", "band"), ("Composite", "composite"), ("Evidence", "evidence"),
     ("Rank in category", "categoryRank"), ("Schemes in category", "categoryCount"),
-    ("AUM (Rs cr)", "aumCr"), ("Expense ratio %", "ter"),
+    ("AUM (rs cr)", "aumCr"), ("Expense ratio %", "ter"),
     ("NAV", "nav"), ("NAV date", "navDate"),
 )
 _CSV_METRICS = (

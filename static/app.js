@@ -31,10 +31,10 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
 const num = (v, d = 1) =>
   (v === null || v === undefined || Number.isNaN(v)) ? '—' : Number(v).toLocaleString('en-IN',
     { minimumFractionDigits: d, maximumFractionDigits: d });
-/* House formatting: 'cr' lowercase, 'INR' rather than a rupee glyph or 'Rs',
-   per the template's formatting guidelines. */
+/* House style for units: `cr` lower case, `rs` rather than a rupee glyph or an
+   ISO code, `and` rather than an ampersand. */
 const cr = (v) => v == null ? '—'
-  : (v >= 100000 ? `INR ${num(v / 100000, 2)} lakh cr` : `INR ${num(v, 0)} cr`);
+  : (v >= 100000 ? `rs ${num(v / 100000, 2)} lakh cr` : `rs ${num(v, 0)} cr`);
 const isAnalyst = () => state.mode === 'analyst';
 
 const BAND_TONE = { A: 'good', B: 'warning', C: 'serious', Review: 'critical',
@@ -591,7 +591,7 @@ async function renderAll(host) {
           <select id="f-band">${['All', 'A', 'B', 'C', 'Review', 'Not rated'].map((c) =>
             `<option${c === filters.band ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>
         </label>
-        <label>Min AUM (₹ cr)
+        <label>Min AUM (rs cr)
           <input id="f-aum" type="number" min="0" step="100" placeholder="any"
                  value="${esc(filters.minAum)}"></label>
         <label>Max downside capture
@@ -1236,6 +1236,7 @@ const cmpWeightQuery = () => {
 };
 
 const cmpInk = (i) => Chart.COMPARE_INK[i % Chart.COMPARE_INK.length];
+const cmpDash = (i) => Chart.compareDash(i);
 
 async function renderCompare(host) {
   const c = cmpState();
@@ -1447,11 +1448,17 @@ async function drawCmpGrowth() {
      and dashed, which reads as the backdrop they are. */
   let fi = 0;
   const series = g.series.map((s) => {
-    if (s.code === 'fund') return { ...s, ink: cmpInk(fi++) };
+    if (s.code === 'fund') {
+      const i = fi++;
+      return { ...s, ink: cmpInk(i), dash: cmpDash(i) };
+    }
     // In portfolio mode the holdings are what the line is made of, not lines in
     // their own right, so they sit behind it thin and pale until asked for.
-    if (s.code === 'holding') return { ...s, ink: cmpInk(fi++), width: 1, faint: true };
-    if (s.code === 'portfolio') return { ...s, ink: 'var(--ink-strong)', width: 2.6 };
+    if (s.code === 'holding') {
+      const i = fi++;
+      return { ...s, ink: cmpInk(i), dash: cmpDash(i), width: 1, faint: true };
+    }
+    if (s.code === 'portfolio') return { ...s, ink: 'var(--av-ink)', width: 2.6 };
     return { ...s, ink: Chart.MARK_INK, dash: '5 3', width: 1.5 };
   }).filter((s) => s.code !== 'holding' || c.holdings);
   Chart.growthLines(host, series, { height: 300 });
@@ -1634,7 +1641,7 @@ function openWeights(opener) {
        already in crore, and running an amount through it turns five lakh into
        five lakh crore. */
     $('#wt-total').textContent = !n ? 'Nothing entered yet'
-      : u === 'INR' ? `${n} holdings, INR ${num(total, 0)} in total`
+      : u === 'INR' ? `${n} holdings, rs ${num(total, 0)} in total`
                     : `${n} holdings, entered as ${num(total, 1)}`;
     $('#wt-create').disabled = n < 1;
   }

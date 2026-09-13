@@ -174,7 +174,7 @@ def what_to_watch(fund):
     if aum_b.get("score") is not None and aum_b["score"] < 40:
         curve = fw.aum_curve(fund.get("category"))
         out.append(f"Size scores {n0(aum_b['score'])} on the {fund.get('category')} AUM "
-                   f"curve at Rs {n(fund.get('aumCr'), 0)} cr. {curve['note']}")
+                   f"curve at rs {n(fund.get('aumCr'), 0)} cr. {curve['note']}")
 
     mdd = _f(fund.get("maxDrawdown3Y"))
     if mdd is not None and mdd < -25:

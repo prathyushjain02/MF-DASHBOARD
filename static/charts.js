@@ -155,8 +155,13 @@ const Chart = (() => {
      A shared crosshair reads all three at the same date, because the question a
      reader brings to this chart is "where did they diverge", and that is only
      answerable if the three readings are from the same day. */
-  const GROWTH_INK = { fund: 'var(--series-2)', index: 'var(--series-1)',
-                       category: 'var(--seq-300)' };
+  /* The fund is the subject and takes the one red the system allows a chart.
+     Its benchmark takes graphite, the darkest neutral the brand publishes, so
+     the line it is read against is legible rather than faint. The category
+     average is steel and dashed: a computed reference, not a thing anyone could
+     have bought. */
+  const GROWTH_INK = { fund: 'var(--av-red)', index: 'var(--av-graphite)',
+                       category: 'var(--av-steel-500)' };
 
   /* Up to five funds on one chart is past the point where a single hue ramp can
      carry identity, so compare uses a categorical set chosen for separation
@@ -168,13 +173,25 @@ const Chart = (() => {
      within a narrow lightness band so no line reads as more important than
      another. Past eight the set repeats, which is the point at which a chart of
      individual lines has stopped being readable anyway. */
-  const COMPARE_INK = ['#cc1919', '#1f6f8b', '#4c5966', '#b07c2a', '#6b4c8a',
-                       '#2f7d5f', '#a8455f', '#3a4a7a'];
-  const MARK_INK = '#808083';
+  /* The brand publishes a chart sequence of six desaturated fills for labelled
+     bar segments, and says not to reorder it or add to it. It is not a line
+     palette: two of its six are pinks and one is very nearly white. So identity
+     here is carried by the brand's own neutral ladder with the accent red at
+     the head of it, and past the fourth series by a dash pattern as well, which
+     separates lines without inventing a colour the brand does not own. Red
+     appears once and once only, which is the rule the system states for a
+     chart: whatever is drawn in it is the thing to be read first. */
+  const COMPARE_INK = ['var(--av-red)', 'var(--av-graphite)', 'var(--av-steel-500)',
+                       'var(--av-steel-200)', 'var(--av-grey-400)',
+                       'var(--av-graphite)', 'var(--av-steel-500)',
+                       'var(--av-steel-200)'];
+  const COMPARE_DASH = [null, null, null, null, '6 3', '6 3', '6 3', '6 3'];
+  const MARK_INK = 'var(--av-grey)';
 
   const inkOf = (s) => s.ink || GROWTH_INK[s.code] || 'var(--series-1)';
   const dashOf = (s) => s.dash !== undefined ? s.dash
     : (s.code === 'category' ? '5 3' : null);
+  const compareDash = (i) => COMPARE_DASH[i % COMPARE_DASH.length];
 
   function growthLines(host, series, opts = {}) {
     const { height = 390, asOf = null } = opts;
@@ -660,7 +677,8 @@ const Chart = (() => {
   }
   function seqInk(t) { return t > 0.6 ? '#ffffff' : 'var(--text-primary)'; }
 
-  return { bars, blockBar, growthLines, COMPARE_INK, MARK_INK,
+  return { bars, blockBar, growthLines, COMPARE_INK, COMPARE_DASH, compareDash,
+           MARK_INK,
            scatter, histogram, rangeStrip, funnel,
            seqColor, seqInk, hoverable, showTip, hideTip, fmt };
 })();

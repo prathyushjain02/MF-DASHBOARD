@@ -406,7 +406,7 @@ def _flags(fund):
         flags.append({
             "code": "capacity", "label": "Capacity watch" if shape != "scale" else "Size watch",
             "tone": "warning",
-            "why": f"AUM of Rs {aum:,.0f} cr scores {aum_block['score']:.0f} on the "
+            "why": f"AUM of rs {aum:,.0f} cr scores {aum_block['score']:.0f} on the "
                    f"{fund.get('category')} curve, which is a {shape} curve."})
     ev = fund.get("evidence") or 0
     if ev < fw.MIN_EVIDENCE:
