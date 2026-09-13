@@ -509,15 +509,17 @@ Representation decisions that are worth stating:
   stands alone.
 - **The gap to the benchmark is printed, not left to be subtracted.** A chart
   shows a fund clearing its benchmark and the eye can see it, but saying by how
-  much is arithmetic the reader should not be doing. It sits in its own small
-  table under the legend rather than as a third figure beneath every name,
+  much is arithmetic the reader should not be doing. It sits in a small boxed
+  table above the plot and hard right, in the space the card header leaves
+  empty, rather than as a third figure beneath every name in the key,
   which turned the key into a wall of numbers with the one that answers the
   question buried in it. One basis for every row, so the column can be read
   down: annualised where the window is long enough, on the window's own total
   where it is not, and the caption says which. A negative alpha takes the
   accent colour. The reference is the category's index on a fund's page and the
-  first benchmark on a comparison; on paper the table moves alongside the
-  legend, because a sheet has width to spare and not height.
+  first benchmark on a comparison. Under the key it was the last thing on the
+  card and read as a footnote, when the question it answers is the first one
+  asked of the chart.
 - **The category average is a line, not a band.** It is dashed, because it is a
   reference and not a fund you could have bought.
 - **Capture is drawn against 100**, the benchmark's own level, with downside in

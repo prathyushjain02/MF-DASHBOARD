@@ -759,11 +759,15 @@ body.modal-open { overflow: hidden; }
 /* The gap to the benchmark, subtracted once so the reader does not have to.
    Its own small table rather than a third line under every name in the key:
    one basis, one column, read straight down. */
-.alphatab { border-collapse: collapse; margin-top: 9px; font-size: 11px;
-  border-top: 1px solid var(--grid); }
+/* Above the plot and hard right, in the space the card header leaves empty.
+   Boxed, so it reads as a panel on the chart rather than as more of the key,
+   with a pixel of clearance so its own border is not shaved by the card's. */
+.alphatab { border-collapse: collapse; font-size: 11px; width: max-content;
+  max-width: 100%; margin: 0 1px 3px auto; border: 1px solid var(--border);
+  border-top: 2px solid var(--slate); padding: 5px 9px 4px; }
 .alphatab caption { text-align: left; font-family: var(--title); font-size: 10px;
   text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);
-  padding: 6px 0 3px; white-space: nowrap; }
+  padding: 0 0 3px; white-space: nowrap; }
 .alphatab caption span { text-transform: none; letter-spacing: 0;
   font-family: var(--sans); margin-left: 6px; }
 .alphatab td { padding: 1px 0; color: var(--text-secondary); }
@@ -949,7 +953,7 @@ body.modal-open { overflow: hidden; }
   /* One sheet is the brief, and the chart is the only thing on the page that can
      give up room without a figure being lost, so it gives up most of it. */
   .cmp-chart { margin-top: 4px; }
-  #cmp-growth svg, .chart.growth { max-height: 88px; }
+  #cmp-growth svg, .chart.growth { max-height: 76px; }
   #cmp-growth { margin: 0; }
   .snapcard { padding: 5px 8px 6px; gap: 2px; }
   .snapcard-title { font-size: 11px; }
@@ -978,11 +982,8 @@ body.modal-open { overflow: hidden; }
   .growthkey em { font-size: 8px; }
   /* On paper the key and the alpha table share a row rather than stacking: the
      sheet has the width to spare and not the height. */
-  #cmp-growth, #c-growth { display: grid; grid-template-columns: 1fr auto;
-    column-gap: 20px; align-items: start; }
-  #cmp-growth svg, #c-growth svg { grid-column: 1 / -1; }
-  .alphatab { margin-top: 6px; border-top: 0; font-size: 8.5px; }
-  .alphatab caption { padding: 0 0 2px; font-size: 8px; }
+  .alphatab { font-size: 8.5px; padding: 3px 6px 2px; }
+  .alphatab caption { padding: 0 0 1px; font-size: 8px; }
   .cardnote, .muted.sm { font-size: 8.5px; }
   .pf-stats .v { font-size: 17px; }
   a[href]::after { content: none !important; }

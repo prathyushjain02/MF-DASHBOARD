@@ -299,6 +299,10 @@ const Chart = (() => {
        is stated in should be the one in bold. Inside a year there is nothing to
        annualise, so the total stands alone. */
     const sign = (v) => (v >= 0 ? '+' : '') + fmt(v, 1) + '%';
+    /* Above the plot and hard right, in the space the card header leaves empty.
+       Underneath the key it was the last thing on the card and read as a
+       footnote; the question it answers is the first one asked of the chart. */
+    host.insertAdjacentHTML('afterbegin', alphaTable(live, ref, sign));
     host.insertAdjacentHTML('beforeend',
       `<div class="growthkey">${live.map((s) => {
         const end = s.values[s.values.length - 1];
@@ -309,7 +313,7 @@ const Chart = (() => {
             ? `<b>${sign(end)}</b>`
             : `<b>${sign(pa)}<small> p.a.</small></b>
                <em>Total: ${sign(end)}</em>`}</span></span>`;
-      }).join('')}</div>${alphaTable(live, ref, sign)}`);
+      }).join('')}</div>`);
   }
 
   /* The chart shows a fund clearing its benchmark; the eye can see it and then
