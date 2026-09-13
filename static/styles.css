@@ -708,7 +708,28 @@ body.modal-open { overflow: hidden; }
 .crosshair { stroke: var(--axis); stroke-width: 1; stroke-dasharray: 3 3; }
 #tooltip .swatch { width: 8px; height: 8px; border-radius: 50%;
   display: inline-block; margin-right: 6px; }
+
+/* -------------------------------------------------------------- states */
+.loading, .empty { padding: 38px 0; text-align: center; color: var(--text-muted);
+  font-size: 13px; }
 .loading.sm { font-size: 12px; padding: 28px 0; }
+.error { padding: 16px; background: var(--zebra); border-left: 3px solid var(--red);
+  display: flex; flex-direction: column; gap: 4px; }
+.error span { color: var(--text-secondary); font-family: var(--mono); font-size: 12px; }
+
+/* ------------------------------------------------------------- tooltip */
+/* Fixed, above everything, and transparent to the pointer: the box follows the
+   cursor, so a tooltip that could be hovered would chase itself off the screen. */
+#tooltip {
+  position: fixed; z-index: 100; pointer-events: none; opacity: 0;
+  transition: opacity 0.1s; background: var(--surface-2); color: var(--text-primary);
+  border: 1px solid var(--border-strong); border-top: 2px solid var(--red);
+  padding: 8px 11px; font-size: 12px; max-width: 300px;
+  box-shadow: 0 4px 16px rgba(50, 49, 50, 0.14);
+}
+#tooltip .tt-row { display: flex; justify-content: space-between; gap: 16px; }
+#tooltip .tt-row span:last-child { font-family: var(--mono); }
+#tooltip .tt-note { color: var(--text-secondary); margin-top: 4px; }
 .snapcard { display: flex; flex-direction: column; gap: 5px; text-align: left;
   font: inherit; cursor: pointer; padding: 9px 12px 10px; width: 100%;
   background: var(--surface-2); border: 1px solid var(--border);
@@ -789,4 +810,12 @@ body.modal-open { overflow: hidden; }
 @media (max-width: 760px) {
   .snapshot { grid-template-columns: 1fr; }
   .snapshot > * { grid-column: 1 / -1 !important; }
+  #main { padding: 18px 16px 30px; }
+  #masthead { padding: 16px 16px 12px; }
+  #masthead::after { left: 16px; right: 16px; }
+  #tabs { padding: 0 8px; }
+  .masthead-right { align-items: flex-start; }
+  .pick { grid-template-columns: 26px 1fr; }
+  .pick-stats { grid-column: 2; }
+  .filterbar label:first-child input { min-width: 190px; }
 }
