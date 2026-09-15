@@ -177,7 +177,7 @@ const Chart = (() => {
     : (s.code === 'category' ? '5 3' : null);
 
   function growthLines(host, series, opts = {}) {
-    const { height = 390, asOf = null } = opts;
+    const { height = 390, asOf = null, alpha = true } = opts;
     host.innerHTML = '';
     const live = (series || []).filter((s) => s.days && s.days.length > 1);
     const ref = referenceOf(live);
@@ -301,8 +301,11 @@ const Chart = (() => {
     const sign = (v) => (v >= 0 ? '+' : '') + fmt(v, 1) + '%';
     /* Above the plot and hard right, in the space the card header leaves empty.
        Underneath the key it was the last thing on the card and read as a
-       footnote; the question it answers is the first one asked of the chart. */
-    host.insertAdjacentHTML('afterbegin', alphaTable(live, ref, sign));
+       footnote; the question it answers is the first one asked of the chart.
+       Off where the page already answers it: the fund page's own return table
+       prints the alpha at every horizon a few inches below, and the same figure
+       twice on one screen is one of them being ignored. */
+    if (alpha) host.insertAdjacentHTML('afterbegin', alphaTable(live, ref, sign));
     host.insertAdjacentHTML('beforeend',
       `<div class="growthkey">${live.map((s) => {
         const end = s.values[s.values.length - 1];

@@ -271,15 +271,34 @@ async function buildPortfolio(opener, keys, append) {
   });
 }
 
-/* From a fund's own page: put this one where it is going to be read, and go
-   there. Compare takes it as it is; the portfolio asks for its share on the way,
-   because a holding with no share is not a holding and that rule does not bend
-   for the door it came in through. */
-function addToCompare(key, opener) {
-  const b = builder('compare');
-  if (!b.keys.includes(key)) b.keys.push(key);
-  state.fund = null;
-  setView('compare');
+/* From a fund's own page: put this one in a selection and stay put. It is the
+   tick box in a list by another name, and a tick box that navigated would make
+   collecting three funds a matter of going back twice. The tab counts say what
+   has been gathered and the tabs themselves are the way there.
+
+   Clicking again takes it out, because a button that only ever adds gives the
+   reader no way to undo a mistake without leaving the page. */
+function toggleInBuilder(view, key) {
+  const b = builder(view);
+  b.keys = b.keys.includes(key) ? b.keys.filter((k) => k !== key)
+                                : [...b.keys, key];
+  // The weights belonged to a different set of holdings, so they are stale.
+  if (view === 'portfolio') { b.weights = null; b.even = false; }
+  return b.keys.includes(key);
+}
+
+/* A count on the two tabs that hold a selection. Without it, adding from a fund
+   page is an action with no visible result anywhere on the screen. */
+function drawTabCounts() {
+  ['compare', 'portfolio'].forEach((v) => {
+    const btn = document.querySelector(`#tabs [data-view="${v}"]`);
+    if (!btn) return;
+    const n = (state[v === 'portfolio' ? 'pf' : 'cmp'] || {}).keys?.length || 0;
+    const old = btn.querySelector('.tabcount');
+    if (old) old.remove();
+    if (n) btn.insertAdjacentHTML('beforeend',
+      ` <span class="tabcount">${n}</span>`);
+  });
 }
 
 /* ------------------------------------------- 1. how we look at funds */
@@ -1196,12 +1215,10 @@ async function renderFundPage(host) {
             ? `rank ${f.categoryRank} of ${f.categoryCount}` : 'unranked'}</span>
         </div>` : ''}
         <div class="fundhead-add">
-          <button class="cmp-ghost" id="fund-cmp">${
-            builder('compare').keys.includes(f.key)
-              ? 'In compare &rsaquo;' : 'Add to compare'}</button>
-          <button class="cmp-ghost strong" id="fund-pf">${
-            builder('portfolio').keys.includes(f.key)
-              ? 'In portfolio &rsaquo;' : 'Add to portfolio'}</button>
+          <button class="cmp-ghost${builder('compare').keys.includes(f.key)
+            ? ' picked' : ''}" id="fund-cmp"></button>
+          <button class="cmp-ghost${builder('portfolio').keys.includes(f.key)
+            ? ' picked' : ''}" id="fund-pf"></button>
         </div>
       </div>
     </div>
@@ -1350,10 +1367,19 @@ async function renderFundPage(host) {
 
   // --- wiring ------------------------------------------------------------
   $('#fund-back').onclick = () => { state.fund = null; setView(back); };
-  $('#fund-cmp').onclick = (e) => addToCompare(f.key, e.currentTarget);
-  // The page stays put behind the weights form, so dismissing it leaves the
-  // reader on the fund they were reading rather than nowhere.
-  $('#fund-pf').onclick = (e) => buildPortfolio(e.currentTarget, [f.key], true);
+
+  const addBtn = (id, view, inLabel, outLabel) => {
+    const el = $(id);
+    const paint = (on) => {
+      el.classList.toggle('picked', on);
+      el.innerHTML = on ? `&check; ${inLabel}` : outLabel;
+      el.title = on ? 'Click again to take it out' : '';
+    };
+    paint(builder(view).keys.includes(f.key));
+    el.onclick = () => { paint(toggleInBuilder(view, f.key)); drawTabCounts(); };
+  };
+  addBtn('#fund-cmp', 'compare', 'In compare', 'Add to compare');
+  addBtn('#fund-pf', 'portfolio', 'In portfolio', 'Add to portfolio');
   host.querySelectorAll('[data-card]').forEach((el) =>
     el.onclick = (e) => {
       if (e.target.closest('.term')) return;   // a glossary hover is not a click
@@ -1399,7 +1425,7 @@ async function drawGrowth(key, period) {
   /* Shorter than it was. The chart used to be the page and could take the room;
      it is now the top of a column with a return table and the book under it, and
      a 390px plot pushed those past the foot of the other two columns. */
-  Chart.growthLines(host, g.series, { height: 150 });
+  Chart.growthLines(host, g.series, { height: 150, alpha: false });
 
   const sub = $('#growth-sub');
   if (sub) sub.textContent = `${fmtDay(g.start)} to ${fmtDay(g.end)}, `
@@ -2759,6 +2785,7 @@ async function render() {
       <span>${esc(e.message)}</span></div>`;
   }
   drawPickbar();          // the selection survives moving between tabs
+  drawTabCounts();
 }
 
 (async function boot() {

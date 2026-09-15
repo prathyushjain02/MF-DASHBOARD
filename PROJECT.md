@@ -464,13 +464,13 @@ buried.
 
 At the end of the line that names the fund sit **Add to compare** and **Add to
 portfolio**, the two tabs that take a selection, in the order they sit in the bar
-above. Compare takes the fund as it is and goes there, adding to whatever is
-already selected rather than replacing it. The portfolio asks for the holding's
-share on the way, over the page rather than instead of it: the rule that a
-holding with no share is not a holding does not bend for the door it came in
-through, and dismissing the form leaves the reader on the fund they were reading.
-Once a fund is in either selection its button says so and becomes the way back to
-that tab.
+above. They are the tick box in a list by another name: they **add and stay
+put**, so three funds can be gathered by reading three funds rather than by
+going back twice. Clicking again takes the fund out.
+
+**The two tabs carry a count** of what is waiting on them. Without it, adding
+from a fund page would be an action with no visible result anywhere on the
+screen, and the tabs themselves are the way there.
 
 Three of these deserve a note.
 
@@ -535,7 +535,10 @@ every reader of the first had to look past the machinery of the second.
   The window is pulled forward to the youngest fund in the selection and says
   so: lines rebased on different days are not a comparison. The legend carries
   the annualised rate with the window's total beneath it, and a small table
-  under it gives the gap to the benchmark (see 6.4).
+  under it gives the gap to the benchmark (see 6.4). The fund page's own chart
+  leaves that table off: its return table prints the alpha at every horizon a few
+  inches below, and the same figure twice on one screen is one of them being
+  ignored.
 - **The table.** Funds as rows, metrics as columns, in four groups behind
   checkboxes: the seven return horizons (6.2), rolling 3Y and 5Y medians, risk metrics, capture
   ratios. The best figure in each column is marked among the funds only — a

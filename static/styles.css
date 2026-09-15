@@ -153,6 +153,12 @@ a { color: var(--red); }
 #tabs button:hover { color: var(--text-primary); }
 #tabs button.on { color: var(--ink-strong); font-weight: 500;
   border-bottom-color: var(--red); }
+/* How many funds are waiting on that tab. Adding one from a fund page is
+   otherwise an action with no visible result anywhere on the screen. */
+.tabcount { display: inline-block; min-width: 17px; padding: 0 4px;
+  margin-left: 5px; border-radius: 9px; background: var(--red); color: #fff;
+  font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+  line-height: 16px; text-align: center; vertical-align: 1px; }
 
 #main { padding: 24px 34px 40px; max-width: 1560px; margin: 0 auto; }
 section { margin-bottom: 32px; }
@@ -509,6 +515,10 @@ th.sortable.on .arrow { opacity: 1; }
 .cmp-ghost:hover { color: var(--red); border-color: var(--red); }
 .cmp-ghost.strong { border-color: var(--red); color: var(--red); font-weight: 500; }
 .cmp-ghost.strong:hover { background: var(--red); color: #fff; }
+/* Already in a selection. It stays a button rather than going flat, because the
+   second click is what takes the fund back out. */
+.cmp-ghost.picked { border-color: var(--red); color: var(--red); font-weight: 500;
+  background: var(--wash); }
 .cmp-leadrow td { background: var(--wash); font-weight: 500; }
 .cmp-leadrow .cmp-name { background: var(--wash); }
 
