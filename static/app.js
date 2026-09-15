@@ -1037,7 +1037,8 @@ async function renderFundPage(host) {
 
         <div class="snaprow">
           ${card('holds', 'Shape of the equity book',
-                 f.holdingCount ? `${f.holdingCount} names` : 'no disclosed book',
+                 f.holdingCount ? 'concentration of the disclosed book'
+                   : 'no disclosed book',
                  f.holdingCount
                    ? `<div class="shapegrid">
                         <div><span class="k">${term('Top 5 weight')}</span>
@@ -1046,14 +1047,14 @@ async function renderFundPage(host) {
                              <span class="v">${num(f.top10, 0)}%</span></div>
                         <div><span class="k">Largest</span>
                              <span class="v">${num(f.largestPosition, 1)}%</span></div>
-                        <div><span class="k">${term('Category overlap')}</span>
-                             <span class="v">${num(f.categoryOverlap, 0)}%</span></div>
+                        <div><span class="k">Names held</span>
+                             <span class="v">${num(f.holdingCount, 0)}</span></div>
                       </div>`
                    // Four bars all reading zero look like a broken card rather than
                    // an absent one, so the card says which it is.
                    : `<p class="muted sm nobook">No security level holdings are
-                      collected for this scheme, so concentration and overlap cannot
-                      be read for it.</p>`)}
+                      collected for this scheme, so its concentration cannot be
+                      read.</p>`)}
 
           ${card('holds', 'Cap mix', 'share of the whole fund',
                  `<div class="donutwrap"><div id="c-caps"></div>
@@ -1062,19 +1063,6 @@ async function renderFundPage(host) {
       </div>
 
       <div class="snapcol">
-        ${card('who', 'Who runs it', mgrs.length === 1 ? 'one manager'
-                : `${mgrs.length} managers`,
-               `<div class="bigstat name">
-                  <span class="v">${esc(lead ? lead.name : 'Not on file')}</span>
-                  <span class="k">${lead && lead.tenureYears != null
-                    ? num(lead.tenureYears, 1) + ' yrs on this scheme'
-                    : 'tenure not stated'}</span>
-                </div>
-                <div class="cardfoot">
-                  <span>${term('Market cycles run')}</span>
-                    <b>${num(f.managerCycles, 0)}</b>
-                  ${mgrs.length > 1 ? `<span>and ${mgrs.length - 1} more</span>` : ''}</div>`)}
-
         ${card('size', 'Size and cost', esc(f.vintageBasis || ''),
                `<div class="bigstat label-first">
                   <span class="k">${term('AUM')}</span>
@@ -1087,7 +1075,7 @@ async function renderFundPage(host) {
                   <span>${term('Expense ratio')}</span>
                     <b>${f.ter == null ? '—' : num(f.ter, 2) + '%'}</b></div>`)}
 
-        ${card('holds', 'Largest sectors', 'share of the equity book',
+        ${card('holds', 'Largest sectors', 'the five largest, as shares of the equity book',
                (f.sectors || []).length ? '<div id="c-sectors"></div>'
                  : '<p class="muted sm nobook">No sector detail on file.</p>')}
 
@@ -1116,6 +1104,19 @@ async function renderFundPage(host) {
                '<div id="c-capture"></div>' +
                `<div class="cardfoot"><span>${term('Maximum drawdown')}</span>
                   <b>${num(f.maxDrawdown3Y, 1)}%</b></div>`)}
+
+        ${card('who', 'Who runs it', mgrs.length === 1 ? 'one manager'
+                : `${mgrs.length} managers`,
+               `<div class="bigstat name">
+                  <span class="v">${esc(lead ? lead.name : 'Not on file')}</span>
+                  <span class="k">${lead && lead.tenureYears != null
+                    ? num(lead.tenureYears, 1) + ' yrs on this scheme'
+                    : 'tenure not stated'}</span>
+                </div>
+                <div class="cardfoot">
+                  <span>${term('Market cycles run')}</span>
+                    <b>${num(f.managerCycles, 0)}</b>
+                  ${mgrs.length > 1 ? `<span>and ${mgrs.length - 1} more</span>` : ''}</div>`)}
       </div>
     </div>
 
@@ -1213,7 +1214,7 @@ async function drawGrowth(key, period) {
   /* Shorter than it was. The chart used to be the page and could take the room;
      it is now the top of a column with a return table and the book under it, and
      a 390px plot pushed those past the foot of the other two columns. */
-  Chart.growthLines(host, g.series, { height: 260 });
+  Chart.growthLines(host, g.series, { height: 190 });
 
   const sub = $('#growth-sub');
   if (sub) sub.textContent = `${fmtDay(g.start)} to ${fmtDay(g.end)}, `
@@ -1248,54 +1249,50 @@ function fmtDay(iso) {
 
 /* ------------------------------------------------- the fund page cards */
 
-/* Point to point and median rolling, side by side, each against the index and
-   each with the gap already subtracted. The two halves answer different
-   questions about the same horizon — what one pair of dates paid, and what a
-   typical window of that length paid — and the card refuses to choose between
-   them. Beyond a year both halves are annualised, so a 3Y column is a rate and
-   not a total. */
+/* Periods across, measures down. A reader scanning a return table is asking
+   "how did it do over three years", and that question is one column here rather
+   than a row picked out of seven. The two halves are stacked on the same
+   columns, so the point to point figure and the median window sit directly
+   above and below each other on one horizon.
+
+   Beyond a year both are annualised, so a 3Y column is a rate and not a total.
+   The alpha row is printed rather than left to be worked out in the reader's
+   head. */
 function returnsCard(f) {
   const t = f.returns || {};
   const rows = t.rows || [];
   if (!rows.length) return '';
 
-  const pc = (v) => v == null ? '—' : num(v, 1) + '%';
-  const alpha = (v) => v == null ? '<td class="r mono muted">—</td>'
-    : `<td class="r mono alpha ${v >= 0 ? 'up' : 'down'}">${
+  const cells = (pick, fmtOne) => rows.map((r) => fmtOne(pick(r))).join('');
+  const pc = (v) => v == null ? '<td class="mono muted">—</td>'
+    : `<td class="mono">${num(v, 1)}</td>`;
+  const al = (v) => v == null ? '<td class="mono muted">—</td>'
+    : `<td class="mono alpha ${v >= 0 ? 'up' : 'down'}">${
         v > 0 ? '+' : ''}${num(v, 1)}</td>`;
-  const half = (h) => `<td class="r mono">${pc(h.fund)}</td>
-    <td class="r mono muted">${pc(h.bench)}</td>${alpha(h.alpha)}`;
+
+  const block = (label, pick) => `
+    <tr class="grp"><th colspan="${rows.length + 1}">${label}</th></tr>
+    <tr><th>Fund</th>${cells((r) => pick(r).fund, pc)}</tr>
+    <tr><th>Index</th>${cells((r) => pick(r).bench, pc)}</tr>
+    <tr class="alpharow"><th>Alpha</th>${cells((r) => pick(r).alpha, al)}</tr>`;
 
   return `
     <button class="snapcard" data-card="returns">
       <span class="snapcard-head">
         <span class="snapcard-title">How it has done</span>
-        <span class="snapcard-sub">against ${esc(t.benchmark || 'the benchmark')}${
-          t.benchmarkKind === 'index'
-            ? ', the closest index the feed publishes' : ''}</span>
+        <span class="snapcard-sub">% a year past 1Y, against ${
+          esc(t.benchmark || 'the benchmark')}</span>
         <span class="snapcard-go" aria-hidden="true">&rsaquo;</span>
       </span>
       <span class="snapcard-body">
         <table class="rettable">
-          <colgroup><col style="width:13%">
-            <col style="width:15%"><col style="width:14%"><col style="width:13%">
-            <col style="width:15%"><col style="width:14%"><col style="width:13%"></colgroup>
-          <thead>
-            <tr class="grp"><th></th>
-              <th colspan="3">${term('Point to point')}</th>
-              <th colspan="3">${term('Median rolling')}</th></tr>
-            <tr><th></th>
-              <th class="r">Fund</th><th class="r">Index</th><th class="r">+/&minus;</th>
-              <th class="r">Fund</th><th class="r">Index</th><th class="r">+/&minus;</th></tr>
-          </thead>
+          <thead><tr><th></th>${rows.map((r) =>
+            `<th class="per">${esc(r.label)}</th>`).join('')}</tr></thead>
           <tbody>
-            ${rows.map((r) => `<tr>
-              <th class="per">${esc(r.label)}</th>
-              ${half(r.p2p)}${half(r.rolling)}</tr>`).join('')}
+            ${block(term('Point to point'), (r) => r.p2p)}
+            ${block(term('Median rolling'), (r) => r.rolling)}
           </tbody>
         </table>
-        <p class="cardnote muted sm">Annualised from one year out. Rolling is the
-          middle window of every window of that length the fund has lived through.</p>
       </span>
     </button>`;
 }
@@ -1303,11 +1300,15 @@ function returnsCard(f) {
 /* The four cap buckets as parts of one ring. Kept in one place so the ring and
    its key cannot drift apart. */
 function capSlices(f) {
+  // Large to small is an ordered scale, so the ink is one ramp running light as
+  // the companies get smaller. Four shades of slate were technically distinct
+  // and useless at a glance. Cash steps out of the ramp entirely, because it is
+  // not a smaller kind of company.
   return [
-    { label: 'Large cap', value: f.largeCapPct || 0, ink: 'var(--seq-550)' },
-    { label: 'Mid cap', value: f.midCapPct || 0, ink: 'var(--seq-450)' },
-    { label: 'Small cap', value: f.smallCapPct || 0, ink: 'var(--seq-300)' },
-    { label: 'Cash and others', value: f.cashPct || 0, ink: 'var(--axis)' },
+    { label: 'Large cap', value: f.largeCapPct || 0, ink: '#3d4f5c' },
+    { label: 'Mid cap', value: f.midCapPct || 0, ink: '#6e93ab' },
+    { label: 'Small cap', value: f.smallCapPct || 0, ink: '#b5d0e2' },
+    { label: 'Cash and others', value: f.cashPct || 0, ink: '#dcdcd8' },
   ];
 }
 
@@ -1321,35 +1322,31 @@ function bookList(f) {
 
 /* A maximum drawdown is one number for a whole record. It says how deep the
    hole was and nothing about how long the reader sat in it, which is the part
-   that decides whether a fund gets held. This card is the same record as a
-   shape: how deep, how long down, how long back, and what the market was doing
-   over the same stretch. */
+   that decides whether a fund gets held. So: the shape of every fall, and the
+   three worst with how far down and how long back. What the index did over the
+   same stretch, and the best run on the other side, are a click away rather
+   than crowded onto a card a third of a screen wide. */
 function drawdownCard(f) {
   const d = f.drawdowns || {};
   const body = d.unavailable
     ? `<p class="muted sm nobook">${esc(d.unavailable)}</p>`
     : `<div id="c-underwater"></div>
        <table class="ddtable">
-         <thead><tr><th>From</th><th class="r">Fell</th><th class="r">Down</th>
-           <th class="r">Back</th><th class="r">Index</th></tr></thead>
+         <thead><tr><th>Fall began</th><th class="r">Depth</th>
+           <th class="r">Back in</th></tr></thead>
          <tbody>${(d.worst || []).map((w) => `<tr>
            <td class="mono">${mon(w.peak)}</td>
            <td class="r mono down">${num(w.depth, 1)}%</td>
-           <td class="r mono">${w.toBottom == null ? '—' : num(w.toBottom, 1) + 'm'}</td>
            <td class="r mono">${w.recovered
-              ? num(w.toRecover, 1) + 'm' : '<em>open</em>'}</td>
-           <td class="r mono muted">${w.indexFall == null
-              ? '—' : num(w.indexFall, 1) + '%'}</td></tr>`).join('')}</tbody>
-       </table>
-       <p class="cardnote muted sm">Months to the bottom, then months back to the
-         old high.${d.best ? ` Best stretch <b>+${num(d.best.gain, 0)}%</b>,
-         ${mon(d.best.from)} to ${mon(d.best.to)}.` : ''}</p>`;
+              ? num(w.toRecover + (w.toBottom || 0), 0) + ' months'
+              : '<em>still down</em>'}</td></tr>`).join('')}</tbody>
+       </table>`;
 
   return `
     <button class="snapcard" data-card="drawdown">
       <span class="snapcard-head">
         <span class="snapcard-title">Drawdown periods</span>
-        <span class="snapcard-sub">depth below its own high, and how long back${
+        <span class="snapcard-sub">how far below its own high, and how long back${
           d.inDrawdown ? ` &middot; ${num(Math.abs(d.current), 1)}% below it today`
             : ' &middot; at a new high today'}</span>
         <span class="snapcard-go" aria-hidden="true">&rsaquo;</span>

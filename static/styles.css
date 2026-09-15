@@ -694,51 +694,54 @@ body.modal-open { overflow: hidden; }
    record: the chart, the return table under it, then what the book is made of.
    The middle is the fund as an object: who runs it, what it costs, what it
    owns. The right is risk, read three ways. */
-.snapshot { display: grid; gap: 10px; grid-template-columns: 1.75fr 1fr 1.05fr;
+.snapshot { display: grid; gap: 8px; grid-template-columns: 1.45fr 1fr 1.05fr;
   align-items: start; }
-.snapcol { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.snapcol { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .snapcol > *, .snaprow > * { min-width: 0; }
 /* The two book cards sit side by side at the foot of the left column: the
    numbers and the ring are one question and belong on one line. */
-.snaprow { display: grid; grid-template-columns: 1.1fr 1fr; gap: 10px;
+.snaprow { display: grid; grid-template-columns: 1fr 1.15fr; gap: 8px;
   align-items: start; }
-.snapcard.chartcard { cursor: default; }
+.snapcard.chartcard { cursor: default; margin-bottom: 0; }
 .snapcard.chartcard:hover { background: var(--surface-2);
   border-top-color: var(--slate); }
 /* The score bar is the model's own, not one of the cards, so it runs the full
    width underneath rather than taking a slot in a column. */
 .scorerow { margin-top: 10px; }
 
-/* Point to point and median rolling, three columns each, on one horizon per
-   row. Fixed widths off a colgroup rather than content, so the two halves line
-   up with each other and the eye can run straight down a column. */
+/* Periods across, measures down. The two blocks share one set of columns, so a
+   horizon is one column of six figures rather than a row read out of two
+   halves. Fixed layout, because the columns are all the same kind of number and
+   letting content size them staggers them. */
 .rettable { width: 100%; border-collapse: collapse; table-layout: fixed;
-  margin-top: 2px; font-size: 11.5px; }
-.rettable th, .rettable td { padding: 2.5px 5px; }
-.rettable thead th { font-weight: 500; color: var(--text-muted);
-  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; }
-.rettable tr.grp th { text-align: center; color: var(--ink-strong);
-  font-family: var(--title); font-size: 11px; text-transform: none;
-  letter-spacing: 0; padding-bottom: 0; }
-/* A hairline under each group header, so the three columns beneath it read as
-   one block instead of six loose columns. */
-.rettable tr.grp th[colspan] { border-bottom: 1px solid var(--border); }
-.rettable tbody tr:nth-child(even) { background: var(--zebra); }
-.rettable th.per { text-align: left; font-family: var(--mono); font-weight: 600;
-  color: var(--text-primary); font-size: 11.5px; }
+  margin-top: 4px; font-size: 12px; }
+.rettable th, .rettable td { padding: 2px 4px; text-align: right; }
+.rettable th:first-child, .rettable td:first-child { text-align: left; }
+.rettable tbody th { font-weight: 400; color: var(--text-muted); font-size: 11px; }
+.rettable th.per { font-family: var(--mono); font-weight: 600; font-size: 11px;
+  color: var(--ink-strong); border-bottom: 1px solid var(--border);
+  padding-bottom: 3px; }
+/* The block label spans the table rather than sitting in the stub column: it
+   names the three rows under it, not the row it is on. */
+.rettable tr.grp th { text-align: left; color: var(--ink-strong);
+  font-family: var(--title); font-weight: 500; font-size: 11px;
+  padding: 7px 0 1px; }
+.rettable tbody tr:first-child + tr th,
+.rettable tr.grp:first-child th { padding-top: 3px; }
 .rettable td.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
-.rettable td.alpha { font-weight: 600; }
+.rettable tr.alpharow td { font-weight: 600;
+  border-bottom: 1px solid var(--grid); }
+.rettable tr.alpharow th { border-bottom: 1px solid var(--grid); }
 .rettable td.alpha.up { color: var(--text-primary); }
 .rettable td.alpha.down { color: var(--red); }
 
-/* The worst falls, five columns in a third of a screen. Every column but the
-   first is a number, so they are all tabular and right set. */
-.ddtable { width: 100%; border-collapse: collapse; margin-top: 6px;
-  font-size: 11px; }
+/* Three columns, not five. When it started, how far it went, how long until it
+   was over: the rest is in the modal. */
+.ddtable { width: 100%; border-collapse: collapse; margin-top: 8px;
+  font-size: 11.5px; }
 .ddtable th, .ddtable td { padding: 2.5px 3px; }
-.ddtable thead th { font-weight: 500; color: var(--text-muted); font-size: 10px;
-  text-transform: uppercase; letter-spacing: 0.03em; text-align: left;
-  border-bottom: 1px solid var(--border); }
+.ddtable thead th { font-weight: 400; color: var(--text-muted); font-size: 10.5px;
+  text-align: left; border-bottom: 1px solid var(--border); }
 .ddtable thead th.r, .ddtable td.r { text-align: right; }
 .ddtable td.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .ddtable td.down { color: var(--red); font-weight: 600; }
@@ -759,24 +762,24 @@ body.modal-open { overflow: hidden; }
 .booklist li b { font-family: var(--mono); font-weight: 600;
   font-variant-numeric: tabular-nums; }
 
-/* The ring, with the equity share written through the hole and the four
-   buckets keyed beneath it. */
-.donutwrap { display: flex; flex-direction: column; align-items: center;
-  gap: 6px; padding-top: 2px; }
-.donutwrap > div:first-child { position: relative; display: flex;
+/* Ring on the left, key beside it. Under it the key was a second row of the
+   card and the whole thing was twice as tall as it needed to be; alongside, the
+   two halves read as one object and the card is the height of the ring. */
+.donutwrap { display: flex; align-items: center; gap: 14px; padding: 4px 0 2px; }
+.donutwrap > div:first-child { position: relative; flex: none; display: flex;
   align-items: center; justify-content: center; }
 .donut-mid { position: absolute; inset: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; pointer-events: none; }
 .donut-mid b { font-family: var(--mono); font-size: 15px; font-weight: 600;
   line-height: 1.1; color: var(--text-primary); }
 .donut-mid span { font-size: 9.5px; color: var(--text-muted); }
-.donutkey { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 10px;
-  width: 100%; font-size: 10.5px; color: var(--text-muted); }
-.donutkey span { display: inline-flex; align-items: baseline; gap: 5px;
-  min-width: 0; }
-.donutkey i { width: 8px; height: 8px; flex: none; border-radius: 50%; }
+.donutkey { display: flex; flex-direction: column; gap: 3px; flex: 1;
+  min-width: 0; font-size: 11px; color: var(--text-muted); }
+.donutkey span { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.donutkey i { width: 8px; height: 8px; flex: none; border-radius: 50%;
+  transform: translateY(1px); }
 .donutkey b { margin-left: auto; font-family: var(--mono); font-weight: 600;
-  color: var(--text-primary); }
+  font-variant-numeric: tabular-nums; color: var(--text-primary); }
 
 /* Four concentration figures, two up two across, label over number. */
 .shapegrid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 12px;
@@ -789,8 +792,10 @@ body.modal-open { overflow: hidden; }
 /* At a fifth of the page a card is about 300px, so its type and bars come down
    a step to match. Left at the full width sizes the labels crowded the tracks. */
 .snapcard-title { font-size: 13px; }
-.snapcard .barrow { padding: 2px 0; }
+.snapcard .barrow { padding: 1px 0; }
 .snapcard .barrow .track { height: 11px; }
+#c-sectors .barrow { padding: 0.5px 0; }
+#c-sectors .barrow .track { height: 10px; }
 .snapcard .cardfoot { font-size: 10.5px; gap: 2px 10px; }
 
 /* The returns bar card is gone, so the point-to-point numbers are reached from
@@ -809,7 +814,7 @@ body.modal-open { overflow: hidden; }
   color: var(--seq-550); line-height: 1.1; }
 
 /* period buttons over the growth chart */
-.periodbar { display: flex; flex-wrap: wrap; gap: 3px; margin: 2px 0 6px; }
+.periodbar { display: flex; flex-wrap: wrap; gap: 3px; margin: 3px 0 4px; }
 .pbtn { font: inherit; font-size: 11px; padding: 3px 9px; cursor: pointer;
   background: var(--surface-1); color: var(--text-muted);
   border: 1px solid var(--border); border-radius: 2px; }
@@ -819,7 +824,7 @@ body.modal-open { overflow: hidden; }
    button read as an empty box. */
 .pbtn.on { background: var(--text-primary); border-color: var(--text-primary);
   color: var(--surface-1); font-weight: 600; }
-.growthkey { display: flex; flex-wrap: wrap; gap: 5px 16px; margin-top: 8px;
+.growthkey { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 5px;
   font-size: 11.5px; color: var(--text-muted); }
 .growthkey span { display: inline-flex; align-items: baseline; gap: 6px; }
 .growthkey i { width: 9px; height: 9px; border-radius: 50%; display: inline-block;
@@ -959,8 +964,8 @@ body.modal-open { overflow: hidden; }
 #tooltip .tt-note li::before { content: ""; position: absolute; left: 0; top: 7px;
   width: 3px; height: 3px; background: var(--red); }
 #tooltip .tt-note b { color: var(--text-primary); font-weight: 600; }
-.snapcard { display: flex; flex-direction: column; gap: 5px; text-align: left;
-  font: inherit; cursor: pointer; padding: 9px 12px 10px; width: 100%;
+.snapcard { display: flex; flex-direction: column; gap: 4px; text-align: left;
+  font: inherit; cursor: pointer; padding: 8px 11px 8px; width: 100%;
   background: var(--surface-2); border: 1px solid var(--border);
   border-top: 2px solid var(--slate); }
 .snapcard:hover, .snapcard:focus-visible { border-top-color: var(--red);
@@ -977,8 +982,8 @@ body.modal-open { overflow: hidden; }
   font-size: 16px; }
 .snapcard:hover .snapcard-go { color: var(--red); }
 .snapcard-body { display: block; }
-.cardnote { font-size: 11.5px; color: var(--text-primary); margin: 6px 0 0;
-  line-height: 1.4; }
+.cardnote { font-size: 11px; color: var(--text-muted); margin: 4px 0 0;
+  line-height: 1.35; }
 .cardfoot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px;
   margin-top: 5px; padding-top: 5px; border-top: 1px solid var(--grid);
   font-size: 11px; color: var(--text-muted); }

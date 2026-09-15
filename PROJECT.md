@@ -383,26 +383,26 @@ What goes in which column follows the question being asked.
 | Card | Shows |
 |---|---|
 | Growth of 100 rupees | The fund, its category's index and the category average, rebased to zero on the same day, over a selectable window |
-| How it has done | 1M, 3M, 1Y, 3Y and 5Y, point to point and median rolling, each against the index with the gap already subtracted |
-| Shape of the equity book | Top 5 weight, top 10 weight, largest position, overlap with the category book |
-| Cap mix | Large / mid / small / cash as a ring, with the equity share through the hole |
+| How it has done | 1M, 3M, 1Y, 3Y and 5Y across the top; fund, index and alpha down the side, for point to point and median rolling |
+| Shape of the equity book | Top 5 weight, top 10 weight, largest position, names held |
+| Cap mix | Large / mid / small / cash as a ring with its key beside it, and the equity share through the hole |
 
 **Middle — the fund as an object.**
 
 | Card | Shows |
 |---|---|
-| Who runs it | The longest-serving manager, tenure, and cycles run |
 | Size and cost | AUM, net flow over 1Y, expense ratio |
-| Largest sectors | The three largest, as shares of the equity book |
+| Largest sectors | The five largest, as shares of the equity book |
 | Top holdings | The fifteen largest positions and their weights |
 
-**Right — risk, read three ways.**
+**Right — risk, and who is taking it.**
 
 | Card | Shows |
 |---|---|
 | Return per unit of risk | Sharpe, Sortino, Information Ratio, Beta |
-| Drawdown periods | Time below the high water mark as an underwater chart, the worst three falls with how long each took to bottom and to recover, what the index did over the same stretch, and the best stretch on the other side |
+| Drawdown periods | Time below the high water mark as an underwater chart, and the worst three falls: when each began, how deep it went, how long until it was over |
 | How it behaves in a fall | Upside and downside capture against the benchmark at 100, plus maximum drawdown |
+| Who runs it | The longest-serving manager, tenure, and cycles run |
 
 Each card opens its full detail in a modal — every horizon, the peer comparison,
 the decile, the definitions. The page stays readable at a glance and nothing is
@@ -410,25 +410,32 @@ buried.
 
 Two of these deserve a note.
 
-**How it has done** puts point to point and median rolling side by side on the
-same horizon rather than choosing between them. They are different questions
-about the same fund: what one pair of dates paid, and what a typical window of
-that length paid. A fund can look strong on one and ordinary on the other, and
-that difference is the finding. Beyond a year both are annualised, so a 3Y
-column is a rate and not a total. The gap to the index is printed rather than
-left to be worked out in the reader's head.
+**How it has done** runs periods across and measures down, because the question
+a reader brings is "how did it do over three years" and that question is one
+column of six figures here rather than a row picked out of two halves. Point to
+point and median rolling are stacked on the same columns rather than being
+chosen between: they are different questions about the same fund, one asking
+what a pair of dates paid and the other what a typical window of that length
+paid, and a fund can look strong on one and ordinary on the other. Beyond a year
+both are annualised, so a 3Y column is a rate and not a total. The alpha row is
+printed rather than left to be worked out in the reader's head.
 
 **Drawdown periods** exists because a maximum drawdown is one number for a whole
 record and says nothing about how long the hole lasted, which is the part an
 investor actually sits through. A fall counts as an episode when it passes 8%
 below a high water mark; the worst three are reported with the date the fall
-started, its depth, months to the bottom, months back to the old high (or
-`open`, where the fund has not got there yet), and what the index did between
-the same two dates. That index figure is deliberately not the index's own worst
-fall over the window: the question is what the market was doing while this fund
-was falling. The three are marked on the underwater chart, so the picture and
-the table are naming the same three things rather than five hand-written era
-labels the data does not itself assert.
+started, its depth, and how long the whole round trip took, or `still down`
+where the fund has not got back yet. The three are marked on the underwater
+chart, so the picture and the table are naming the same three things rather
+than five hand-written era labels the data does not itself assert.
+
+The card face stops there on purpose. What the index did over the same stretch,
+the split between months down and months back, and the best run on the other
+side are all in the modal: on a card a third of a screen wide they made five
+columns of small figures out of a question that has a three column answer. The
+index figure there is deliberately not the index's own worst fall over the
+window, because the question is what the market was doing while this fund was
+falling.
 
 In analyst view a further card runs the full width beneath: **the score**, as
 seven weighted blocks with coverage on each, plus the flags.

@@ -139,7 +139,7 @@ def detail(fund, state=None):
     # travel with the record instead of costing a second request each.
     rec["returns"] = returns_table(fund, state)
     rec["drawdowns"] = drawdowns(fund, state)
-    rec["sectors"] = top_sectors(fund, limit=3)
+    rec["sectors"] = top_sectors(fund, limit=5)
     rec["topFive"] = top_weight(fund, 5)
     return rec
 
