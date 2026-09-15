@@ -174,19 +174,45 @@ function drawPickbar() {
     <button class="pickbar-clear" id="pick-clear">Clear</button>`;
   // Two destinations, because the same tick answers two questions: read these
   // side by side, or hold them together.
-  const carry = (view) => {
-    const b = builder(view);
+  $('#pick-compare').onclick = () => {
+    const b = builder('compare');
     b.keys = [...state.picked];
     b.weights = null;
-    setView(view);
+    setView('compare');
   };
-  $('#pick-compare').onclick = () => carry('compare');
-  $('#pick-portfolio').onclick = () => carry('portfolio');
+  $('#pick-portfolio').onclick = (e) => buildPortfolio(e.currentTarget);
   $('#pick-clear').onclick = () => {
     state.picked = [];
     drawPickbar();
     document.querySelectorAll('[data-pick]').forEach((b) => { b.checked = false; });
   };
+}
+
+/* Building a portfolio out of a set of ticks asks for the weights first and
+   opens the tab after, because the allocation is the thing being decided and
+   the page behind it is only the result. Names are fetched before the form
+   rather than after, so the lines are labelled with schemes and not with keys.
+   Closing the form without creating leaves the reader where they were: the tick
+   selection is untouched and nothing has been built. */
+async function buildPortfolio(opener) {
+  const keys = [...state.picked];
+  if (!keys.length) return;
+  const b = builder('portfolio');
+  b.keys = keys;
+  b.weights = null;
+
+  let names = {};
+  try {
+    const meta = await get('/compare?keys=' + keys.map(encodeURIComponent).join(','));
+    names = Object.fromEntries((meta.funds || []).map((f) => [f.key, f.name]));
+  } catch (e) { /* the form falls back to the keys, which is worse but works */ }
+  b.names = { ...(b.names || {}), ...names };
+
+  openWeights(opener, {
+    create: 'Build portfolio',
+    target: b,
+    onSave: () => setView('portfolio'),
+  });
 }
 
 /* ------------------------------------------- 1. how we look at funds */
@@ -1843,15 +1869,24 @@ function wireCmpSearch() {
     const data = await get('/funds?limit=10&q=' + encodeURIComponent(q));
     const rows = data.funds.filter((f) => !c.keys.includes(f.key));
     box.innerHTML = rows.map((f) => `
-      <div class="opt" data-k="${esc(f.key)}">
+      <div class="opt" data-k="${esc(f.key)}" data-name="${esc(f.name)}">
         <span>${esc(f.name)}</span><span class="muted">${esc(f.category)}</span></div>`).join('')
       || '<div class="opt muted">Nothing else matches</div>';
     box.hidden = false;
     box.querySelectorAll('.opt[data-k]').forEach((el) => el.onclick = () => {
       if (c.keys.length >= MAX_CMP_FUNDS) return;
-      c.keys.push(el.dataset.k);
+      const key = el.dataset.k;
+      c.keys.push(key);
+      // The name is on the option that was just clicked, so the weights form can
+      // label the new line without waiting for the chart request to name it.
+      c.names = { ...(c.names || {}), [key]: el.dataset.name || key };
       box.hidden = true; input.value = '';
-      drawCmpChips(); drawCmpBody();
+      drawCmpChips();
+      /* A holding with no share is not a holding. On the builder the weight is
+         asked for as the fund goes in, rather than leaving it on an even split
+         the reader never chose and may not notice. */
+      if (isPortfolio()) openWeights(null, { focusKey: key });
+      drawBody();
     });
   }, 200);
 }
@@ -1867,7 +1902,7 @@ function drawCmpChips() {
   }).join('') || '<span class="muted sm">No funds selected yet.</span>';
   host.querySelectorAll('[data-del]').forEach((b) => b.onclick = () => {
     c.keys = c.keys.filter((k) => k !== b.dataset.del);
-    drawCmpChips(); drawCmpBody();
+    drawCmpChips(); drawBody();
   });
   const input = $('#cmp-lookup');
   if (input) input.placeholder = 'Type a scheme name';
@@ -1887,9 +1922,15 @@ function drawCmpMarks() {
     if (c.marks.includes(id)) c.marks = c.marks.filter((x) => x !== id);
     else if (c.marks.length < MAX_CMP_MARKS) c.marks.push(id);
     else return;
-    drawCmpMarks(); drawCmpBody();
+    drawCmpMarks(); drawBody();
   });
 }
+
+/* Both tabs share the pickers, the chips and the benchmark row, and each has
+   its own body underneath. Every one of those three used to redraw the compare
+   body whatever tab it was on, which replaced the builder's chart and tiles
+   with the comparison as soon as anybody added a fund to a portfolio. */
+const drawBody = () => isPortfolio() ? drawPfBody() : drawCmpBody();
 
 async function drawCmpBody() {
   const c = cmpState();
@@ -2356,11 +2397,14 @@ async function drawPfTiles() {
    Both are the same question once the total is divided out, so the form takes
    either and shows the share each line comes to as it is typed. Nothing has to
    add up to a round number. */
-function openWeights(opener) {
-  const c = cmpState();
+function openWeights(opener, opts = {}) {
+  const c = opts.target || cmpState();
   const names = c.names || {};
   const unit = c.unit || '%';
-  const existing = c.weights || {};
+  /* An even split the reader has not looked at is a default, not a decision, so
+     it does not come back as if they had typed it. Weights they set themselves
+     do. */
+  const existing = (c.even ? null : c.weights) || {};
   const rows = c.keys.map((k) => ({ key: k, name: names[k] || k,
                                     value: existing[k] ?? '' }));
 
@@ -2369,7 +2413,8 @@ function openWeights(opener) {
       <h3>Weights</h3>
       <p class="muted sm">Enter what each holding is worth, or what share of the
       whole it is. The two are read the same way: the total is divided out, so
-      the figures do not have to add to a hundred or to any round sum.</p>
+      the figures do not have to add to a hundred or to any round sum. Every
+      holding needs one.</p>
       <div class="wt-units segmented" role="group" aria-label="Units">
         <button data-unit="%" class="${unit === '%' ? 'on' : ''}">Percent</button>
         <button data-unit="INR" class="${unit === 'INR' ? 'on' : ''}">Rupees</button>
@@ -2388,7 +2433,8 @@ function openWeights(opener) {
         <span class="wt-total" id="wt-total">Nothing entered yet</span>
         <span class="wt-actions">
           <button class="cmp-ghost" id="wt-even">Split evenly</button>
-          <button class="wt-create" id="wt-create" disabled>Create</button>
+          <button class="wt-create" id="wt-create" disabled>${
+            esc(opts.create || 'Save weights')}</button>
         </span>
       </div>
     </div>`, opener);
@@ -2410,13 +2456,18 @@ function openWeights(opener) {
         share ? num(share, 1) + '%' : '—';
     });
     const n = Object.keys(w).length;
+    const missing = c.keys.length - n;
     /* Rupees here are rupees. The `cr` helper formats a fund's size, which is
        already in crore, and running an amount through it turns five lakh into
        five lakh crore. */
-    $('#wt-total').textContent = !n ? 'Nothing entered yet'
+    /* Every line needs a figure. A holding left blank is not a zero weight
+       holding, it is a holding somebody has not decided about yet, and creating
+       the portfolio around it would quietly drop it. */
+    $('#wt-total').textContent = missing > 0
+      ? `${missing} ${missing === 1 ? 'holding still needs' : 'holdings still need'} a share`
       : u === 'INR' ? `${n} holdings, INR ${num(total, 0)} in total`
                     : `${n} holdings, entered as ${num(total, 1)}`;
-    $('#wt-create').disabled = n < 1;
+    $('#wt-create').disabled = missing > 0;
   }
 
   inputs.forEach((el) => el.oninput = refresh);
@@ -2434,7 +2485,7 @@ function openWeights(opener) {
   };
   $('#wt-create').onclick = () => {
     const w = read();
-    if (!Object.keys(w).length) return;
+    if (Object.keys(w).length < c.keys.length) return;
     // Stored as shares of the whole, so the unit is a thing the form worried
     // about and not a thing the rest of the app has to carry around.
     const total = Object.values(w).reduce((a, b) => a + b, 0);
@@ -2442,9 +2493,16 @@ function openWeights(opener) {
       .map(([k, v]) => [k, Math.round(v / total * 10000) / 100]));
     c.even = false;
     closeModal();
-    drawPfBody();
+    if (opts.onSave) opts.onSave(c.weights);
+    else drawPfBody();
   };
   refresh();
+  /* The line that was just added is the one the reader came here to fill in, so
+     the cursor is already in it. */
+  if (opts.focusKey) {
+    const el = box.querySelector(`[data-w="${CSS.escape(opts.focusKey)}"]`);
+    if (el) el.focus();
+  }
 }
 
 /* --------------------------------------------------------------- overlap */

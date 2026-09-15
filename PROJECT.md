@@ -505,10 +505,27 @@ offers both destinations.
 
 Weights are entered in **rupees or percent** — the same question once the total
 is divided out, so the form takes either, shows each line's share as it is typed,
-and nothing has to add to a round number. *Split evenly* is there for the common
-case. An unweighted portfolio is not a portfolio, so the tab **opens on an equal
-split and says so** rather than showing an empty page until somebody fills a
-form: it is a real allocation, a common one, and one click from being replaced.
+and nothing has to add to a round sum. *Split evenly* is there for the common
+case. **Every holding needs a figure** before the form will build: a line left
+blank is not a zero weight holding, it is one somebody has not decided about
+yet, and building around it would quietly drop it.
+
+The form is asked for **at the moment a holding arrives**, not left for later:
+
+- Ticking funds in a list and pressing **Build portfolio** opens the weights over
+  the list and switches to the builder once they are set. The allocation is the
+  thing being decided and the page behind it is only the result, so it comes
+  first. Scheme names are fetched before the form opens rather than after, so
+  the lines are labelled with funds and not with keys. Dismissing it leaves the
+  reader where they were with the tick selection untouched and nothing built.
+- Adding a fund by **search inside the builder** opens the same form with the
+  existing weights kept and the new line blank and focused. A holding with no
+  share is not a holding.
+
+Weights can be changed at any time from *Edit weights*. If a reader dismisses the
+form the tab still draws, on an equal split that says so: it is a real allocation
+and a common one, and an even split nobody looked at is a default rather than a
+decision, so it does not come back into the form as if they had typed it.
 
 The top band is the line on the left and four tiles beside it — what a portfolio
 holds is not what its funds hold listed four times.
