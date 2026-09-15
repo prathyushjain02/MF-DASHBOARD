@@ -119,15 +119,15 @@ a { color: var(--red); }
   letter-spacing: -0.01em; white-space: nowrap;
 }
 /* "The" is the smaller half of the pair and sits back, so the eye lands on the
-   word that names the thing. */
+   word that names the thing, which carries the one red on the page. */
 .brand span:first-child { font-size: 0.62em; font-weight: 400;
   color: var(--text-muted); letter-spacing: 0.04em; text-transform: uppercase; }
+.brand span:last-child { color: var(--red); }
 /* The rule the tabs sit against. A border on the brand rather than a separate
    element, so it is exactly the height of the bar. */
 #masthead .brand { border-right: 1px solid var(--border); }
 .masthead-right { display: flex; align-items: center; gap: 16px;
   margin-left: auto; padding-left: 22px; }
-.buildmeta { color: var(--text-muted); font-size: 11px; font-family: var(--mono); }
 
 .segmented { display: inline-flex; border: 1px solid var(--border-strong); }
 .segmented button {
@@ -1162,7 +1162,6 @@ body.modal-open { overflow: hidden; }
   .masthead-right { padding-left: 0; gap: 10px; }
   #tabs { order: 3; width: 100%; padding: 0;
     border-top: 1px solid var(--border); }
-  .buildmeta { display: none; }
   .pick { grid-template-columns: 26px 1fr; }
   .pick-stats { grid-column: 2; }
   .filterbar label:first-child input { min-width: 190px; }

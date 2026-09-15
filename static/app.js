@@ -2677,9 +2677,6 @@ async function render() {
   try {
     [state.fw, state.meta] = await Promise.all([get('/framework'), get('/meta')]);
     state.gloss = state.fw.glossary || {};
-    const m = state.meta;
-    $('#buildmeta').innerHTML = `${m.inScope} schemes in scope · ${m.withHoldings} with a
-      disclosed book`;
     render();
   } catch (e) {
     $('#main').innerHTML = `<div class="error"><strong>Backend unavailable.</strong>

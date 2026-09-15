@@ -592,11 +592,15 @@ colour each one takes on the chart.
 ### 5.9 The bar
 
 Everything above the page sits on one line: the wordmark, a vertical rule, the
-five tabs, and the plan switch with the build stamp at the right. The name
-stacks — **THE** small and set back over **Filter** — so it fits the height of
-the bar rather than sitting above it, which is what lets the tabs come up beside
-it instead of costing a second row. Below 760px the bar wraps into two: the name
-and the switch above, the tabs underneath.
+five tabs, and the plan switch at the right. The name stacks — **THE** small,
+grey and set back over **Filter** in the house red — so it fits the height of the
+bar rather than sitting above it, which is what lets the tabs come up beside it
+instead of costing a second row. Below 760px the bar wraps into two: the name and
+the switch above, the tabs underneath.
+
+Nothing else is up there. The universe count that used to sit at the right was a
+fact about the build rather than about anything the reader had asked for, and it
+was the first thing their eye met on every page.
 
 No page repeats its own tab as a heading, and none of them explains itself in a
 line underneath. The tab says which page this is; a heading saying it again and
