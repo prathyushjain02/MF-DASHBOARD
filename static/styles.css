@@ -794,7 +794,10 @@ body.modal-open { overflow: hidden; }
 /* A grid of years against funds. The cell carries the colour, so it loses the
    row hairline that would otherwise cut through the block, and the fund name is
    pinned because a row of a dozen years scrolls. */
-.catmodes { margin: 18px 0 0; }
+/* The toggle sits in the page head, hard right, on the heading's own line. */
+.section-head-split { display: flex; align-items: flex-start;
+  justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.catmodes { flex: none; }
 .heat td.heatcell { border-bottom: 0; padding: 6px 9px; text-align: right;
   min-width: 56px; }
 .heat tbody tr:hover td.heatcell { filter: brightness(0.96); }

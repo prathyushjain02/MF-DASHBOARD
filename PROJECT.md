@@ -325,9 +325,15 @@ button beside the shortlist. Its leading fifteen funds against every calendar
 year they have, as a heat map. A composite says how a fund has done; a row of
 calendar years says *when*, and the two are different questions — a fund can
 carry a strong record because it was extraordinary in one year and ordinary in
-nine, and only the row shows it. Every year is coloured on its own range,
-because 2020 and 2022 were not the same market and a shared scale would colour
-the years rather than the funds. Any year sorts the table, and a fund with no
+nine, and only the row shows it. Year to date leads and the years run
+backwards from it, because the question a reader brings to a row of years is
+what has been happening lately. Every year is coloured on its own range, worst
+figure red through that year's middle in yellow to its best in green, because
+2020 and 2022 were not the same market and a shared scale would colour the years
+rather than the funds. The three stops sit on the column's own worst, median and
+best rather than on zero: in a year the whole category fell, the fund that fell
+least is still the one to find, and anchoring on zero would paint the column red
+and hide it. Any year sorts the table, and a fund with no
 figure for it sinks to the bottom whichever way the column points: a blank is a
 fund that had not launched, not a fund that came last.
 

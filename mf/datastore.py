@@ -399,9 +399,14 @@ def calendar_lookthrough(category, limit=CALENDAR_LIMIT, state=None):
 
 
 def _calendar_fields():
-    """The calendar columns the feed carries, oldest first, year to date last."""
-    out = [(f"returnCY{y:02d}", f"20{y:02d}") for y in range(12, 26)]
-    return out + [("returnCYTD", "YTD")]
+    """The calendar columns the feed carries, newest first.
+
+    Year to date leads and the years run backwards from it, because the question
+    a reader brings to a row of years is what has been happening lately, and a
+    table that opens on 2014 makes them scroll to find out.
+    """
+    return ([("returnCYTD", "YTD")]
+            + [(f"returnCY{y:02d}", f"20{y:02d}") for y in range(25, 11, -1)])
 
 
 # ---------------------------------------------------------------------------

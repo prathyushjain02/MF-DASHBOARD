@@ -425,10 +425,20 @@ async function renderShortlists(host) {
 
   host.innerHTML = `
     <section>
-      <div class="section-head">
-        <h2>Category top funds</h2>
-        <p class="lede">Pick a category to see its shortlist. Click a fund for the
-        full view.</p>
+      <div class="section-head section-head-split">
+        <div>
+          <h2>Category top funds</h2>
+          <p class="lede">Pick a category to see its shortlist. Click a fund for
+          the full view.</p>
+        </div>
+        ${openCat === PASSIVE_CAT ? '' : `
+          <div id="cat-modes" class="segmented catmodes" role="group"
+               aria-label="How to read the category">
+            <button data-mode="shortlist" class="${
+              state.catMode === 'calendar' ? '' : 'on'}">Category top funds</button>
+            <button data-mode="calendar" class="${
+              state.catMode === 'calendar' ? 'on' : ''}">Calendar year look through</button>
+          </div>`}
       </div>
       <div class="tiles">
         ${tiles.map((c) => `
@@ -439,15 +449,6 @@ async function renderShortlists(host) {
             <h3>${esc(c)}</h3>
           </button>`).join('')}
       </div>
-      ${openCat === PASSIVE_CAT ? '' : `
-        <div id="cat-modes" class="segmented catmodes" role="group"
-             aria-label="How to read the category">
-          <button data-mode="shortlist" class="${
-            state.catMode === 'calendar' ? '' : 'on'}">Category top funds</button>
-          <button data-mode="calendar" class="${
-            state.catMode === 'calendar' ? 'on' : ''}">Calendar year look through</button>
-        </div>`}
-
       <div id="catpanel" class="catpanel"></div>
     </section>`;
 
@@ -783,16 +784,27 @@ function calState() {
   return state.cal;
 }
 
-function heatTone(v, lo, hi) {
+/* Worst in the column red, middling yellow, best green. The three stops are
+   anchored on the column's own worst, median and best rather than on zero: in a
+   year where the whole category fell, the fund that fell least is still the one
+   to find, and anchoring on zero would paint the column uniformly red and hide
+   it. The text stays dark throughout because all three stops are light. */
+const HEAT_STOPS = [[248, 105, 107], [255, 235, 132], [99, 190, 123]];
+
+function mix(a, b, t) {
+  return `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(',')})`;
+}
+
+function heatTone(v, scale) {
   if (v == null) return { bg: 'transparent', fg: 'var(--text-muted)' };
-  if (v < 0) {
-    const t = lo < 0 ? Math.min(1, v / lo) : 0;          // 0 at zero, 1 at worst
-    return { bg: `rgba(204, 25, 25, ${(0.10 + 0.45 * t).toFixed(3)})`,
-             fg: t > 0.75 ? '#fff' : 'var(--text-primary)' };
+  const { lo, mid, hi } = scale;
+  const [red, yellow, green] = HEAT_STOPS;
+  if (v <= mid) {
+    const t = mid > lo ? (v - lo) / (mid - lo) : 1;
+    return { bg: mix(red, yellow, t), fg: 'var(--text-primary)' };
   }
-  const t = hi > 0 ? Math.min(1, v / hi) : 0;
-  return { bg: `rgba(76, 89, 102, ${(0.08 + 0.52 * t).toFixed(3)})`,
-           fg: t > 0.72 ? '#fff' : 'var(--text-primary)' };
+  const t = hi > mid ? (v - mid) / (hi - mid) : 0;
+  return { bg: mix(yellow, green, t), fg: 'var(--text-primary)' };
 }
 
 async function drawCalendarPanel(category) {
@@ -810,8 +822,11 @@ async function drawCalendarPanel(category) {
   // Each column's own range, so the colour describes the fund and not the year.
   const range = {};
   d.years.forEach((y) => {
-    const vals = d.funds.map((f) => f.years[y.field]).filter((v) => v != null);
-    range[y.field] = { lo: Math.min(0, ...vals), hi: Math.max(0, ...vals) };
+    const vals = d.funds.map((f) => f.years[y.field])
+      .filter((v) => v != null).sort((a, b) => a - b);
+    range[y.field] = vals.length
+      ? { lo: vals[0], mid: vals[Math.floor(vals.length / 2)], hi: vals[vals.length - 1] }
+      : { lo: 0, mid: 0, hi: 0 };
   });
 
   const funds = [...d.funds];
@@ -855,7 +870,7 @@ async function drawCalendarPanel(category) {
             <td class="fundcell namecell"><strong>${esc(f.name)}</strong></td>
             ${d.years.map((y) => {
               const v = f.years[y.field];
-              const t = heatTone(v, range[y.field].lo, range[y.field].hi);
+              const t = heatTone(v, range[y.field]);
               return `<td class="r mono heatcell" style="background:${t.bg};color:${t.fg}"
                 >${v == null ? '–' : num(v, 1)}</td>`;
             }).join('')}
@@ -863,8 +878,10 @@ async function drawCalendarPanel(category) {
         </tbody>
       </table>
     </div>
-    <p class="muted sm">Calendar year returns, not annualised. A blank year is
-    one the fund had not launched into, or had not completed.</p>`;
+    <p class="muted sm">Calendar year returns, not annualised. Colour runs from
+    the worst figure in each year through that year's middle to its best, so it
+    ranks the funds within a year and never compares one year to another. A blank
+    is a year the fund had not launched into, or had not completed.</p>`;
 
   panel.querySelectorAll('th[data-year]').forEach((th) => th.onclick = () => {
     const c2 = calState();
