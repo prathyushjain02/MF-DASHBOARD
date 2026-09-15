@@ -733,6 +733,12 @@ GLOSSARY = {
         "What the book behaves like it holds, rather than how many names are in it.",
         "Ten names that are two thirds of the money is *not* a two hundred stock portfolio.",
     ],
+    "exposure": [
+        "How much of a fund's *equity book* sits in one sector.",
+        "A share of the *disclosed holdings*, which sum to a hundred. A fund a "
+        "third in cash holds less of it against the whole of itself than this "
+        "figure says.",
+    ],
     "beat count": [
         "Completed calendar years the fund finished *ahead of its benchmark*, "
         "out of the years both were alive for.",

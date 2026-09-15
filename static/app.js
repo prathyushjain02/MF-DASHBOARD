@@ -194,8 +194,15 @@ function pickBox(key) {
 
 /* One handler on the table rather than one per row, so a redraw cannot leave
    half the boxes wired. The click is stopped before it reaches the row, which
-   would otherwise open the fund. */
+   would otherwise open the fund.
+
+   Wired once per element, because the tables that call this redraw their rows
+   into a wrapper that survives: a second listener on the same wrapper toggled
+   every tick twice and a third toggled it three times, so ticking a fund in All
+   funds silently stopped working after the first filter or sort. */
 function wirePicks(root) {
+  if (root.dataset.picksWired) return;
+  root.dataset.picksWired = '1';
   root.addEventListener('click', (e) => {
     const box = e.target.closest('[data-pick]');
     if (!box) return;
@@ -1179,7 +1186,7 @@ async function drawPassivePanel() {
 
 const VIEW_LABEL = { shortlist: 'category top funds', all: 'all funds',
                      compare: 'compare', portfolio: 'the portfolio builder',
-                     approach: 'how we look at funds' };
+                     sectors: 'sectors', approach: 'how we look at funds' };
 
 /* The fund page is a one page snapshot: a card per question, each showing the
    headline and nothing more. The detail behind every card is a click away in a
@@ -2298,6 +2305,117 @@ async function drawCmpTable() {
   wireGlossary(wrap);
 }
 
+/* ================================================================= sectors
+
+   The other way round. Every other list starts from a fund and asks what it
+   holds; this one starts from a sector and asks who holds it. That is the
+   question somebody brings when they already have a view: too much banking,
+   nothing in healthcare, a manager who says they avoid metals.
+
+   Exposure is the share of the fund's own equity book, which is what the
+   disclosed holdings sum to. A fund a third in cash reads lower against the
+   whole of itself than the figure here, and the note under the table says so. */
+
+const sectorState = () => (state.sec = state.sec
+  || { name: null, lo: '', hi: '', list: null });
+
+async function renderSectors(host) {
+  const c = sectorState();
+  if (!c.list) c.list = (await get('/sectors')).sectors || [];
+  if (!c.name && c.list.length) c.name = c.list[0].name;
+
+  host.innerHTML = `
+    <section>
+      <div class="filterbar">
+        <label>Sector
+          <select id="s-sector">${c.list.map((x) => `
+            <option${x.name === c.name ? ' selected' : ''} value="${esc(x.name)}"
+              >${esc(x.name)}</option>`).join('')}</select>
+        </label>
+        <!-- The label is a column flex, so its text has to be one element:
+             a bare text node beside the glossary span becomes a second row. -->
+        <label><span>${term('Exposure')} at least</span>
+          <input id="s-lo" type="number" min="0" max="100" step="1"
+                 placeholder="any" value="${esc(c.lo)}"></label>
+        <label><span>and at most</span>
+          <input id="s-hi" type="number" min="0" max="100" step="1"
+                 placeholder="any" value="${esc(c.hi)}"></label>
+        <span class="spacer"></span>
+        <button id="s-reset" class="ghost">Reset</button>
+      </div>
+      <div class="tablemeta" id="s-meta"></div>
+      <div id="s-table" class="tablewrap frozen"></div>
+    </section>`;
+
+  const redraw = debounce(() => {
+    c.name = $('#s-sector').value;
+    c.lo = $('#s-lo').value;
+    c.hi = $('#s-hi').value;
+    drawSectorTable();
+  }, 220);
+  ['#s-sector', '#s-lo', '#s-hi'].forEach((id) => {
+    const el = $(id);
+    el.oninput = redraw; el.onchange = redraw;
+  });
+  $('#s-reset').onclick = () => { c.lo = ''; c.hi = ''; renderSectors(host); };
+
+  await drawSectorTable();
+  wireGlossary(host);
+}
+
+async function drawSectorTable() {
+  const c = sectorState();
+  const wrap = $('#s-table');
+  if (!wrap || !c.name) return;
+  const p = new URLSearchParams({ limit: '300' });
+  if (c.lo !== '') p.set('min', c.lo);
+  if (c.hi !== '') p.set('max', c.hi);
+  const d = await get(`/sector/${encodeURIComponent(c.name)}?` + p);
+
+  $('#s-meta').innerHTML = `${d.matched} of ${d.total} funds with a disclosed
+    book hold ${esc(d.sector)}${c.lo !== '' || c.hi !== ''
+      ? ` at ${c.lo !== '' ? `${esc(c.lo)}% or more` : 'any weight'}${
+          c.hi !== '' ? ` and ${esc(c.hi)}% or less` : ''}` : ''}
+    &middot; most exposed first`;
+
+  if (!d.funds.length) {
+    wrap.innerHTML = `<div class="cmp-empty">No fund's book sits in that range.</div>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <table class="grid dense sticky">
+      <thead><tr>
+        <th class="pickcell"></th>
+        <th class="namecell">Fund</th>
+        <th>Category</th>
+        <th class="r">In ${esc(d.sector)}</th>
+        <th class="r">1Y</th><th class="r">3Y</th><th class="r">5Y</th>
+        <th class="r">${term('Max drawdown')}</th>
+        <th class="r">${term('AUM')}</th>
+      </tr></thead>
+      <tbody>${d.funds.map((f) => `
+        <tr data-fund="${esc(f.key)}" tabindex="0">
+          <td class="pickcell">${pickBox(f.key)}</td>
+          <td class="fundcell namecell"><strong>${esc(f.name)}</strong></td>
+          <td class="muted">${esc(f.category)}</td>
+          <td class="r mono b">${num(f.exposure, 1)}%</td>
+          <td class="r mono">${num(f.return1Y, 1)}</td>
+          <td class="r mono">${num(f.return3Y, 1)}</td>
+          <td class="r mono">${num(f.return5Y, 1)}</td>
+          <td class="r mono">${num(f.maxDrawdown3Y, 1)}</td>
+          <td class="r mono">${cr(f.aumCr)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+  wrap.onclick = (e) => {
+    if (e.target.closest('.pickcell')) return;
+    const tr = e.target.closest('[data-fund]');
+    if (tr) openFund(tr.dataset.fund);
+  };
+  wirePicks(wrap);
+  wireGlossary(wrap);
+}
+
 /* ========================================================== portfolio builder
 
    Compare asks how these funds differ. The builder asks what they come to when
@@ -2778,6 +2896,7 @@ async function render() {
     else if (state.view === 'approach') await renderApproach(host);
     else if (state.view === 'shortlist') await renderShortlists(host);
     else if (state.view === 'all') await renderAll(host);
+    else if (state.view === 'sectors') await renderSectors(host);
     else if (state.view === 'portfolio') await renderPortfolio(host);
     else await renderCompare(host);
   } catch (e) {

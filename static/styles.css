@@ -350,7 +350,7 @@ section { margin-bottom: 32px; }
 .filterbar .spacer { flex: 1 1 auto; }
 .filterbar label { display: flex; flex-direction: column; gap: 3px;
   font-size: 11px; color: var(--text-muted); position: relative;
-  font-family: var(--title); }
+  font-family: var(--title); white-space: nowrap; }
 .filterbar label.chk { flex-direction: row; align-items: center; gap: 6px;
   padding-bottom: 6px; }
 /* The minimum width below is meant for the text and select boxes. Applied to a
@@ -363,6 +363,8 @@ section { margin-bottom: 32px; }
   color: var(--text-primary); min-width: 150px;
 }
 .filterbar label:first-child input { min-width: 250px; }
+/* The two exposure bounds are two digit numbers, not search fields. */
+#s-lo, #s-hi { min-width: 110px; }
 .suggest { position: absolute; top: 100%; left: 0; z-index: 20;
   background: var(--surface-2); border: 1px solid var(--border-strong);
   max-height: 320px; overflow-y: auto; min-width: 330px; }

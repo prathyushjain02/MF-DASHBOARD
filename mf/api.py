@@ -205,6 +205,23 @@ def shortlists():
     return jsonify({"categories": out})
 
 
+@bp.get("/sectors")
+def sectors():
+    """Every sector the disclosed books reach, widest held first."""
+    return jsonify({"sectors": ds.sector_list()})
+
+
+@bp.get("/sector/<path:name>")
+def sector(name):
+    """Funds ranked by their exposure to one sector, within optional bounds."""
+    out = ds.sector_funds(name, _f(request.args.get("min")),
+                          _f(request.args.get("max")),
+                          int(request.args.get("limit") or 200))
+    if out is None:
+        return jsonify({"error": "unknown sector", "sector": name}), 404
+    return jsonify(out)
+
+
 @bp.get("/calendar/<path:name>")
 def calendar(name):
     """One category's leading funds, year by year."""

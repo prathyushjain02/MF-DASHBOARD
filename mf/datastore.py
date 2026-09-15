@@ -596,6 +596,87 @@ def drawdowns(fund, state=None):
 
 
 # ---------------------------------------------------------------------------
+# Sectors
+# ---------------------------------------------------------------------------
+
+# Below this many funds a sector is a handful of books rather than a slice of the
+# market, and ranking them against each other says more about who discloses than
+# about who is exposed.
+MIN_SECTOR_FUNDS = 8
+
+
+def sector_index(state=None):
+    """Every fund's exposure to every sector, by sector.
+
+    Built once for the life of the loaded dataset and kept on it. The dataset is
+    read once per process and never mutated, so this is a pure function of it,
+    and rebuilding it on every filter keystroke would be work done to get the
+    same answer back.
+
+    Weights are shares of the **equity book**, which is what the disclosed
+    holdings sum to. A fund a third in cash will read lower against the whole of
+    itself than these figures suggest, and the page says so.
+    """
+    state = state or load()
+    idx = state.get("_sectorIndex")
+    if idx is not None:
+        return idx
+
+    idx = {}
+    for f in state["funds"]:
+        agg = defaultdict(float)
+        for b in (f.get("_book") or []):
+            if b.get("sector"):
+                agg[b["sector"]] += b["weight"]
+        for sector, w in agg.items():
+            idx.setdefault(sector, []).append((f["key"], round(w, 2)))
+    for rows in idx.values():
+        rows.sort(key=lambda r: -r[1])
+    idx = {k: v for k, v in idx.items() if len(v) >= MIN_SECTOR_FUNDS}
+    state["_sectorIndex"] = idx
+    return idx
+
+
+def sector_list(state=None):
+    """The sectors worth offering, widest held first: the question a reader
+    arrives with is usually about one of the big ones."""
+    state = state or load()
+    idx = sector_index(state)
+    out = []
+    for name, rows in idx.items():
+        ws = [w for _, w in rows]
+        out.append({"name": name, "funds": len(rows),
+                    "max": ws[0], "median": ws[len(ws) // 2]})
+    out.sort(key=lambda r: (-r["funds"], r["name"]))
+    return out
+
+
+def sector_funds(sector, lo=None, hi=None, limit=200, state=None):
+    """Funds ranked by how much of their book sits in one sector.
+
+    Most exposed first, because that is the order the question is asked in. The
+    bounds are the other half of it: "which funds are in IT" and "which funds are
+    barely in IT" are the same question with the range moved, and a fund with no
+    exposure at all is not an answer to either, so the floor never reaches zero
+    by accident.
+    """
+    state = state or load()
+    rows = sector_index(state).get(sector)
+    if rows is None:
+        return None
+    hits = [(k, w) for k, w in rows
+            if (lo is None or w >= lo) and (hi is None or w <= hi)]
+    by_key = state["byKey"]
+    return {
+        "sector": sector,
+        "matched": len(hits),
+        "total": len(rows),
+        "funds": [{**list_row(by_key[k]), "exposure": w}
+                  for k, w in hits[:limit] if k in by_key],
+    }
+
+
+# ---------------------------------------------------------------------------
 # Calendar years
 # ---------------------------------------------------------------------------
 

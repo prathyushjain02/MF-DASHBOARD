@@ -424,7 +424,34 @@ that never scrolled vertically, and scrolling the page simply took it away. The
 count line lives outside the pane, because what the table is showing should not
 scroll away from the table it describes.
 
-### 5.4 The fund page
+### 5.4 Sectors
+
+The other way round. Every other list starts from a fund and asks what it holds;
+this one starts from a sector and asks **who holds it**. That is the question
+somebody brings when they already have a view: too much banking, nothing in
+healthcare, a manager who says they avoid metals.
+
+Pick a sector from the dropdown and the funds come back **most exposed first**,
+because that is the order the question is asked in. Two bounds narrow it: *at
+least* and *at most*. Both halves matter, and they are the same question with the
+range moved — "which funds are in IT" and "which funds are barely in IT" are
+asked by the same reader on different days. Information Technology has 250 funds
+in it; at 10% or less, 243; between 3% and 10%, 182.
+
+**Exposure is a share of the fund's own equity book**, which is what the
+disclosed holdings sum to. A fund a third in cash holds less of a sector against
+the whole of itself than the figure here says, and the column header names the
+sector so the basis is never in doubt.
+
+Sectors held by fewer than eight funds are left out of the dropdown: below that a
+sector is a handful of books rather than a slice of the market, and ranking them
+against each other says more about who discloses than about who is exposed. That
+leaves 22.
+
+Every row carries a tick box, so a sector screen feeds Compare and the portfolio
+builder the same way every other list does (5.8).
+
+### 5.5 The fund page
 
 A one-page snapshot in three columns, sized to fit one screen. Each column is a
 stack of its own rather than a row of a grid, so a short card ends where its
@@ -517,17 +544,17 @@ index figure there is deliberately not the index's own worst fall over the
 window, because the question is what the market was doing while this fund was
 falling.
 
-With the analyst view on (5.9) a further card runs the full width beneath: **the score**, as
+With the analyst view on (5.10) a further card runs the full width beneath: **the score**, as
 seven weighted blocks with coverage on each, plus the flags.
 
-### 5.5 Compare
+### 5.6 Compare
 
 Any number of funds against up to two benchmarks. There is no ceiling on the
 funds: past a handful the chart is a thicket, but that is a judgement for
 whoever is reading it, and a portfolio of twelve is a real thing.
 
 Compare asks how these funds differ. Holding them together is a different
-question and it has its own tab (5.6), because carrying both on one screen meant
+question and it has its own tab (5.7), because carrying both on one screen meant
 every reader of the first had to look past the machinery of the second.
 
 - **The chart.** Every selection rebased to zero on one day, funds in colour,
@@ -548,9 +575,9 @@ every reader of the first had to look past the machinery of the second.
   *how much of this am I buying twice*, which is the question two funds in one
   portfolio actually raises. Above 40% the cell is shaded. Every figure opens
   the stocks behind it, with each fund's weight and the common part.
-- **Download CSV** and **PDF.** See 5.8.
+- **Download CSV** and **PDF.** See 5.9.
 
-### 5.6 Portfolio builder
+### 5.7 Portfolio builder
 
 Its own tab. It runs on the same machinery as compare and keeps a **separate
 selection**, because picking three funds to read side by side and picking three
@@ -625,7 +652,7 @@ differences:
   question is not how alike two funds are but how much of the money is in the
   same stock twice.
 
-### 5.7 Ticking funds anywhere
+### 5.8 Ticking funds anywhere
 
 Every row in **Category top funds** and **All funds** carries a tick box. A bar
 appears at the foot of the page as soon as anything is ticked — *N funds
@@ -635,7 +662,7 @@ without writing any names down. Two destinations, because the same tick answers
 two questions: read these side by side, or hold them together. The order things were ticked in is kept, because it decides the
 colour each one takes on the chart.
 
-### 5.8 Taking it away
+### 5.9 Taking it away
 
 - **CSV.** The whole comparison as a spreadsheet: every metric for every
   selection whatever the checkboxes say, the overlap for each pair, and the
@@ -648,7 +675,7 @@ colour each one takes on the chart.
   *Save as PDF* produces the file. The PDF is the page itself rather than a
   second rendering of it that could drift.
 
-### 5.9 The bar
+### 5.10 The bar
 
 Everything above the page sits on one line: the wordmark, a vertical rule, the
 five tabs, and the plan switch at the right. The name stacks — **THE** small,
@@ -887,6 +914,8 @@ of the weights anywhere.
 | `GET /api/mf/nav/<key>` | Fund, index and category average, rebased |
 | `GET /api/mf/category/<name>` | Category dossier |
 | `GET /api/mf/shortlists` | Every category's shortlist, with its benchmark |
+| `GET /api/mf/sectors` | Every sector the disclosed books reach, widest held first |
+| `GET /api/mf/sector/<name>` | Funds by exposure to one sector, within optional bounds |
 | `GET /api/mf/holdings/<key>` | The disclosed book and its statistics |
 | `GET /api/mf/overlap` | Pairwise overlap across an arbitrary set |
 | `POST /api/mf/portfolio` | Look-through for a weighted portfolio |
