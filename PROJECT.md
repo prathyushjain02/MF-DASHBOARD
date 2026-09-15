@@ -334,7 +334,14 @@ figure red through that year's middle in yellow to its best in green, because
 rather than the funds. The three stops sit on the column's own worst, median and
 best rather than on zero: in a year the whole category fell, the fund that fell
 least is still the one to find, and anchoring on zero would paint the column red
-and hide it. Any year sorts the table, and a fund with no
+and hide it. The category's benchmark sits on the foot of
+the table on the same columns, uncoloured, so a year can be read against the
+market it happened in rather than only against the other funds in the column:
+shading it would rank it among them, which is the one thing it is not doing. The
+years stop at 2015, before which the feed thins out into a handful of survivors
+and the row reads as a record of who was around rather than of who did well.
+
+Any year sorts the table, and a fund with no
 figure for it sinks to the bottom whichever way the column points: a blank is a
 fund that had not launched, not a fund that came last.
 

@@ -873,9 +873,30 @@ async function drawCalendarPanel(category) {
             }).join('')}
           </tr>`).join('')}
         </tbody>
+        ${d.benchmark ? `<tfoot>
+          <tr class="bmrow">
+            <td class="pickcell"></td>
+            <td class="fundcell namecell">
+              <span class="bmname">${esc(d.benchmark.name)}</span>
+              <span class="muted sm">${d.benchmark.kind === 'index'
+                ? 'closest available index' : 'category benchmark'}</span>
+            </td>
+            ${d.years.map((y) => {
+              const v = d.benchmark.years[y.field];
+              // The benchmark is what the column is read against, so it is not
+              // coloured on the column's own scale: shading it would rank it
+              // among the funds, which is the one thing it is not doing.
+              return `<td class="r mono heatcell bmcell">${
+                v == null ? '–' : num(v, 1)}</td>`;
+            }).join('')}
+          </tr>
+        </tfoot>` : ''}
       </table>
     </div>
-    <p class="muted sm">The leading ${d.funds.length} of ${d.count} schemes in
+    <p class="muted sm">${d.benchmark
+      ? `Read against ${esc(d.benchmark.name)}, on the foot of the table and not
+         coloured: it is what the column is measured against rather than an
+         entrant in it. ` : ''}The leading ${d.funds.length} of ${d.count} schemes in
     ${esc(category)}, by composite. Calendar year returns, not annualised.
     Colour runs from the worst figure in each year through that year's middle to
     its best, so it ranks the funds within a year and never compares one year to

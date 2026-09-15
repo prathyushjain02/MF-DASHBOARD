@@ -387,6 +387,12 @@ def calendar_lookthrough(category, limit=CALENDAR_LIMIT, state=None):
         if have >= MIN_YEAR_COVERAGE:
             years.append({"field": field, "label": label, "have": have})
 
+    # The benchmark travels with the table, on the same columns, so a year can
+    # be read against the market it happened in rather than only against the
+    # other funds in the column.
+    name, kind = fw.benchmark_for(category)
+    bm = (state.get("benchmarks") or {}).get(name)
+
     return {
         "category": category,
         "scored": fw.is_scored(category),
@@ -395,7 +401,16 @@ def calendar_lookthrough(category, limit=CALENDAR_LIMIT, state=None):
         "funds": [{**row(f),
                    "years": {y["field"]: f.get(y["field"]) for y in years}}
                   for f in ranked],
+        "benchmark": ({"name": name, "kind": kind,
+                       "years": {y["field"]: bm.get(y["field"]) for y in years}}
+                      if bm else None),
     }
+
+
+# The calendar view stops here. Before it the feed carries a few hundred funds
+# at most and the columns thin out into a handful of survivors, which reads as a
+# record of who was around rather than of who did well.
+CALENDAR_FROM = 15
 
 
 def _calendar_fields():
@@ -403,10 +418,11 @@ def _calendar_fields():
 
     Year to date leads and the years run backwards from it, because the question
     a reader brings to a row of years is what has been happening lately, and a
-    table that opens on 2014 makes them scroll to find out.
+    table that opens a decade ago makes them scroll to find out.
     """
     return ([("returnCYTD", "YTD")]
-            + [(f"returnCY{y:02d}", f"20{y:02d}") for y in range(25, 11, -1)])
+            + [(f"returnCY{y:02d}", f"20{y:02d}")
+               for y in range(25, CALENDAR_FROM - 1, -1)])
 
 
 # ---------------------------------------------------------------------------
