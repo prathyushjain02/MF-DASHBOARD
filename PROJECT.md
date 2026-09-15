@@ -344,6 +344,12 @@ corner of the market rather than a shelf anyone is choosing from. Smart beta and
 passive gets no calendar view either — the calendar years of an index fund are
 the calendar years of its index.
 
+Categories are offered in one order everywhere they are listed, and it is not
+the order the model holds them in. It runs down the size ladder first, because
+that is the question somebody arrives with: **large, flexi, mid, small**. The
+mandates that are a shape rather than a size follow, and the categories the
+model does not score come last.
+
 ### 5.3 All funds
 
 Every in-scope scheme, filterable by search, category, AMC, band, minimum AUM,

@@ -59,12 +59,37 @@ SHOWN_CATEGORIES = [
 
 ALL_CATEGORIES = CATEGORIES + SHOWN_CATEGORIES
 
+# The order categories are offered to a reader in, which is not the order the
+# model holds them in. It runs down the size ladder first, because that is the
+# question somebody arrives with: large, flexi, mid, small. The mandates that
+# are a shape rather than a size follow, and the categories the model does not
+# score come last.
+DISPLAY_ORDER = [
+    "Largecap",
+    "Flexicap",
+    "Midcap",
+    "Smallcap",
+    "Large & Midcap",
+    "Multicap",
+    "Focused",
+    "Value / Contra",
+    "Dividend Yield",
+] + SHOWN_CATEGORIES
+
+
+def in_display_order(categories):
+    """Sort whatever is passed into the order a reader is offered them in.
+    Anything the order does not name keeps its place at the end."""
+    rank = {c: i for i, c in enumerate(DISPLAY_ORDER)}
+    return sorted(categories, key=lambda c: rank.get(c, len(rank)))
+
 # Categories that get a shortlist page of their own. Dividend yield is scored
 # and ranked like any other category and a fund in it carries its composite, but
 # twelve schemes chasing a yield is a corner of the market rather than a shelf
 # anybody is choosing from, so it does not get a tile.
 NO_SHORTLIST = {"Dividend Yield"}
-SHORTLIST_CATEGORIES = [c for c in CATEGORIES if c not in NO_SHORTLIST]
+SHORTLIST_CATEGORIES = [c for c in DISPLAY_ORDER
+                        if c in CATEGORIES and c not in NO_SHORTLIST]
 
 
 def is_scored(category):

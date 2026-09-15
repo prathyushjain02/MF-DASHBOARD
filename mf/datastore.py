@@ -704,7 +704,7 @@ def meta_summary(state=None):
              "scoredCategory": fw.is_scored(c),
              "scored": sum(1 for f in state["byCategory"].get(c, [])
                            if f.get("composite") is not None)}
-            for c in fw.ALL_CATEGORIES
+            for c in fw.in_display_order(fw.ALL_CATEGORIES)
         ],
         "bands": {b["code"]: sum(1 for f in state["funds"] if f.get("band") == b["code"])
                   for b in fw.BANDS},
