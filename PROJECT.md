@@ -313,8 +313,7 @@ the copy once and left there.
 ### 5.2 Category top funds
 
 A tile per category, then that category's shortlist as a table: the six return
-horizons (6.2), 3Y
-and 5Y returns, median rolling 3Y and 5Y, AUM, and the named managers. The
+horizons (6.2), median rolling 3Y and 5Y, AUM, and the named managers. The
 category's **benchmark travels in the table footer**, on the same columns, so
 every row above it can be read against the same line rather than against a
 number held somewhere else.
