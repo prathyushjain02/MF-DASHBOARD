@@ -762,11 +762,7 @@ body.modal-open { overflow: hidden; }
 .snapshot { display: grid; gap: 8px; grid-template-columns: 1.45fr 1fr 1.05fr;
   align-items: start; }
 .snapcol { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.snapcol > *, .snaprow > * { min-width: 0; }
-/* The two book cards sit side by side at the foot of the left column: the
-   numbers and the ring are one question and belong on one line. */
-.snaprow { display: grid; grid-template-columns: 1fr 1.15fr; gap: 8px;
-  align-items: start; }
+.snapcol > * { min-width: 0; }
 .snapcard.chartcard { cursor: default; margin-bottom: 0; }
 .snapcard.chartcard:hover { background: var(--surface-2);
   border-top-color: var(--slate); }
@@ -899,9 +895,11 @@ body.modal-open { overflow: hidden; }
 .donutkey b { margin-left: auto; font-family: var(--mono); font-weight: 600;
   font-variant-numeric: tabular-nums; color: var(--text-primary); }
 
-/* Four concentration figures, two up two across, label over number. */
-.shapegrid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 12px;
-  padding: 3px 0 1px; }
+/* Four figures, label over number. Two up two across in a narrow tile and all
+   four on one line once the card is wide enough, rather than a fixed pair that
+   strands white space between the columns of a full width card. */
+.shapegrid { display: grid; gap: 7px 14px; padding: 3px 0 1px;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); }
 .shapegrid > div { display: flex; flex-direction: column; gap: 1px; }
 .shapegrid .k { font-size: 10.5px; color: var(--text-muted); }
 .shapegrid .v { font-family: var(--mono); font-size: 18px; font-weight: 600;
@@ -1175,7 +1173,6 @@ body.modal-open { overflow: hidden; }
 @media (max-width: 760px) {
   .snapshot { grid-template-columns: 1fr; }
   .snapshot > * { grid-column: 1 / -1 !important; }
-  .snaprow { grid-template-columns: 1fr; }
   .rettable { font-size: 11px; }
   .tablewrap.frozen { max-height: calc(100vh - 300px); }
   #main { padding: 18px 16px 30px; }

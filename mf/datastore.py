@@ -158,7 +158,7 @@ def detail(fund, state=None):
                            fw.RETURN_FIELDS + ("returnCYTD",)}} if bm else None
     rec["peers"] = category_comparison(fund, state)
     rec["closest"] = closest_books(fund, state, limit=5)
-    rec["holdings"] = top_holdings(fund, limit=15)
+    rec["holdings"] = top_holdings(fund, limit=10)
     # The page carries these on its face rather than behind a card, so they
     # travel with the record instead of costing a second request each.
     rec["returns"] = returns_table(fund, state)

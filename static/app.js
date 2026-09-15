@@ -277,11 +277,13 @@ async function buildPortfolio(opener) {
  * Figures come from the live universe each request rather than being written
  * into the copy. */
 
+/* Kept, unreferenced, for the same reason the analyst view is (5.9): the process
+   figures and the table that draws them are correct and one line from being back
+   on the page. `/process` still answers. */
 let processStats = null;
 
 async function renderApproach(host) {
   const fw = state.fw;
-  if (!processStats) processStats = await get('/process');
 
   host.innerHTML = `
     <section>
@@ -453,32 +455,28 @@ function statTable(stat) {
 function openNodeModal(code) {
   const n = state.fw.selectionNodes.find((x) => x.code === code);
   if (!n) return;
-  const stat = (processStats || {})[n.stat];
   const blocks = (n.blocks || []).map((c) =>
     state.fw.blocks.find((b) => b.code === c)).filter(Boolean);
 
+  /* What the step is and what it covers, and nothing else. The figures that used
+     to sit beside it answered a different question: this page is what we look
+     for, and how many schemes cleared a bar last night is a fact about the
+     universe rather than about the method. It is a tab away in All funds, where
+     somebody asking it can also filter it. */
   openModal(`
     <div class="np-head">
       <span class="np-n">${n.n}</span>
       <h3>${esc(n.name)}</h3>
     </div>
     <p class="np-means">${esc(n.means)}</p>
-    <div class="np-grid">
-      <div class="np-col">
-        <h5>What it covers</h5>
-        <ul class="ticks">${n.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>
-        ${blocks.length ? `
-          <h5 class="analyst-only" style="margin-top:14px">Where it lands in the score</h5>
-          <div class="np-blocks analyst-only">${blocks.map((b) => `
-            <span class="chip">${esc(b.name)} <em>${b.weight}%</em></span>`).join('')}
-            <span class="np-total">${blocks.reduce((s, b) => s + b.weight, 0)}% of the
-            composite</span></div>` : ''}
-      </div>
-      <div class="np-col">
-        <h5>The universe today</h5>
-        ${statTable(stat)}
-      </div>
-    </div>`, document.activeElement);
+    <h5>What it covers</h5>
+    <ul class="ticks">${n.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>
+    ${blocks.length ? `
+      <h5 class="analyst-only" style="margin-top:14px">Where it lands in the score</h5>
+      <div class="np-blocks analyst-only">${blocks.map((b) => `
+        <span class="chip">${esc(b.name)} <em>${b.weight}%</em></span>`).join('')}
+        <span class="np-total">${blocks.reduce((s, b) => s + b.weight, 0)}% of the
+        composite</span></div>` : ''}`, document.activeElement);
 }
 
 function labelForField(f) {
@@ -657,8 +655,6 @@ const COLUMNS = () => [
     group: 'rolling', gloss: 'median rolling return' },
   { field: 'medianRolling5Y', label: 'Rolling 5Y', dir: 'desc', d: 1,
     group: 'rolling', gloss: 'median rolling return' },
-  { field: 'rollingHitRate3Y', label: 'Hit rate', dir: 'desc', d: 0,
-    group: 'rolling' },
   { field: 'sortino3Y', label: 'Sortino', dir: 'desc', d: 2, group: 'risk' },
   { field: 'informationRatio3Y', label: 'Info ratio', dir: 'desc', d: 2,
     group: 'risk', gloss: 'information ratio' },
@@ -1190,8 +1186,7 @@ async function renderFundPage(host) {
 
         ${returnsCard(f)}
 
-        <div class="snaprow">
-          ${card('holds', 'Shape of the equity book',
+        ${card('holds', 'Shape of the equity book',
                  f.holdingCount ? 'concentration of the disclosed book'
                    : 'no disclosed book',
                  f.holdingCount
@@ -1210,15 +1205,10 @@ async function renderFundPage(host) {
                    : `<p class="muted sm nobook">No security level holdings are
                       collected for this scheme, so its concentration cannot be
                       read.</p>`)}
-
-          ${card('holds', 'Cap mix', 'share of the whole fund',
-                 `<div class="donutwrap"><div id="c-caps"></div>
-                    <div class="donutkey" id="c-caps-key"></div></div>`)}
-        </div>
       </div>
 
       <div class="snapcol">
-        ${card('size', 'Size and cost', esc(f.vintageBasis || ''),
+        ${card('size', 'Size and cost', 'assets, flow and what it charges',
                `<div class="bigstat label-first">
                   <span class="k">${term('AUM')}</span>
                   <span class="v">${cr(f.aumCr)}</span>
@@ -1238,6 +1228,10 @@ async function renderFundPage(host) {
                f.holdingCount ? `largest ${(f.holdings || []).length} of ${f.holdingCount}`
                  : 'no disclosed book',
                bookList(f))}
+
+        ${card('holds', 'Cap mix', 'share of the whole fund',
+               `<div class="donutwrap"><div id="c-caps"></div>
+                  <div class="donutkey" id="c-caps-key"></div></div>`)}
       </div>
 
       <div class="snapcol">
@@ -2274,6 +2268,15 @@ async function renderPortfolio(host) {
 
   const meta = await get('/compare');
   c.available = meta.available || [];
+  /* A portfolio with nothing to read it against is a line on its own, and the
+     broad market is what almost anybody would pick first. Chosen once, so a
+     reader who takes it off does not find it back the next time they open the
+     tab. */
+  if (!c.marksInit) {
+    c.marksInit = true;
+    const broad = c.available.find((m) => /nifty\s*500/i.test(m.label || m.id));
+    if (broad && !c.marks.length) c.marks = [broad.id];
+  }
   drawCmpMarks();
   wireCmpSearch();
   drawCmpChips();

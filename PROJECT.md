@@ -303,12 +303,14 @@ drivers that explain whether the record repeats. The treads climb left to right
 through the brand's sequential ramp into red, each with its heading on a dropped
 leader above it.
 
-Every step opens a modal carrying what the factor covers, what it means, which
-scoring blocks it maps to, and **live figures from the current build** — the
-median hit rate, how many funds sit where size starts to work against the
-mandate, the median Information Ratio. Those figures are computed per request,
-so the page reports the universe as it stands rather than a claim written into
-the copy once and left there.
+Every step opens a modal carrying **what the factor means and what it covers**,
+and nothing else. The live figures that used to sit beside it — the median hit
+rate, how many funds sit where size starts to work against the mandate, the
+median Information Ratio — answered a different question. This page is what we
+look for; how many schemes cleared a bar last night is a fact about the universe
+rather than about the method, and it is a tab away in All funds, where somebody
+asking it can also filter it. `/process` still computes them and `statTable`
+still draws them; nothing calls either.
 
 ### 5.2 Category top funds
 
@@ -387,7 +389,7 @@ the reader says which question they are asking and the table answers that one.
 | Band | Columns | Starts |
 |---|---|---|
 | Returns | The seven horizons (6.2), point to point | on |
-| Rolling returns | Median rolling 3Y and 5Y, and the 3Y hit rate | on |
+| Rolling returns | Median rolling 3Y and 5Y | on |
 | Risk metrics | Sortino, Information Ratio, maximum drawdown | on |
 | Capture ratios | Downside and upside capture | on |
 | Market cap breakdown | Large, mid, small and cash, as shares of the whole fund | off |
@@ -430,7 +432,6 @@ What goes in which column follows the question being asked.
 | Growth of 100 rupees | The fund, its category's index and the category average, rebased to zero on the same day, over a selectable window |
 | How it has done | The seven return horizons (6.2) across the top; fund, index and alpha down the side. Point to point across all seven, median rolling at 3Y and 5Y only. The alpha row is set heavier than the two it is drawn from, green where the fund is ahead and red where it is behind |
 | Shape of the equity book | Top 5 weight, top 10 weight, largest position, names held |
-| Cap mix | Large / mid / small / cash as a ring with its key beside it, and the equity share through the hole |
 
 **Middle — the fund as an object.**
 
@@ -438,7 +439,8 @@ What goes in which column follows the question being asked.
 |---|---|
 | Size and cost | AUM, net flow over 1Y, expense ratio |
 | Largest sectors | The eight largest, as shares of the equity book |
-| Top holdings | The fifteen largest positions and their weights |
+| Top holdings | The ten largest positions and their weights |
+| Cap mix | Large / mid / small / cash as a ring with its key beside it, and the equity share through the hole. It sits under the names it is the shape of |
 
 **Right — risk, and who is taking it.**
 
@@ -534,6 +536,11 @@ Its own tab. It runs on the same machinery as compare and keeps a **separate
 selection**, because picking three funds to read side by side and picking three
 to hold are different acts and one should not overwrite the other. The tick bar
 offers both destinations.
+
+The tab **opens against the Nifty 500**. A portfolio with nothing to read it
+against is a line on its own, and the broad market is what almost anybody would
+pick first. It is chosen once rather than on every visit, so a reader who takes
+it off does not find it back the next time.
 
 Weights are entered in **rupees or percent** — the same question once the total
 is divided out, so the form takes either, shows each line's share as it is typed,
