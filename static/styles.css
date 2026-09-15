@@ -72,6 +72,11 @@
 
   /* Status */
   --good:     #4c5966;
+  /* The one green on the page. It exists for a single job: a figure that is a
+     gain against a benchmark, set opposite --red so the pair reads as a
+     direction and not as decoration. Deep enough to hold its own weight next to
+     the red at the same size rather than reading as the lighter of the two. */
+  --gain:     #15784a;
   --warning:  #a6b0ba;
   --serious:  #f9a1a3;
   --critical: #cc1919;
@@ -714,25 +719,29 @@ body.modal-open { overflow: hidden; }
    halves. Fixed layout, because the columns are all the same kind of number and
    letting content size them staggers them. */
 .rettable { width: 100%; border-collapse: collapse; table-layout: fixed;
-  margin-top: 4px; font-size: 12px; }
-.rettable th, .rettable td { padding: 2px 4px; text-align: right; }
+  margin-top: 2px; font-size: 15px; }
+.rettable th, .rettable td { padding: 1px 4px; text-align: right; }
 .rettable th:first-child, .rettable td:first-child { text-align: left; }
-.rettable tbody th { font-weight: 400; color: var(--text-muted); font-size: 11px; }
-.rettable th.per { font-family: var(--mono); font-weight: 600; font-size: 11px;
-  color: var(--ink-strong); border-bottom: 1px solid var(--border);
-  padding-bottom: 3px; }
+.rettable tbody th { font-weight: 400; color: var(--text-muted); font-size: 12px; }
+.rettable th.per { font-family: var(--mono); font-weight: 600; font-size: 12.5px;
+  color: var(--ink-strong); border-bottom: 1px solid var(--border-strong);
+  padding-bottom: 2px; }
 /* The block label spans the table rather than sitting in the stub column: it
    names the three rows under it, not the row it is on. */
-.rettable tr.grp th { text-align: left; color: var(--ink-strong);
-  font-family: var(--title); font-weight: 500; font-size: 11px;
-  padding: 7px 0 1px; }
-.rettable tbody tr:first-child + tr th,
-.rettable tr.grp:first-child th { padding-top: 3px; }
+.rettable tr.grp th { text-align: left; color: var(--text-muted);
+  font-family: var(--sans); font-weight: 400; font-size: 10.5px;
+  text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 0 0; }
 .rettable td.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
-.rettable tr.alpharow td { font-weight: 600;
+/* The alpha row is what the table is for: it is the only row here that has
+   already done the subtraction, so it is the one the eye should land on. Set
+   heavier than the two rows it is drawn from, and the only place on the page
+   where a green and a red mean opposite directions rather than a brand and a
+   warning. */
+.rettable tr.alpharow td { font-weight: 700; font-size: 15.5px;
   border-bottom: 1px solid var(--grid); }
-.rettable tr.alpharow th { border-bottom: 1px solid var(--grid); }
-.rettable td.alpha.up { color: var(--text-primary); }
+.rettable tr.alpharow th { border-bottom: 1px solid var(--grid);
+  color: var(--text-primary); }
+.rettable td.alpha.up { color: var(--gain); }
 .rettable td.alpha.down { color: var(--red); }
 
 /* Three columns, not five. When it started, how far it went, how long until it
@@ -747,6 +756,16 @@ body.modal-open { overflow: hidden; }
 .ddtable td.down { color: var(--red); font-weight: 600; }
 .ddtable td em { font-style: normal; color: var(--text-muted); }
 .uw-mark { font-size: 9px; fill: var(--text-muted); font-family: var(--mono); }
+
+/* Calendar look through: how often the fund beat its index, beside its name.
+   A row of years says what happened each year; this says how the decade went,
+   and the two want to be read together rather than by counting green cells. */
+.beatcell { font-family: var(--mono); font-variant-numeric: tabular-nums;
+  white-space: nowrap; }
+.beatcell b { font-weight: 700; font-size: 13px; }
+.beatcell span { color: var(--text-muted); font-size: 11px; }
+.beatcell.strong b { color: var(--gain); }
+.beatcell.weak b { color: var(--red); }
 
 /* Fifteen names in a narrow column. Numbered, because the order is the point,
    and the weight is pinned right so the column of figures stays a column. */
@@ -864,6 +883,9 @@ body.modal-open { overflow: hidden; }
   font-weight: 600; color: var(--text-primary); }
 .alphatab td i { width: 7px; height: 7px; border-radius: 50%; flex: none;
   display: inline-block; margin-right: 6px; }
+/* Same pair as the return table: a gain on the benchmark is green, a shortfall
+   red. It is the same question in both places, so it is the same two colours. */
+.alphatab td.up { color: var(--gain); }
 .alphatab td.down { color: var(--red); }
 .chart.growth { width: 100%; }
 .crosshair { stroke: var(--axis); stroke-width: 1; stroke-dasharray: 3 3; }

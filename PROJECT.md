@@ -341,6 +341,19 @@ shading it would rank it among them, which is the one thing it is not doing. The
 years stop at 2015, before which the feed thins out into a handful of survivors
 and the row reads as a record of who was around rather than of who did well.
 
+**Beat count** sits beside the name: completed calendar years the fund finished
+ahead of its benchmark, out of the years both were alive for, to a maximum of
+ten. The denominator is the fund's own years and never a flat ten, because a
+fund with four years on the board that won three of them has done something,
+and printing that as 3 out of 10 would report the years before it launched as
+years it lost. The year in progress is left out on the same principle: it has
+not finished happening. It reads green at six in ten or better and red below
+four, and it sorts on the rate rather than the count, because four out of four
+is a better record than five out of ten; ties go to the longer record, which is
+the same rate on more evidence. A row of years says what happened in each; this
+says how the decade went, and the two are meant to be read together rather than
+by counting green cells.
+
 Any year sorts the table, and a fund with no
 figure for it sinks to the bottom whichever way the column points: a blank is a
 fund that had not launched, not a fund that came last.
@@ -383,7 +396,7 @@ What goes in which column follows the question being asked.
 | Card | Shows |
 |---|---|
 | Growth of 100 rupees | The fund, its category's index and the category average, rebased to zero on the same day, over a selectable window |
-| How it has done | 1M, 3M, 1Y, 3Y and 5Y across the top; fund, index and alpha down the side, for point to point and median rolling |
+| How it has done | 1M, 3M, 1Y, 3Y and 5Y across the top; fund, index and alpha down the side, for point to point and median rolling. The alpha row is set heavier than the two it is drawn from, green where the fund is ahead and red where it is behind |
 | Shape of the equity book | Top 5 weight, top 10 weight, largest position, names held |
 | Cap mix | Large / mid / small / cash as a ring with its key beside it, and the equity share through the hole |
 

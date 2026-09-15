@@ -829,12 +829,21 @@ async function drawCalendarPanel(category) {
       : { lo: 0, mid: 0, hi: 0 };
   });
 
+  /* Sorting on the beat count is on the rate, not the count: four out of four
+     is a better record than five out of ten, and ordering on the numerator
+     would put the fund with the longest life on top whatever it did with it.
+     Ties go to the longer record, because it is the same rate on more
+     evidence. */
+  const beatKey = (f) => f.beat && f.beat.of
+    ? f.beat.won / f.beat.of + f.beat.of / 1000 : null;
+  const cellOf = (f) => c.sort === 'beat' ? beatKey(f) : f.years[c.sort];
+
   const funds = [...d.funds];
   if (c.sort) {
     // A fund with no figure for a year has not come last in it, so it sinks to
     // the bottom whichever way the column points rather than winning the sort.
     funds.sort((a, b) => {
-      const x = a.years[c.sort], y = b.years[c.sort];
+      const x = cellOf(a), y = cellOf(b);
       if (x == null && y == null) return 0;
       if (x == null) return 1;
       if (y == null) return -1;
@@ -842,9 +851,21 @@ async function drawCalendarPanel(category) {
     });
   }
 
-  const arrow = (y) => c.sort === y.field
+  const arrow = (field) => c.sort === field
     ? `<span class="arrow">${c.dir === 'asc' ? '▲' : '▼'}</span>`
     : '<span class="arrow">↕</span>';
+
+  /* Won out of the years it was alive for, never out of a flat ten: a fund with
+     four years on the board that won three of them has done something, and
+     printing that as 3 of 10 would report the years before it launched as years
+     it lost. */
+  const beatCell = (f) => {
+    const b = f.beat;
+    if (!b || !b.of) return '<td class="beatcell muted">–</td>';
+    const rate = b.won / b.of;
+    const tone = rate >= 0.6 ? ' strong' : rate < 0.4 ? ' weak' : '';
+    return `<td class="beatcell${tone}"><b>${b.won}</b><span>/${b.of}</span></td>`;
+  };
 
   /* No heading and no preamble. The selected tile already says which category
      this is, and the table explains itself: the figures are years, the colour
@@ -857,14 +878,18 @@ async function drawCalendarPanel(category) {
         <thead><tr>
           <th class="pickcell"></th>
           <th class="namecell">Fund</th>
+          <th class="sortable${c.sort === 'beat' ? ' on' : ''}" data-year="beat"
+            title="Sort on how often it beat the index">${
+              term('Beat count')}${arrow('beat')}</th>
           ${d.years.map((y) => `<th class="r sortable${
             c.sort === y.field ? ' on' : ''}" data-year="${esc(y.field)}"
-            title="Sort on ${esc(y.label)}">${esc(y.label)}${arrow(y)}</th>`).join('')}
+            title="Sort on ${esc(y.label)}">${esc(y.label)}${arrow(y.field)}</th>`).join('')}
         </tr></thead>
         <tbody>
           ${funds.map((f) => `<tr data-fund="${esc(f.key)}" tabindex="0">
             <td class="pickcell">${pickBox(f.key)}</td>
             <td class="fundcell namecell"><strong>${esc(f.name)}</strong></td>
+            ${beatCell(f)}
             ${d.years.map((y) => {
               const v = f.years[y.field];
               const t = heatTone(v, range[y.field]);
@@ -881,6 +906,7 @@ async function drawCalendarPanel(category) {
               <span class="muted sm">${d.benchmark.kind === 'index'
                 ? 'closest available index' : 'category benchmark'}</span>
             </td>
+            <td class="beatcell"></td>
             ${d.years.map((y) => {
               const v = d.benchmark.years[y.field];
               // The benchmark is what the column is read against, so it is not
@@ -896,7 +922,9 @@ async function drawCalendarPanel(category) {
     <p class="muted sm">${d.benchmark
       ? `Read against ${esc(d.benchmark.name)}, on the foot of the table and not
          coloured: it is what the column is measured against rather than an
-         entrant in it. ` : ''}The leading ${d.funds.length} of ${d.count} schemes in
+         entrant in it. Beat count is completed calendar years the fund finished
+         ahead of it, out of the years both were alive for, to a maximum of ten.
+         ` : ''}The leading ${d.funds.length} of ${d.count} schemes in
     ${esc(category)}, by composite. Calendar year returns, not annualised.
     Colour runs from the worst figure in each year through that year's middle to
     its best, so it ranks the funds within a year and never compares one year to
@@ -1214,7 +1242,7 @@ async function drawGrowth(key, period) {
   /* Shorter than it was. The chart used to be the page and could take the room;
      it is now the top of a column with a return table and the book under it, and
      a 390px plot pushed those past the foot of the other two columns. */
-  Chart.growthLines(host, g.series, { height: 190 });
+  Chart.growthLines(host, g.series, { height: 150 });
 
   const sub = $('#growth-sub');
   if (sub) sub.textContent = `${fmtDay(g.start)} to ${fmtDay(g.end)}, `

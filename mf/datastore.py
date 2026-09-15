@@ -557,6 +557,33 @@ MIN_YEAR_COVERAGE = 5
 CALENDAR_LIMIT = 15
 
 
+# How far back the beat count reaches. A decade is long enough to contain a
+# bull run, a crash and a rotation, which is what it takes before "beat the
+# index more often than not" is a record rather than a streak.
+BEAT_WINDOW = 10
+
+
+def beat_count(fund, bm):
+    """Completed calendar years the fund beat its benchmark, and out of how many.
+
+    The denominator is the years both were alive for, never a flat ten: a fund
+    with four years on the board that won three of them has done something, and
+    printing that as 3 out of 10 would report the eleven months before it
+    launched as years it lost. The year in progress is left out on the same
+    principle, because it has not finished happening.
+    """
+    if not bm:
+        return None
+    won = have = 0
+    for field, _label in _calendar_fields()[1:][:BEAT_WINDOW]:
+        f_v, b_v = fund.get(field), bm.get(field)
+        if f_v is None or b_v is None:
+            continue
+        have += 1
+        won += f_v > b_v
+    return {"won": won, "of": have, "window": BEAT_WINDOW} if have else None
+
+
 def calendar_lookthrough(category, limit=CALENDAR_LIMIT, state=None):
     """A category's leading funds against every calendar year they have.
 
@@ -593,7 +620,8 @@ def calendar_lookthrough(category, limit=CALENDAR_LIMIT, state=None):
         "count": len(group),
         "years": years,
         "funds": [{**row(f),
-                   "years": {y["field"]: f.get(y["field"]) for y in years}}
+                   "years": {y["field"]: f.get(y["field"]) for y in years},
+                   "beat": beat_count(f, bm)}
                   for f in ranked],
         "benchmark": ({"name": name, "kind": kind,
                        "years": {y["field"]: bm.get(y["field"]) for y in years}}

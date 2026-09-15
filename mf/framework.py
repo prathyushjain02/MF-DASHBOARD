@@ -699,6 +699,13 @@ GLOSSARY = {
         "What the book behaves like it holds, rather than how many names are in it.",
         "Ten names that are two thirds of the money is *not* a two hundred stock portfolio.",
     ],
+    "beat count": [
+        "Completed calendar years the fund finished *ahead of its benchmark*, "
+        "out of the years both were alive for.",
+        "Out of the fund's *own* years, never a flat ten: three wins in four "
+        "years is a record, and calling it three out of ten would count the "
+        "years before it launched as years it lost.",
+    ],
     "top 5 weight": [
         "Share of the equity book held in its *five largest* positions.",
         "The sharpest read on conviction: five names carrying a third of the "
