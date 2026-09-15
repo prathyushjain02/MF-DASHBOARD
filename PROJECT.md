@@ -455,6 +455,16 @@ Each card opens its full detail in a modal — every horizon, the peer compariso
 the decile, the definitions. The page stays readable at a glance and nothing is
 buried.
 
+At the end of the line that names the fund sit **Add to compare** and **Add to
+portfolio**, the two tabs that take a selection, in the order they sit in the bar
+above. Compare takes the fund as it is and goes there, adding to whatever is
+already selected rather than replacing it. The portfolio asks for the holding's
+share on the way, over the page rather than instead of it: the rule that a
+holding with no share is not a holding does not bend for the door it came in
+through, and dismissing the form leaves the reader on the fund they were reading.
+Once a fund is in either selection its button says so and becomes the way back to
+that tab.
+
 Three of these deserve a note.
 
 **How it has done** runs periods across and measures down, because the question

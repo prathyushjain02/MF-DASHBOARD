@@ -246,16 +246,19 @@ function drawPickbar() {
    rather than after, so the lines are labelled with schemes and not with keys.
    Closing the form without creating leaves the reader where they were: the tick
    selection is untouched and nothing has been built. */
-async function buildPortfolio(opener) {
-  const keys = [...state.picked];
+async function buildPortfolio(opener, keys, append) {
+  keys = keys || [...state.picked];
   if (!keys.length) return;
   const b = builder('portfolio');
-  b.keys = keys;
-  b.weights = null;
+  /* From the tick bar the ticks are the selection, so they replace what was
+     there. From a fund page the reader is adding one to what they already have,
+     so it joins the end rather than wiping it. */
+  b.keys = append ? [...new Set([...b.keys, ...keys])] : keys;
+  if (!append) b.weights = null;
 
   let names = {};
   try {
-    const meta = await get('/compare?keys=' + keys.map(encodeURIComponent).join(','));
+    const meta = await get('/compare?keys=' + b.keys.map(encodeURIComponent).join(','));
     names = Object.fromEntries((meta.funds || []).map((f) => [f.key, f.name]));
   } catch (e) { /* the form falls back to the keys, which is worse but works */ }
   b.names = { ...(b.names || {}), ...names };
@@ -263,8 +266,20 @@ async function buildPortfolio(opener) {
   openWeights(opener, {
     create: 'Build portfolio',
     target: b,
+    focusKey: append ? keys[0] : null,
     onSave: () => setView('portfolio'),
   });
+}
+
+/* From a fund's own page: put this one where it is going to be read, and go
+   there. Compare takes it as it is; the portfolio asks for its share on the way,
+   because a holding with no share is not a holding and that rule does not bend
+   for the door it came in through. */
+function addToCompare(key, opener) {
+  const b = builder('compare');
+  if (!b.keys.includes(key)) b.keys.push(key);
+  state.fund = null;
+  setView('compare');
 }
 
 /* ------------------------------------------- 1. how we look at funds */
@@ -1161,12 +1176,22 @@ async function renderFundPage(host) {
         <h2>${esc(f.name)}</h2>
         <p class="muted">${esc(f.category)}${f.amc ? ' · ' + esc(f.amc) : ''}</p>
       </div>
-      ${analyst ? `<div class="fundhead-score">
-        ${bandPill(f.band)}
-        <span class="big">${num(f.composite, 1)}</span>
-        <span class="muted sm">${f.categoryRank
-          ? `rank ${f.categoryRank} of ${f.categoryCount}` : 'unranked'}</span>
-      </div>` : ''}
+      <div class="fundhead-right">
+        ${analyst ? `<div class="fundhead-score">
+          ${bandPill(f.band)}
+          <span class="big">${num(f.composite, 1)}</span>
+          <span class="muted sm">${f.categoryRank
+            ? `rank ${f.categoryRank} of ${f.categoryCount}` : 'unranked'}</span>
+        </div>` : ''}
+        <div class="fundhead-add">
+          <button class="cmp-ghost" id="fund-cmp">${
+            builder('compare').keys.includes(f.key)
+              ? 'In compare &rsaquo;' : 'Add to compare'}</button>
+          <button class="cmp-ghost strong" id="fund-pf">${
+            builder('portfolio').keys.includes(f.key)
+              ? 'In portfolio &rsaquo;' : 'Add to portfolio'}</button>
+        </div>
+      </div>
     </div>
 
     <div class="snapshot">
@@ -1313,6 +1338,10 @@ async function renderFundPage(host) {
 
   // --- wiring ------------------------------------------------------------
   $('#fund-back').onclick = () => { state.fund = null; setView(back); };
+  $('#fund-cmp').onclick = (e) => addToCompare(f.key, e.currentTarget);
+  // The page stays put behind the weights form, so dismissing it leaves the
+  // reader on the fund they were reading rather than nowhere.
+  $('#fund-pf').onclick = (e) => buildPortfolio(e.currentTarget, [f.key], true);
   host.querySelectorAll('[data-card]').forEach((el) =>
     el.onclick = (e) => {
       if (e.target.closest('.term')) return;   // a glossary hover is not a click

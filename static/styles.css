@@ -749,6 +749,14 @@ body.modal-open { overflow: hidden; }
 .fundhead p { margin: 2px 0 0; font-size: 12.5px; }
 .fundhead-score { display: flex; align-items: baseline; gap: 10px; }
 .fundhead-score .big { font-family: var(--mono); font-size: 22px; font-weight: 600; }
+/* What to do with this fund, at the end of the line that names it. The two tabs
+   that take a selection are the two buttons, in the order they sit in the bar
+   above. */
+.fundhead-right { display: flex; align-items: flex-end; gap: 18px; }
+.fundhead-add { display: flex; gap: 8px; flex: none; }
+@media (max-width: 760px) {
+  .fundhead-right { width: 100%; justify-content: flex-start; }
+}
 
 /* Three columns, each a stack of its own rather than one grid of cells. Cells
    tie every card in a row to the height of the tallest, so a short card left a
