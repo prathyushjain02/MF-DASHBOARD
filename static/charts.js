@@ -652,6 +652,126 @@ const Chart = (() => {
      emphasised mark and wrong for a row of them: four high scores side by side
      render as one black slab. Marks stop at seq-550 and keep seq-700 for text,
      so the top of the scale still reads as a step rather than as background. */
+  /* A donut rather than four bars. The four slices are parts of one whole that
+     sums to a hundred, which is the one shape a ring states and a bar chart
+     does not: a bar says how big each is, a ring says how the fund is divided.
+     The hole carries the equity share, because that is the figure the four
+     slices are really answering. */
+  function donut(host, slices, opts = {}) {
+    const { size = 148, thickness = 26, centreLabel = '', centreNote = '' } = opts;
+    host.innerHTML = '';
+    const total = slices.reduce((a, s) => a + (s.value || 0), 0);
+    if (!total) { host.innerHTML = '<div class="empty sm">No allocation on file</div>'; return; }
+
+    const r = (size - thickness) / 2, c = size / 2;
+    const svg = el('svg', { viewBox: `0 0 ${size} ${size}`, class: 'donut',
+                            width: size, height: size });
+    let a0 = -Math.PI / 2;                       // start at twelve o'clock
+    slices.forEach((s) => {
+      const frac = (s.value || 0) / total;
+      if (frac <= 0) return;
+      const a1 = a0 + frac * 2 * Math.PI;
+      // A slice that is the whole ring has no arc to draw: two identical end
+      // points collapse the path, so it is drawn as a plain circle instead.
+      const node = frac >= 0.999
+        ? el('circle', { cx: c, cy: c, r, fill: 'none', stroke: s.ink,
+                         'stroke-width': thickness })
+        : el('path', {
+            d: `M ${c + r * Math.cos(a0)} ${c + r * Math.sin(a0)}
+                A ${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1
+                  ${c + r * Math.cos(a1)} ${c + r * Math.sin(a1)}`,
+            fill: 'none', stroke: s.ink, 'stroke-width': thickness });
+      hoverable(node, `<strong>${s.label}</strong>
+        <div class="tt-row"><span>of the fund</span><span>${fmt(s.value, 1)}%</span></div>`);
+      svg.appendChild(node);
+      a0 = a1;
+    });
+    host.appendChild(svg);
+    if (centreLabel) {
+      const mid = document.createElement('div');
+      mid.className = 'donut-mid';
+      mid.innerHTML = `<b>${centreLabel}</b><span>${centreNote}</span>`;
+      host.appendChild(mid);
+    }
+  }
+
+  /* Time below the high water mark. Zero is the top of the frame and the area
+     hangs from it, because that is what the reader is being shown: not a price
+     but a distance back to one. A line chart of the same numbers would put the
+     good state at the bottom and invite the eye to read a recovery as a fall. */
+  function underwater(host, days, values, opts = {}) {
+    const { height = 118, marks = [] } = opts;
+    host.innerHTML = '';
+    if (!days || days.length < 2) {
+      host.innerHTML = '<div class="empty sm">No NAV history</div>';
+      return;
+    }
+    const w = Math.max(240, host.clientWidth || 300);
+    const m = { t: 8, r: 6, b: 16, l: 34 };
+    const iw = w - m.l - m.r, ih = height - m.t - m.b;
+    const lo = Math.min(-1, ...values);
+    const sx = (i) => m.l + (iw * i) / (days.length - 1);
+    const sy = (v) => m.t + (ih * v) / lo;          // 0 at the top, lo at the foot
+
+    const svg = el('svg', { viewBox: `0 0 ${w} ${height}`, class: 'chart underwater',
+                            preserveAspectRatio: 'none' });
+    [0, lo / 2, lo].forEach((v) => {
+      svg.appendChild(el('line', { x1: m.l, x2: w - m.r, y1: sy(v), y2: sy(v),
+                                   class: 'gridline' }));
+      svg.appendChild(el('text', { x: m.l - 5, y: sy(v) + 3, class: 'tick-label',
+                                   'text-anchor': 'end' }, `${Math.round(v)}%`));
+    });
+    const d = values.map((v, i) => `${i ? 'L' : 'M'} ${sx(i).toFixed(1)} ${sy(v).toFixed(1)}`)
+      .join(' ');
+    svg.appendChild(el('path', {
+      d: `${d} L ${sx(values.length - 1).toFixed(1)} ${sy(0)} L ${sx(0)} ${sy(0)} Z`,
+      fill: 'var(--serious)', opacity: 0.5 }));
+    svg.appendChild(el('path', { d, fill: 'none', stroke: 'var(--red)',
+                                 'stroke-width': 1.2,
+                                 'vector-effect': 'non-scaling-stroke' }));
+    [0, days.length - 1].forEach((i, n) => {
+      svg.appendChild(el('text', { x: sx(i), y: height - 3, class: 'tick-label',
+                                   'text-anchor': n ? 'end' : 'start' },
+                         fmtMonth(days[i])));
+    });
+
+    /* The named falls, pinned to the day they bottomed. Five hand written era
+       labels would be five assertions the data does not make; these are the
+       episodes the record itself picked out, so the chart and the table under
+       it are naming the same three things. */
+    marks.forEach((mk) => {
+      const i = nearest(days, mk.date);
+      if (i < 0) return;
+      const x = sx(i), y = sy(values[i]);
+      svg.appendChild(el('circle', { cx: x, cy: y, r: 2.6, fill: 'var(--red)' }));
+      const near = x > m.l + iw * 0.7;
+      const t = el('text', { x: near ? x - 4 : x + 4, y: Math.max(y - 5, m.t + 8),
+                             class: 'uw-mark',
+                             'text-anchor': near ? 'end' : 'start' }, mk.label);
+      svg.appendChild(t);
+    });
+    host.appendChild(svg);
+  }
+
+  /* Nearest sample to a date. The series the card draws is downsampled, so an
+     episode's own dates will usually fall between two of the points drawn. */
+  function nearest(days, iso) {
+    if (!iso) return -1;
+    let best = -1, gap = Infinity;
+    for (let i = 0; i < days.length; i += 1) {
+      const d = Math.abs(new Date(days[i]) - new Date(iso));
+      if (d < gap) { gap = d; best = i; }
+    }
+    return best;
+  }
+
+  function fmtMonth(iso) {
+    const M = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const d = new Date(iso);
+    return `${M[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
+  }
+
   function seqColor(t) {
     const steps = ['var(--seq-100)', 'var(--seq-200)', 'var(--seq-300)',
                    'var(--seq-450)', 'var(--seq-550)'];
@@ -660,7 +780,8 @@ const Chart = (() => {
   }
   function seqInk(t) { return t > 0.6 ? '#ffffff' : 'var(--text-primary)'; }
 
-  return { bars, blockBar, growthLines, COMPARE_INK, MARK_INK,
+  return { bars, blockBar, donut, underwater, growthLines,
+           COMPARE_INK, MARK_INK,
            scatter, histogram, rangeStrip, funnel,
            seqColor, seqInk, hoverable, showTip, hideTip, fmt };
 })();

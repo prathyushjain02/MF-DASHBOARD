@@ -135,7 +135,29 @@ def detail(fund, state=None):
     rec["peers"] = category_comparison(fund, state)
     rec["closest"] = closest_books(fund, state, limit=5)
     rec["holdings"] = top_holdings(fund, limit=15)
+    # The page carries these on its face rather than behind a card, so they
+    # travel with the record instead of costing a second request each.
+    rec["returns"] = returns_table(fund, state)
+    rec["drawdowns"] = drawdowns(fund, state)
+    rec["sectors"] = top_sectors(fund, limit=3)
+    rec["topFive"] = top_weight(fund, 5)
     return rec
+
+
+def top_weight(fund, n):
+    """Share of the equity book in its n largest positions."""
+    book = sorted((fund.get("_book") or []), key=lambda b: -b["weight"])[:n]
+    return round(sum(b["weight"] for b in book), 1) if book else None
+
+
+def top_sectors(fund, limit=3):
+    """The book's largest sectors, as shares of the equity book."""
+    agg = defaultdict(float)
+    for b in (fund.get("_book") or []):
+        agg[b["sector"]] += b["weight"]
+    out = sorted(({"sector": k, "weight": round(v, 1)} for k, v in agg.items()),
+                 key=lambda r: -r["weight"])
+    return out[:limit]
 
 
 # ---------------------------------------------------------------------------
@@ -348,6 +370,178 @@ def shortlist(category, state=None, limit=8):
     state = state or load()
     group = [f for f in state["byCategory"].get(category, []) if f.get("composite") is not None]
     return group[:limit]
+
+
+# ---------------------------------------------------------------------------
+# Returns
+# ---------------------------------------------------------------------------
+
+# The horizons the card carries. Short enough a reader holds all five in their
+# head, long enough that the last two say something about a process rather than
+# about a quarter.
+RETURN_ROWS = (("1M", "1M"), ("3M", "3M"), ("1Y", "1Y"), ("3Y", "3Y"), ("5Y", "5Y"))
+
+
+def returns_table(fund, state=None):
+    """Point to point and median rolling returns, each against the benchmark.
+
+    The gap is printed rather than left to be worked out. Both halves are stated
+    on the same horizon and never mixed: a point to point three year number and
+    a median three year window are different questions about the same fund, and
+    the table answers both rather than choosing.
+    """
+    state = state or load()
+    name, kind = fw.benchmark_for(fund.get("category"))
+    bm = (state.get("benchmarks") or {}).get(name) or {}
+
+    def pair(prefix, horizon):
+        field = f"{prefix}{horizon}"
+        f_v, b_v = fund.get(field), bm.get(field)
+        return {"fund": f_v, "bench": b_v,
+                "alpha": (round(f_v - b_v, 2)
+                          if f_v is not None and b_v is not None else None)}
+
+    return {
+        "benchmark": name, "benchmarkKind": kind,
+        "rows": [{"label": label,
+                  "p2p": pair("return", h),
+                  "rolling": pair("medianRolling", h)}
+                 for label, h in RETURN_ROWS],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Drawdowns
+# ---------------------------------------------------------------------------
+
+# A dip this shallow is the market breathing, not an episode anybody sat
+# through, and counting them would bury the three that matter in a list of
+# eighty that do not.
+DRAWDOWN_FLOOR = 8.0
+
+# How many of the worst to report.
+DRAWDOWN_COUNT = 3
+
+
+def _underwater(days, vals):
+    """Depth below the running peak, as a negative percent, on every day."""
+    out, peak = [], None
+    for v in vals:
+        peak = v if peak is None or v > peak else peak
+        out.append(round(100.0 * (v / peak - 1.0), 2) if peak else 0.0)
+    return out
+
+
+def _episodes(days, vals):
+    """Every fall below the floor, with what it cost and how long it took.
+
+    An episode opens on the day the last peak was set, bottoms at its lowest
+    point, and closes on the day the fund next reaches that peak again. One that
+    never reaches it is reported as ongoing rather than given a recovery figure
+    the fund has not yet earned.
+    """
+    out = []
+    peak_v, peak_i = vals[0], 0
+    trough_v, trough_i = vals[0], 0
+    for i, v in enumerate(vals):
+        if v >= peak_v:
+            depth = 100.0 * (trough_v / peak_v - 1.0)
+            if depth <= -DRAWDOWN_FLOOR:
+                out.append({"peak": days[peak_i], "trough": days[trough_i],
+                            "recovered": days[i], "depth": round(depth, 1)})
+            peak_v, peak_i = v, i
+            trough_v, trough_i = v, i
+        elif v < trough_v:
+            trough_v, trough_i = v, i
+    depth = 100.0 * (trough_v / peak_v - 1.0)
+    if depth <= -DRAWDOWN_FLOOR:
+        out.append({"peak": days[peak_i], "trough": days[trough_i],
+                    "recovered": None, "depth": round(depth, 1)})
+    return out
+
+
+def _best_run(days, vals):
+    """The strongest stretch between a low and a later high.
+
+    A page that only lists falls describes half the record. This is the other
+    half on the same terms: from which day to which day, how far, how long.
+    """
+    if len(vals) < 2:
+        return None
+    low_v, low_i = vals[0], 0
+    best = None
+    for i, v in enumerate(vals):
+        if v < low_v:
+            low_v, low_i = v, i
+        gain = 100.0 * (v / low_v - 1.0) if low_v else 0.0
+        if best is None or gain > best["gain"]:
+            best = {"gain": round(gain, 1), "from": days[low_i], "to": days[i]}
+    if not best or best["gain"] <= 0:
+        return None
+    best["months"] = _months(best["from"], best["to"])
+    return best
+
+
+def _months(a, b):
+    if not a or not b:
+        return None
+    d1, d2 = _date.fromisoformat(a), _date.fromisoformat(b)
+    return round((d2 - d1).days / 30.44, 1)
+
+
+def _fall_between(series, start, end):
+    """What another series did over the same stretch, peak date to trough date.
+    Not its own worst fall over the window: the question is what the market was
+    doing while this fund was falling, and its own worst fall would be a
+    different window and a different question."""
+    if not series:
+        return None
+    a = _series_at_or_before(series["d"], series["v"], start)
+    b = _series_at_or_before(series["d"], series["v"], end)
+    return round(100.0 * (b / a - 1.0), 1) if a and b else None
+
+
+def drawdowns(fund, state=None):
+    """The fund's time below its own high water mark, and the worst three falls.
+
+    A maximum drawdown is one number for the whole record and says nothing about
+    how long the hole lasted, which is the part an investor actually sits
+    through. This is the same record as a shape: how deep, how long down, how
+    long back.
+    """
+    state = state or load()
+    navs = state.get("navs") or {}
+    own = (navs.get("funds") or {}).get(fund["key"])
+    if not own or len(own.get("d") or []) < 30:
+        return {"unavailable": "No NAV history on file."}
+
+    days, vals = own["d"], own["v"]
+    index_name = fw.index_name_for(fund.get("category"))
+    index = (navs.get("indices") or {}).get(index_name)
+
+    episodes = sorted(_episodes(days, vals), key=lambda e: e["depth"])
+    worst = []
+    for e in episodes[:DRAWDOWN_COUNT]:
+        worst.append({
+            **e,
+            "toBottom": _months(e["peak"], e["trough"]),
+            "toRecover": _months(e["trough"], e["recovered"]),
+            "indexFall": _fall_between(index, e["peak"], e["trough"]),
+        })
+
+    under = _underwater(days, vals)
+    d, u = _downsample(days, under)
+    current = under[-1]
+    return {
+        "days": d, "values": u,
+        "indexName": index_name,
+        "worst": worst,
+        "current": current,
+        "best": _best_run(days, vals),
+        "inDrawdown": current < -0.5,
+        "floor": DRAWDOWN_FLOOR,
+        "from": days[0],
+    }
 
 
 # ---------------------------------------------------------------------------

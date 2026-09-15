@@ -1008,7 +1008,7 @@ async function renderFundPage(host) {
     <div class="fundhead">
       <div>
         <h2>${esc(f.name)}</h2>
-        <p class="muted">${esc(f.category)} · ${esc(f.amc || '')}</p>
+        <p class="muted">${esc(f.category)}${f.amc ? ' · ' + esc(f.amc) : ''}</p>
       </div>
       ${analyst ? `<div class="fundhead-score">
         ${bandPill(f.band)}
@@ -1019,93 +1019,115 @@ async function renderFundPage(host) {
     </div>
 
     <div class="snapshot">
-      <section class="snapcard chartcard">
-        <span class="snapcard-head">
-          <span class="snapcard-title">Growth of 100 rupees</span>
-          <span class="snapcard-sub" id="growth-sub">daily NAV, rebased to zero
-            at the start of the window</span>
-          <button class="chart-more" data-card="done">Every period &rsaquo;</button>
-        </span>
-        <div class="periodbar" id="periodbar" role="group"
-             aria-label="Chart period"></div>
-        <div id="c-growth"></div>
-        <p class="cardnote muted sm" id="growth-note"></p>
-      </section>
+      <div class="snapcol">
+        <section class="snapcard chartcard">
+          <span class="snapcard-head">
+            <span class="snapcard-title">Growth of 100 rupees</span>
+            <span class="snapcard-sub" id="growth-sub">daily NAV, rebased to zero
+              at the start of the window</span>
+            <button class="chart-more" data-card="returns">Every period &rsaquo;</button>
+          </span>
+          <div class="periodbar" id="periodbar" role="group"
+               aria-label="Chart period"></div>
+          <div id="c-growth"></div>
+          <p class="cardnote muted sm" id="growth-note"></p>
+        </section>
 
-      ${card('holds', 'What it holds',
-             f.holdingCount ? `${f.holdingCount} names` : 'no disclosed book',
-             f.holdingCount
-               ? '<div id="c-caps"></div>' +
-                 `<div class="cardfoot">
-                    <span>${term('Top 10 weight')}</span><b>${num(f.top10, 0)}%</b>
-                    <span>Largest</span><b>${num(f.largestPosition, 1)}%</b></div>`
-               // Four bars all reading zero look like a broken card rather than
-               // an absent one, so the card says which it is.
-               : `<p class="muted sm nobook">No security level holdings are
-                  collected for this scheme, so concentration and overlap cannot
-                  be read for it.</p>`)}
+        ${returnsCard(f)}
 
-      ${card('rolling', 'What a holding period gave',
-             'median of every window of that length',
-             '<div id="c-rolling"></div>')}
+        <div class="snaprow">
+          ${card('holds', 'Shape of the equity book',
+                 f.holdingCount ? `${f.holdingCount} names` : 'no disclosed book',
+                 f.holdingCount
+                   ? `<div class="shapegrid">
+                        <div><span class="k">${term('Top 5 weight')}</span>
+                             <span class="v">${num(f.topFive, 0)}%</span></div>
+                        <div><span class="k">${term('Top 10 weight')}</span>
+                             <span class="v">${num(f.top10, 0)}%</span></div>
+                        <div><span class="k">Largest</span>
+                             <span class="v">${num(f.largestPosition, 1)}%</span></div>
+                        <div><span class="k">${term('Category overlap')}</span>
+                             <span class="v">${num(f.categoryOverlap, 0)}%</span></div>
+                      </div>`
+                   // Four bars all reading zero look like a broken card rather than
+                   // an absent one, so the card says which it is.
+                   : `<p class="muted sm nobook">No security level holdings are
+                      collected for this scheme, so concentration and overlap cannot
+                      be read for it.</p>`)}
 
-      ${card('risk', 'How it behaves in a fall', 'capture against the benchmark at 100',
-             '<div id="c-capture"></div>' +
-             `<div class="cardfoot"><span>${term('Maximum drawdown')}</span>
-                <b>${num(f.maxDrawdown3Y, 1)}%</b></div>`)}
+          ${card('holds', 'Cap mix', 'share of the whole fund',
+                 `<div class="donutwrap"><div id="c-caps"></div>
+                    <div class="donutkey" id="c-caps-key"></div></div>`)}
+        </div>
+      </div>
 
-      ${card('who', 'Who runs it', mgrs.length === 1 ? 'one manager'
-              : `${mgrs.length} managers`,
-             `<div class="bigstat name">
-                <span class="v">${esc(lead ? lead.name : 'Not on file')}</span>
-                <span class="k">${lead && lead.tenureYears != null
-                  ? num(lead.tenureYears, 1) + ' yrs on this scheme'
-                  : 'tenure not stated'}</span>
-              </div>
-              <div class="cardfoot">
-                <span>${term('Market cycles run')}</span>
-                  <b>${num(f.managerCycles, 0)}</b>
-                ${mgrs.length > 1 ? `<span>and ${mgrs.length - 1} more</span>` : ''}</div>`)}
+      <div class="snapcol">
+        ${card('who', 'Who runs it', mgrs.length === 1 ? 'one manager'
+                : `${mgrs.length} managers`,
+               `<div class="bigstat name">
+                  <span class="v">${esc(lead ? lead.name : 'Not on file')}</span>
+                  <span class="k">${lead && lead.tenureYears != null
+                    ? num(lead.tenureYears, 1) + ' yrs on this scheme'
+                    : 'tenure not stated'}</span>
+                </div>
+                <div class="cardfoot">
+                  <span>${term('Market cycles run')}</span>
+                    <b>${num(f.managerCycles, 0)}</b>
+                  ${mgrs.length > 1 ? `<span>and ${mgrs.length - 1} more</span>` : ''}</div>`)}
 
-      ${card('ratios', 'Return per unit of risk', 'three years, against category peers',
-             `<div class="ratiogrid">
-                <div><span class="k">${term('Sharpe')}</span>
-                     <span class="v">${num(f.sharpe3Y, 2)}</span></div>
-                <div><span class="k">${term('Sortino')}</span>
-                     <span class="v">${num(f.sortino3Y, 2)}</span></div>
-                <div><span class="k">${term('Information ratio')}</span>
-                     <span class="v">${num(f.informationRatio3Y, 2)}</span></div>
-                <div><span class="k">${term('Beta')}</span>
-                     <span class="v">${num(f.beta3Y, 2)}</span></div>
-              </div>`)}
+        ${card('size', 'Size and cost', esc(f.vintageBasis || ''),
+               `<div class="bigstat label-first">
+                  <span class="k">${term('AUM')}</span>
+                  <span class="v">${cr(f.aumCr)}</span>
+                </div>
+                <div class="cardfoot">
+                  <span>${term('Net flow over 1Y')}</span>
+                    <b>${f.netFlow1YPct == null ? '—'
+                         : (f.netFlow1YPct > 0 ? '+' : '') + num(f.netFlow1YPct, 0) + '%'}</b>
+                  <span>${term('Expense ratio')}</span>
+                    <b>${f.ter == null ? '—' : num(f.ter, 2) + '%'}</b></div>`)}
 
-      ${card('size', 'Size and cost', esc(f.vintageBasis || ''),
-             `<div class="bigstat label-first">
-                <span class="k">${term('AUM')}</span>
-                <span class="v">${cr(f.aumCr)}</span>
-              </div>
-              <div class="cardfoot">
-                <span>${term('Net flow over 1Y')}</span>
-                  <b>${f.netFlow1YPct == null ? '—'
-                       : (f.netFlow1YPct > 0 ? '+' : '') + num(f.netFlow1YPct, 0) + '%'}</b>
-                <span>${term('Expense ratio')}</span>
-                  <b>${f.ter == null ? '—' : num(f.ter, 2) + '%'}</b></div>`)}
+        ${card('holds', 'Largest sectors', 'share of the equity book',
+               (f.sectors || []).length ? '<div id="c-sectors"></div>'
+                 : '<p class="muted sm nobook">No sector detail on file.</p>')}
 
-      ${analyst && f.scored ? card('score', 'The score', 'seven blocks, weighted',
-             '<div id="c-blocks"></div>') : ''}
+        ${card('holds', 'Top holdings',
+               f.holdingCount ? `largest ${(f.holdings || []).length} of ${f.holdingCount}`
+                 : 'no disclosed book',
+               bookList(f))}
+      </div>
+
+      <div class="snapcol">
+        ${card('ratios', 'Return per unit of risk', 'three years, against category peers',
+               `<div class="ratiogrid">
+                  <div><span class="k">${term('Sharpe')}</span>
+                       <span class="v">${num(f.sharpe3Y, 2)}</span></div>
+                  <div><span class="k">${term('Sortino')}</span>
+                       <span class="v">${num(f.sortino3Y, 2)}</span></div>
+                  <div><span class="k">${term('Information ratio')}</span>
+                       <span class="v">${num(f.informationRatio3Y, 2)}</span></div>
+                  <div><span class="k">${term('Beta')}</span>
+                       <span class="v">${num(f.beta3Y, 2)}</span></div>
+                </div>`)}
+
+        ${drawdownCard(f)}
+
+        ${card('risk', 'How it behaves in a fall', 'capture against the benchmark at 100',
+               '<div id="c-capture"></div>' +
+               `<div class="cardfoot"><span>${term('Maximum drawdown')}</span>
+                  <b>${num(f.maxDrawdown3Y, 1)}%</b></div>`)}
+      </div>
     </div>
+
+    ${analyst && f.scored ? `<div class="scorerow">${
+      card('score', 'The score', 'seven blocks, weighted',
+           '<div id="c-blocks"></div>')}</div>` : ''}
 
     ${analyst && f.flags.length ? `<div class="flagrow">${f.flags.map((x) => `
       <div class="flagcard ${esc(x.tone)}"><strong>${esc(x.label)}</strong>
       <span>${esc(x.why)}</span></div>`).join('')}</div>` : ''}`;
 
   // --- the visuals -------------------------------------------------------
-  Chart.bars($('#c-rolling'),
-    [['1Y', 'medianRolling1Y'], ['3Y', 'medianRolling3Y'], ['5Y', 'medianRolling5Y'],
-     ['7Y', 'medianRolling7Y'], ['10Y', 'medianRolling10Y']]
-      .map(([lab, k]) => ({ label: lab, value: f[k] })),
-    { suffix: '%', decimals: 1, colorFor: () => 'var(--seq-550)' });
-
   Chart.bars($('#c-capture'), [
     { label: 'Upside', value: f.upsideCapture3Y || 0 },
     { label: 'Downside', value: f.downsideCapture3Y || 0 },
@@ -1116,17 +1138,29 @@ async function renderFundPage(host) {
   /* The feed's allocation, not the holdings-derived cap mix. Both exist and they
      are on different denominators: capMix is a share of the equity sleeve and
      sums to less than 100, while these four are shares of the whole fund and sum
-     to exactly 100, which is the only basis on which cash belongs beside them. */
-  if (f.holdingCount) Chart.bars($('#c-caps'), [
-    { label: 'Large cap', value: f.largeCapPct || 0 },
-    { label: 'Mid cap', value: f.midCapPct || 0 },
-    { label: 'Small cap', value: f.smallCapPct || 0 },
-    { label: 'Cash and others', value: f.cashPct || 0, cash: true },
-  ], { suffix: '%', decimals: 0, max: 100,
-       // Parts of one book, not magnitudes to rank against each other: a
-       // sequential ramp made the 3% slice almost invisible while saying nothing
-       // the bar length was not already saying.
-       colorFor: (x) => x.cash ? 'var(--axis)' : 'var(--seq-450)' });
+     to exactly 100, which is the only basis on which cash belongs beside them.
+     A ring rather than four bars, because these are parts of one book and the
+     bars were inviting the eye to rank them against each other. */
+  const slices = capSlices(f);
+  if (slices.some((x) => x.value > 0)) {
+    Chart.donut($('#c-caps'), slices, {
+      size: 104, thickness: 19,
+      centreLabel: `${num(100 - (f.cashPct || 0), 0)}%`, centreNote: 'in equities' });
+    $('#c-caps-key').innerHTML = slices.map((x) => `<span>
+      <i style="background:${x.ink}"></i>${esc(x.label)}
+      <b>${num(x.value, 0)}%</b></span>`).join('');
+  } else if ($('#c-caps')) {
+    $('#c-caps').innerHTML = `<p class="muted sm nobook">No allocation is
+      published for this scheme.</p>`;
+  }
+
+  if ((f.sectors || []).length) Chart.bars($('#c-sectors'),
+    f.sectors.map((x) => ({ label: x.sector, value: x.weight })),
+    { suffix: '%', decimals: 0,
+      max: Math.max(...f.sectors.map((x) => x.weight)),
+      colorFor: () => 'var(--seq-450)' });
+
+  drawDrawdown(f);
 
   if (analyst && f.scored) Chart.blockBar($('#c-blocks'), f.blocks);
 
@@ -1176,7 +1210,10 @@ async function drawGrowth(key, period) {
     host.innerHTML = `<div class="empty">${esc(g.unavailable || 'No NAV history')}</div>`;
     return;
   }
-  Chart.growthLines(host, g.series);
+  /* Shorter than it was. The chart used to be the page and could take the room;
+     it is now the top of a column with a return table and the book under it, and
+     a 390px plot pushed those past the foot of the other two columns. */
+  Chart.growthLines(host, g.series, { height: 260 });
 
   const sub = $('#growth-sub');
   if (sub) sub.textContent = `${fmtDay(g.start)} to ${fmtDay(g.end)}, `
@@ -1209,6 +1246,137 @@ function fmtDay(iso) {
     'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()]} ${d.getFullYear()}`;
 }
 
+/* ------------------------------------------------- the fund page cards */
+
+/* Point to point and median rolling, side by side, each against the index and
+   each with the gap already subtracted. The two halves answer different
+   questions about the same horizon — what one pair of dates paid, and what a
+   typical window of that length paid — and the card refuses to choose between
+   them. Beyond a year both halves are annualised, so a 3Y column is a rate and
+   not a total. */
+function returnsCard(f) {
+  const t = f.returns || {};
+  const rows = t.rows || [];
+  if (!rows.length) return '';
+
+  const pc = (v) => v == null ? '—' : num(v, 1) + '%';
+  const alpha = (v) => v == null ? '<td class="r mono muted">—</td>'
+    : `<td class="r mono alpha ${v >= 0 ? 'up' : 'down'}">${
+        v > 0 ? '+' : ''}${num(v, 1)}</td>`;
+  const half = (h) => `<td class="r mono">${pc(h.fund)}</td>
+    <td class="r mono muted">${pc(h.bench)}</td>${alpha(h.alpha)}`;
+
+  return `
+    <button class="snapcard" data-card="returns">
+      <span class="snapcard-head">
+        <span class="snapcard-title">How it has done</span>
+        <span class="snapcard-sub">against ${esc(t.benchmark || 'the benchmark')}${
+          t.benchmarkKind === 'index'
+            ? ', the closest index the feed publishes' : ''}</span>
+        <span class="snapcard-go" aria-hidden="true">&rsaquo;</span>
+      </span>
+      <span class="snapcard-body">
+        <table class="rettable">
+          <colgroup><col style="width:13%">
+            <col style="width:15%"><col style="width:14%"><col style="width:13%">
+            <col style="width:15%"><col style="width:14%"><col style="width:13%"></colgroup>
+          <thead>
+            <tr class="grp"><th></th>
+              <th colspan="3">${term('Point to point')}</th>
+              <th colspan="3">${term('Median rolling')}</th></tr>
+            <tr><th></th>
+              <th class="r">Fund</th><th class="r">Index</th><th class="r">+/&minus;</th>
+              <th class="r">Fund</th><th class="r">Index</th><th class="r">+/&minus;</th></tr>
+          </thead>
+          <tbody>
+            ${rows.map((r) => `<tr>
+              <th class="per">${esc(r.label)}</th>
+              ${half(r.p2p)}${half(r.rolling)}</tr>`).join('')}
+          </tbody>
+        </table>
+        <p class="cardnote muted sm">Annualised from one year out. Rolling is the
+          middle window of every window of that length the fund has lived through.</p>
+      </span>
+    </button>`;
+}
+
+/* The four cap buckets as parts of one ring. Kept in one place so the ring and
+   its key cannot drift apart. */
+function capSlices(f) {
+  return [
+    { label: 'Large cap', value: f.largeCapPct || 0, ink: 'var(--seq-550)' },
+    { label: 'Mid cap', value: f.midCapPct || 0, ink: 'var(--seq-450)' },
+    { label: 'Small cap', value: f.smallCapPct || 0, ink: 'var(--seq-300)' },
+    { label: 'Cash and others', value: f.cashPct || 0, ink: 'var(--axis)' },
+  ];
+}
+
+function bookList(f) {
+  const h = f.holdings || [];
+  if (!h.length) return `<p class="muted sm nobook">No security level holdings
+    are collected for this scheme.</p>`;
+  return `<ol class="booklist">${h.map((x) => `<li>
+    <span>${esc(x.name)}</span><b>${num(x.weight, 1)}%</b></li>`).join('')}</ol>`;
+}
+
+/* A maximum drawdown is one number for a whole record. It says how deep the
+   hole was and nothing about how long the reader sat in it, which is the part
+   that decides whether a fund gets held. This card is the same record as a
+   shape: how deep, how long down, how long back, and what the market was doing
+   over the same stretch. */
+function drawdownCard(f) {
+  const d = f.drawdowns || {};
+  const body = d.unavailable
+    ? `<p class="muted sm nobook">${esc(d.unavailable)}</p>`
+    : `<div id="c-underwater"></div>
+       <table class="ddtable">
+         <thead><tr><th>From</th><th class="r">Fell</th><th class="r">Down</th>
+           <th class="r">Back</th><th class="r">Index</th></tr></thead>
+         <tbody>${(d.worst || []).map((w) => `<tr>
+           <td class="mono">${mon(w.peak)}</td>
+           <td class="r mono down">${num(w.depth, 1)}%</td>
+           <td class="r mono">${w.toBottom == null ? '—' : num(w.toBottom, 1) + 'm'}</td>
+           <td class="r mono">${w.recovered
+              ? num(w.toRecover, 1) + 'm' : '<em>open</em>'}</td>
+           <td class="r mono muted">${w.indexFall == null
+              ? '—' : num(w.indexFall, 1) + '%'}</td></tr>`).join('')}</tbody>
+       </table>
+       <p class="cardnote muted sm">Months to the bottom, then months back to the
+         old high.${d.best ? ` Best stretch <b>+${num(d.best.gain, 0)}%</b>,
+         ${mon(d.best.from)} to ${mon(d.best.to)}.` : ''}</p>`;
+
+  return `
+    <button class="snapcard" data-card="drawdown">
+      <span class="snapcard-head">
+        <span class="snapcard-title">Drawdown periods</span>
+        <span class="snapcard-sub">depth below its own high, and how long back${
+          d.inDrawdown ? ` &middot; ${num(Math.abs(d.current), 1)}% below it today`
+            : ' &middot; at a new high today'}</span>
+        <span class="snapcard-go" aria-hidden="true">&rsaquo;</span>
+      </span>
+      <span class="snapcard-body">${body}</span>
+    </button>`;
+}
+
+function drawDrawdown(f) {
+  const host = $('#c-underwater');
+  const d = f.drawdowns || {};
+  if (!host || d.unavailable) return;
+  Chart.underwater(host, d.days, d.values, {
+    height: 124,
+    marks: (d.worst || []).map((w) => ({ date: w.trough, label: mon(w.trough) })),
+  });
+}
+
+/* "Feb 20" — month and two digit year. Long enough to place an episode, short
+   enough to sit in a five column table a third of a screen wide. */
+function mon(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso + 'T00:00:00');
+  return `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
+             'Oct', 'Nov', 'Dec'][d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
+}
+
 function card(code, title, sub, body) {
   return `
     <button class="snapcard" data-card="${esc(code)}">
@@ -1236,26 +1404,66 @@ function openCardModal(code) {
   const head = (t, s) => `<div class="np-head"><h3>${esc(t)}</h3></div>
     ${s ? `<p class="np-means">${s}</p>` : ''}`;
 
-  if (code === 'done') {
+  if (code === 'returns') {
     const cy = Object.keys(f).filter((k) => /^returnCY\d\d$/.test(k))
       .sort().reverse().filter((k) => f[k] != null);
     return openModal(head('How it has done',
       `Point to point, annualised beyond one year. Against ${esc(bm.name || 'the benchmark')}` +
       (bm.kind === 'index' ? ', the closest index the feed publishes for this category ' +
        'rather than the category\'s own benchmark.' : '.')) +
-      `<div class="np-grid">
+      `<div class="np-grid three">
         <div class="np-col"><h5>Every period</h5>
           ${kvTable([['3M', num(f.return3M, 2) + '%'], ['6M', num(f.return6M, 2) + '%'],
                      ['1Y', num(f.return1Y, 2) + '%'], ['2Y', num(f.return2Y, 2) + '%'],
                      ['3Y', num(f.return3Y, 2) + '%'], ['5Y', num(f.return5Y, 2) + '%'],
                      ['7Y', num(f.return7Y, 2) + '%'],
                      ['Calendar year to date', num(f.returnCYTD, 2) + '%']])}</div>
+        <div class="np-col"><h5>Median rolling return</h5>
+          ${kvTable([['1Y', num(f.medianRolling1Y, 2) + '%'],
+                     ['3Y', num(f.medianRolling3Y, 2) + '%'],
+                     ['5Y', num(f.medianRolling5Y, 2) + '%'],
+                     ['7Y', num(f.medianRolling7Y, 2) + '%'],
+                     ['10Y', num(f.medianRolling10Y, 2) + '%']])}
+          <h5 style="margin-top:14px">Consistency</h5>
+          ${kvTable([['Share of 3Y windows beating the benchmark',
+                      f.rollingHitRate3Y == null ? '—' : num(f.rollingHitRate3Y, 1) + '%'],
+                     ['Windows measured', num(f.rollingWindows3Y, 0)],
+                     ['Category decile 3Y', num(f.decile3Y, 0)],
+                     ['Category decile 5Y', num(f.decile5Y, 0)]])}</div>
         <div class="np-col"><h5>Calendar years</h5>
           ${cy.length ? kvTable(cy.map((k) =>
             ['20' + k.slice(-2), num(f[k], 1) + '%'])) : '<p class="muted">Not published.</p>'}
           ${f.cyBeatPct != null ? `<p class="muted sm">Beat the benchmark in
             ${num(f.cyBeatPct, 0)}% of completed calendar years.</p>` : ''}</div>
       </div>`);
+  }
+
+  if (code === 'drawdown') {
+    const d = f.drawdowns || {};
+    const w = d.worst || [];
+    return openModal(head('Drawdown periods',
+      'Every fall of more than ' + num(d.floor || 8, 0) + '% from a high water ' +
+      'mark, measured on daily NAV since ' + fmtDay(d.from || '') + '. The index ' +
+      'column is what ' + esc(d.indexName || 'the market') + ' did over the same ' +
+      'stretch, peak date to trough date, not its own worst fall.') +
+      (w.length ? `<div class="np-grid">
+        <div class="np-col"><h5>The worst ${w.length}</h5>
+          ${kvTable(w.map((x) => [`${fmtDay(x.peak)} to ${fmtDay(x.trough)}`,
+            `${num(x.depth, 1)}%${x.indexFall == null ? ''
+              : `  ·  index ${num(x.indexFall, 1)}%`}`]))}</div>
+        <div class="np-col"><h5>How long they lasted</h5>
+          ${kvTable(w.flatMap((x) => [
+            [`Down to the bottom, from ${mon(x.peak)}`,
+             x.toBottom == null ? '—' : num(x.toBottom, 1) + ' months'],
+            [`Back to the old high, from ${mon(x.peak)}`,
+             x.recovered ? num(x.toRecover, 1) + ' months' : 'not yet'],
+          ]))}
+          ${d.best ? `<h5 style="margin-top:14px">The other side of it</h5>
+            ${kvTable([['Best stretch', '+' + num(d.best.gain, 0) + '%'],
+                       ['From', fmtDay(d.best.from)], ['To', fmtDay(d.best.to)],
+                       ['Months', num(d.best.months, 0)]])}` : ''}</div>
+      </div>` : `<p class="muted">${esc(d.unavailable
+        || 'No fall past the floor on file.')}</p>`));
   }
 
   if (code === 'ratios') {
@@ -1284,27 +1492,6 @@ function openCardModal(code) {
           Treynor are shown, not scored: they move almost in lockstep with
           Sortino and downside capture, so scoring them would weight volatility
           several times over.</p></div>
-      </div>`);
-  }
-
-  if (code === 'rolling') {
-    return openModal(head('What a holding period gave',
-      'Every window of that length in the fund\'s life, and the middle one. ' +
-      'It answers what a typical holding period delivered rather than what one ' +
-      'lucky pair of dates did.') +
-      `<div class="np-grid">
-        <div class="np-col"><h5>Median rolling return</h5>
-          ${kvTable([['1Y', num(f.medianRolling1Y, 2) + '%'],
-                     ['3Y', num(f.medianRolling3Y, 2) + '%'],
-                     ['5Y', num(f.medianRolling5Y, 2) + '%'],
-                     ['7Y', num(f.medianRolling7Y, 2) + '%'],
-                     ['10Y', num(f.medianRolling10Y, 2) + '%']])}</div>
-        <div class="np-col"><h5>Consistency</h5>
-          ${kvTable([['Share of 3Y windows beating the benchmark',
-                      f.rollingHitRate3Y == null ? '—' : num(f.rollingHitRate3Y, 1) + '%'],
-                     ['Windows measured', num(f.rollingWindows3Y, 0)],
-                     ['Category decile 3Y', num(f.decile3Y, 0)],
-                     ['Category decile 5Y', num(f.decile5Y, 0)]])}</div>
       </div>`);
   }
 

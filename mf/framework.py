@@ -699,6 +699,31 @@ GLOSSARY = {
         "What the book behaves like it holds, rather than how many names are in it.",
         "Ten names that are two thirds of the money is *not* a two hundred stock portfolio.",
     ],
+    "top 5 weight": [
+        "Share of the equity book held in its *five largest* positions.",
+        "The sharpest read on conviction: five names carrying a third of the "
+        "money is a *concentrated* fund whatever its holding count says.",
+    ],
+    "category overlap": [
+        "How much of this book is also in the *average book in its category*.",
+        "High overlap means the fund is *the category*, and its fee is being "
+        "charged for a portfolio the reader could hold more cheaply.",
+    ],
+    "point to point": [
+        "What one *pair of dates* paid, start of the window to today.",
+        "It is the number every factsheet quotes, and it moves with *when the "
+        "window happens to start*.",
+    ],
+    "median rolling": [
+        "The *middle* of every window of that length the fund has lived through.",
+        "It answers what a *typical* holding period gave, rather than what one "
+        "lucky pair of dates did.",
+    ],
+    "drawdown period": [
+        "One fall from a *high water mark* to its bottom, and the climb back.",
+        "Depth is only half of it: *how long* the hole lasted is what an "
+        "investor actually sits through.",
+    ],
     "top 10 weight": [
         "Share of the equity book held in its *ten largest* positions.",
         "Higher means more *conviction* and more *single stock risk*.",
