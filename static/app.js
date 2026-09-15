@@ -846,15 +846,12 @@ async function drawCalendarPanel(category) {
     ? `<span class="arrow">${c.dir === 'asc' ? '▲' : '▼'}</span>`
     : '<span class="arrow">↕</span>';
 
+  /* No heading and no preamble. The selected tile already says which category
+     this is, and the table explains itself: the figures are years, the colour
+     runs worst to best, the headers sort. What the reader does need to know is
+     that these are the leading fifteen and not the whole category, and that
+     sits with the rest of the small print underneath. */
   panel.innerHTML = `
-    <div class="catpanel-head">
-      <h3>${esc(category)}</h3>
-      <span class="muted">top ${d.funds.length} of ${d.count} schemes,
-        by calendar year</span>
-    </div>
-    <p class="lede sm">Every year is coloured against its own range, because
-    2020 and 2022 were not the same market and one scale across both would
-    colour the years rather than the funds. Click a year to sort on it.</p>
     <div class="tablewrap">
       <table class="grid dense heat">
         <thead><tr>
@@ -878,10 +875,12 @@ async function drawCalendarPanel(category) {
         </tbody>
       </table>
     </div>
-    <p class="muted sm">Calendar year returns, not annualised. Colour runs from
-    the worst figure in each year through that year's middle to its best, so it
-    ranks the funds within a year and never compares one year to another. A blank
-    is a year the fund had not launched into, or had not completed.</p>`;
+    <p class="muted sm">The leading ${d.funds.length} of ${d.count} schemes in
+    ${esc(category)}, by composite. Calendar year returns, not annualised.
+    Colour runs from the worst figure in each year through that year's middle to
+    its best, so it ranks the funds within a year and never compares one year to
+    another. Click a year to sort on it. A blank is a year the fund had not
+    launched into, or had not completed.</p>`;
 
   panel.querySelectorAll('th[data-year]').forEach((th) => th.onclick = () => {
     const c2 = calState();

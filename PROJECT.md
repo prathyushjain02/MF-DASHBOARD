@@ -322,7 +322,8 @@ Funds can be **ticked** in this table and carried to Compare. See 5.7.
 
 **Calendar year look through** is the second way to read a category, behind a
 button beside the shortlist. Its leading fifteen funds against every calendar
-year they have, as a heat map. A composite says how a fund has done; a row of
+year they have, as a heat map, with no heading and no preamble over it: the
+selected tile says which category this is, and the table explains itself. A composite says how a fund has done; a row of
 calendar years says *when*, and the two are different questions — a fund can
 carry a strong record because it was extraordinary in one year and ordinary in
 nine, and only the row shows it. Year to date leads and the years run
