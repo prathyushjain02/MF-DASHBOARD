@@ -70,8 +70,9 @@ def framework():
         "blocks": fw.BLOCKS,
         "categories": fw.CATEGORIES,
         # One list of horizons for every point to point return the front end
-        # draws, so the two cannot drift apart.
-        "returnHorizons": list(fw.RETURN_HORIZONS),
+        # draws, as label and field pairs, so the two cannot drift apart and the
+        # year to date column's odd feed name stays on this side.
+        "returnColumns": [dict(c) for c in fw.RETURN_COLUMNS],
         "mandate": fw.MANDATE,
         "aumCurves": {c: fw.aum_curve(c) for c in fw.CATEGORIES},
         "loosePeerGroups": fw.LOOSE_PEER_GROUPS,

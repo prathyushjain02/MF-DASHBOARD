@@ -386,7 +386,7 @@ the reader says which question they are asking and the table answers that one.
 
 | Band | Columns | Starts |
 |---|---|---|
-| Returns | The six horizons (6.2), point to point | on |
+| Returns | The seven horizons (6.2), point to point | on |
 | Rolling returns | Median rolling 3Y and 5Y, and the 3Y hit rate | on |
 | Risk metrics | Sortino, Information Ratio, maximum drawdown | on |
 | Capture ratios | Downside and upside capture | on |
@@ -402,8 +402,18 @@ mandate, and it is one tick away.
 the line above the table still says what it is, and a column leaving the view is
 not a reason to reorder the rows under them.
 
-The table scrolls sideways, so the **scheme name is pinned to the left edge** — a
-row of figures whose name has scrolled away belongs to nobody.
+**The table is a frozen pane.** Five hundred rows and up to twenty columns is a
+sheet, and a sheet whose headings scroll away is one where a column of figures
+belongs to nobody. The column headers hold the top edge, the scheme name holds
+the left, and the table scrolls under both.
+
+Getting there meant giving the wrapper its own height. `position: sticky` only
+works against the nearest scrolling ancestor, and `overflow-x: auto` makes the
+wrapper exactly that on **both** axes: setting one axis to anything but
+`visible` computes the other to `auto`. So the header had been sticking to a box
+that never scrolled vertically, and scrolling the page simply took it away. The
+count line lives outside the pane, because what the table is showing should not
+scroll away from the table it describes.
 
 ### 5.4 The fund page
 
@@ -418,7 +428,7 @@ What goes in which column follows the question being asked.
 | Card | Shows |
 |---|---|
 | Growth of 100 rupees | The fund, its category's index and the category average, rebased to zero on the same day, over a selectable window |
-| How it has done | The six return horizons (6.2) across the top; fund, index and alpha down the side. Point to point across all six, median rolling at 3Y and 5Y only. The alpha row is set heavier than the two it is drawn from, green where the fund is ahead and red where it is behind |
+| How it has done | The seven return horizons (6.2) across the top; fund, index and alpha down the side. Point to point across all seven, median rolling at 3Y and 5Y only. The alpha row is set heavier than the two it is drawn from, green where the fund is ahead and red where it is behind |
 | Shape of the equity book | Top 5 weight, top 10 weight, largest position, names held |
 | Cap mix | Large / mid / small / cash as a ring with its key beside it, and the equity share through the hole |
 
@@ -508,7 +518,7 @@ every reader of the first had to look past the machinery of the second.
   the annualised rate with the window's total beneath it, and a small table
   under it gives the gap to the benchmark (see 6.4).
 - **The table.** Funds as rows, metrics as columns, in four groups behind
-  checkboxes: the six return horizons (6.2), rolling 3Y and 5Y medians, risk metrics, capture
+  checkboxes: the seven return horizons (6.2), rolling 3Y and 5Y medians, risk metrics, capture
   ratios. The best figure in each column is marked among the funds only — a
   benchmark is the thing being measured against, not a competitor in the race.
 - **Stock overlap.** A triangular matrix of the weight each pair holds in
@@ -700,10 +710,10 @@ for full colour vision.
 
 ### 6.2 One set of return horizons
 
-Every point to point return, everywhere, is shown over **1M, 3M, 6M, 1Y, 3Y and
-5Y**. One list, defined once in `framework.py` as `RETURN_HORIZONS`, served to
-the front end through `/framework` and read from there by every table that draws
-returns.
+Every point to point return, everywhere, is shown over **1M, 3M, 6M, YTD, 1Y, 3Y
+and 5Y**. One list, defined once in `framework.py` as `RETURN_HORIZONS`, served
+to the front end through `/framework` as label and field pairs, and read from
+there by every table that draws returns.
 
 It is one list because six lists drift. The fund page carried 1M to 5Y, the
 shortlist 3M to 5Y, the comparison 3M to 7Y and the detail modal all of those
@@ -713,11 +723,23 @@ different questions and none of them said which.
 A month is noise and a decade is a different fund, but the short end is what
 somebody arriving has just watched happen and the long end is the only part that
 says anything about a process, so both are in. What is gone is 2Y and 7Y, which
-are neither, and the year to date, which is a calendar question answered
-properly by the calendar look through.
+are neither, and 10Y, which almost nothing in the universe has.
+
+**Year to date** sits between 6M and 1Y because that is roughly where it falls,
+but it is the one entry that is not a fixed length: it is however much of this
+year has happened. That is what earns it a place — it is the window everybody
+has been living through, and the only one that is the same window for every fund
+on the page. Two consequences follow from its not being a length:
+
+- It is **never annualised**, whatever the date. Scaling three months of a year
+  up to twelve is a forecast dressed as a measurement.
+- It is `returnCYTD` in the feed rather than `returnYTD`, so the horizons travel
+  to the front end as label and field pairs and the exception stays on the
+  model's side of the wire.
 
 Rolling returns are a different question and keep their own horizons: a rolling
-window needs several of itself to have a median, so the short end has none.
+window needs several of itself to have a median, so the short end has none, and
+"the median of every year to date so far" is not a window at all.
 
 ### 6.3 Tables
 

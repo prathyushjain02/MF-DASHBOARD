@@ -596,8 +596,27 @@ MEANINGFUL_GAP = 3.0
 # somebody arriving has just watched happen and the long end is the only part
 # that says anything about a process. Both are here; what is gone is 2Y and 7Y,
 # which are neither, and 10Y, which almost nothing in the universe has.
-RETURN_HORIZONS = ("1M", "3M", "6M", "1Y", "3Y", "5Y")
-RETURN_FIELDS = tuple(f"return{h}" for h in RETURN_HORIZONS)
+#
+# Year to date sits between 6M and 1Y because that is roughly where it falls,
+# but it is the one entry here that is not a fixed length: it is however much of
+# this year has happened, which is why it earns its place. It is the window
+# everybody has actually been living through, and the only one that is the same
+# window for every fund on the page.
+RETURN_HORIZONS = ("1M", "3M", "6M", "YTD", "1Y", "3Y", "5Y")
+
+
+def return_field(horizon):
+    """The feed column behind a horizon. Year to date is the exception: the feed
+    calls it CYTD, for the calendar year, and everything else is a plain
+    `return<span>`."""
+    return "returnCYTD" if horizon == "YTD" else f"return{horizon}"
+
+
+RETURN_FIELDS = tuple(return_field(h) for h in RETURN_HORIZONS)
+# What the front end needs to draw a column: what to call it and where to read
+# it. Sent as pairs so the CYTD exception lives here and not in the JavaScript.
+RETURN_COLUMNS = tuple({"label": h, "field": return_field(h)}
+                       for h in RETURN_HORIZONS)
 
 
 # ---------------------------------------------------------------------------
@@ -605,8 +624,8 @@ RETURN_FIELDS = tuple(f"return{h}" for h in RETURN_HORIZONS)
 # ---------------------------------------------------------------------------
 
 CONTEXT_METRICS = [
-    *({"field": f"return{h}", "label": f"CAGR {h}", "unit": "%", "group": "cagr"}
-      for h in RETURN_HORIZONS if h not in ("1M", "3M", "6M")),
+    *({"field": return_field(h), "label": f"CAGR {h}", "unit": "%", "group": "cagr"}
+      for h in RETURN_HORIZONS if h not in ("1M", "3M", "6M", "YTD")),
     {"field": "returnCYTD", "label": "Calendar year to date", "unit": "%", "group": "cagr"},
     {"field": "cyBeatPct", "label": "Calendar years beating benchmark", "unit": "%",
      "group": "cagr"},

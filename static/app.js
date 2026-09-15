@@ -62,13 +62,17 @@ const cr = (v) => v == null ? '—'
 const ANALYST_ENABLED = false;
 const isAnalyst = () => ANALYST_ENABLED && state.mode === 'analyst';
 
-/* The horizons every point to point return is shown over, everywhere. They come
-   from the framework so there is one list rather than one per table: six lists
-   drift, and the same fund read on three pages then answers three different
-   questions without saying which. The literal is the fallback for the moment
-   before the framework has loaded. */
-const RETURN_HORIZONS = () =>
-  (state.fw && state.fw.returnHorizons) || ['1M', '3M', '6M', '1Y', '3Y', '5Y'];
+/* The horizons every point to point return is shown over, everywhere, as label
+   and field pairs. They come from the framework so there is one list rather than
+   one per table: six lists drift, and the same fund read on three pages then
+   answers three different questions without saying which. Pairs rather than
+   labels because year to date is `returnCYTD` in the feed, and that exception
+   belongs on the model's side. The literal is the fallback for the moment before
+   the framework has loaded. */
+const RETURN_FALLBACK = ['1M', '3M', '6M', 'YTD', '1Y', '3Y', '5Y'].map((h) =>
+  ({ label: h, field: h === 'YTD' ? 'returnCYTD' : 'return' + h }));
+const RETURN_COLUMNS = () =>
+  (state.fw && state.fw.returnColumns) || RETURN_FALLBACK;
 
 const BAND_TONE = { A: 'good', B: 'warning', C: 'serious', Review: 'critical',
                     'Not rated': 'neutral' };
@@ -548,7 +552,7 @@ async function drawCategoryPanel(category) {
   const c = catData.categories.find((x) => x.category === category);
   const panel = $('#catpanel');
   if (!c) { panel.innerHTML = ''; return; }
-  const hz = RETURN_HORIZONS();
+  const hz = RETURN_COLUMNS();
   panel.innerHTML = `
     <div class="catpanel-head">
       <h3>${esc(c.category)}</h3>
@@ -567,7 +571,7 @@ async function drawCategoryPanel(category) {
             <th rowspan="2">Fund manager</th>
           </tr>
           <tr>
-            ${hz.map((h) => `<th class="r sub2">${esc(h)}</th>`).join('')}
+            ${hz.map((h) => `<th class="r sub2">${esc(h.label)}</th>`).join('')}
             <th class="r sub2">3Y</th><th class="r sub2">5Y</th>
           </tr>
         </thead>
@@ -578,7 +582,7 @@ async function drawCategoryPanel(category) {
               <button class="fundlink" data-fund="${esc(f.key)}">${esc(f.name)}</button>
               <span class="muted sm">${esc(f.amc || '')}</span>
             </td>
-            ${hz.map((h) => `<td class="r mono">${num(f['return' + h], 1)}</td>`).join('')}
+            ${hz.map((h) => `<td class="r mono">${num(f[h.field], 1)}</td>`).join('')}
             <td class="r mono roll">${num(f.medianRolling3Y, 1)}</td>
             <td class="r mono roll">${num(f.medianRolling5Y, 1)}</td>
             <td class="r mono">${cr(f.aumCr)}</td>
@@ -594,7 +598,7 @@ async function drawCategoryPanel(category) {
                 ? 'closest available index' : 'category benchmark'}</span>
             </td>
             ${hz.map((h) => `<td class="r mono">${
-              num(c.benchmark['return' + h], 1)}</td>`).join('')}
+              num(c.benchmark[h.field], 1)}</td>`).join('')}
             <td class="r mono roll">—</td>
             <td class="r mono roll">—</td>
             <td class="r mono">—</td>
@@ -646,9 +650,9 @@ const COLUMNS = () => [
      the rolling columns beside them carry "Rolling" in their own labels, so the
      contrast does the work a repeated word would. The gloss says which kind of
      return these are for anybody who wants it spelled out. */
-  ...RETURN_HORIZONS().map((h) => ({ field: 'return' + h, label: h,
-                                     dir: 'desc', d: 1, group: 'returns',
-                                     gloss: 'point to point' })),
+  ...RETURN_COLUMNS().map((c) => ({ field: c.field, label: c.label,
+                                    dir: 'desc', d: 1, group: 'returns',
+                                    gloss: 'point to point' })),
   { field: 'medianRolling3Y', label: 'Rolling 3Y', dir: 'desc', d: 1,
     group: 'rolling', gloss: 'median rolling return' },
   { field: 'medianRolling5Y', label: 'Rolling 5Y', dir: 'desc', d: 1,
@@ -733,7 +737,8 @@ async function renderAll(host) {
           <label class="cmp-group"><input type="checkbox" data-group="${g.id}"
             ${filters.groups.has(g.id) ? 'checked' : ''}> ${esc(g.label)}</label>`).join('')}
       </div>
-      <div id="tablewrap" class="tablewrap"></div>
+      <div class="tablemeta" id="tablemeta"></div>
+      <div id="tablewrap" class="tablewrap frozen"></div>
     </section>`;
 
   const bind = (id, key, prop = 'value') => {
@@ -797,10 +802,12 @@ async function loadTable() {
     ? `<span class="arrow">${filters.dir === 'asc' ? '▲' : '▼'}</span>`
     : '<span class="arrow">↕</span>';
 
+  // Outside the scroll pane: what the table is showing and what it is sorted by
+  // should not scroll away from the table it describes.
+  $('#tablemeta').innerHTML = `${data.funds.length} of ${data.total} shown ·
+    sorted by ${esc(COLUMNS().find((c) => c.field === filters.sort)?.label || filters.sort)}
+    ${filters.dir === 'asc' ? 'ascending' : 'descending'}`;
   wrap.innerHTML = `
-    <div class="tablemeta">${data.funds.length} of ${data.total} shown ·
-      sorted by ${esc(COLUMNS().find((c) => c.field === filters.sort)?.label || filters.sort)}
-      ${filters.dir === 'asc' ? 'ascending' : 'descending'}</div>
     <table class="grid dense sticky">
       <thead><tr>
         <th class="pickcell"></th>
@@ -1644,10 +1651,10 @@ function openCardModal(code) {
        'rather than the category\'s own benchmark.' : '.')) +
       `<div class="np-grid three">
         <div class="np-col"><h5>Every period</h5>
-          ${kvTable(RETURN_HORIZONS().map((h) =>
-            [h, num(f['return' + h], 2) + '%']))}
+          ${kvTable(RETURN_COLUMNS().map((c) =>
+            [c.label, num(f[c.field], 2) + '%']))}
           <p class="muted sm">Against ${esc(bm.name || 'the benchmark')}:
-            ${RETURN_HORIZONS().map((h) => `${h} ${num(bm['return' + h], 1)}%`)
+            ${RETURN_COLUMNS().map((c) => `${c.label} ${num(bm[c.field], 1)}%`)
               .join(' · ')}</p></div>
         <div class="np-col"><h5>Median rolling return</h5>
           ${kvTable([['1Y', num(f.medianRolling1Y, 2) + '%'],
@@ -1863,7 +1870,7 @@ const MAX_CMP_MARKS = 2;
 const CMP_GROUPS = [
   { id: 'returns', label: 'Returns', note: 'annualised beyond one year',
     get rows() {
-      return RETURN_HORIZONS().map((h) => [h, 'return' + h, '%', 1, 'high']);
+      return RETURN_COLUMNS().map((c) => [c.label, c.field, '%', 1, 'high']);
     } },
   { id: 'rolling', label: 'Rolling returns', note: 'median of every window', rows: [
     ['3Y', 'medianRolling3Y', '%', 1, 'high', 'median rolling return'],

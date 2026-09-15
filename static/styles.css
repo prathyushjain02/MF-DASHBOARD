@@ -209,6 +209,26 @@ section { margin-bottom: 32px; }
 .grid tr.sub { background: var(--surface-2) !important; }
 .grid.kv td:first-child { color: var(--text-primary); }
 .tablewrap { overflow-x: auto; }
+
+/* A frozen pane, for the one table long enough to need one.
+
+   `position: sticky` on a header only works against the nearest scrolling
+   ancestor, and `overflow-x: auto` makes the wrapper exactly that on both axes:
+   setting one axis to anything but `visible` computes the other to `auto`. So
+   the header was sticking to a box that never scrolled vertically, and scrolling
+   the page took it away. Giving the wrapper its own height makes it the pane the
+   header sticks inside, which is also what a frozen pane means: the table scrolls
+   under its own headings rather than the page scrolling past them.
+
+   The height is what is left of the viewport under the bar, the filter row, the
+   band checkboxes and the count line, with a floor so a short list on a small
+   screen does not end up in a letterbox. */
+.tablewrap.frozen { overflow: auto; max-height: calc(100vh - 250px);
+  min-height: 340px; overscroll-behavior: contain; }
+/* The head needs its own background once rows pass under it, and a rule beneath
+   so the boundary is visible rather than implied. */
+.tablewrap.frozen .grid.sticky thead th { background: var(--surface-1);
+  box-shadow: inset 0 -1px 0 var(--border-strong); }
 .tablemeta { font-size: 11.5px; color: var(--text-muted); margin-bottom: 6px;
   font-family: var(--mono); }
 .grid.sticky thead th { position: sticky; top: 0; z-index: 2; }
@@ -225,6 +245,10 @@ section { margin-bottom: 32px; }
    otherwise hold the pinned heading at the same level as its neighbours and let
    them paint straight over it. */
 .grid.sticky thead th.namecell { z-index: 4; }
+/* Where the two frozen edges meet. Without its own background the corner cell is
+   transparent and the rows scroll visibly through it. */
+.tablewrap.frozen .grid.sticky thead th.namecell,
+.tablewrap.frozen .grid.sticky thead th.pickcell { background: var(--surface-1); }
 .r { text-align: right; }
 .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .dim, .muted { color: var(--text-muted); }
@@ -1153,6 +1177,7 @@ body.modal-open { overflow: hidden; }
   .snapshot > * { grid-column: 1 / -1 !important; }
   .snaprow { grid-template-columns: 1fr; }
   .rettable { font-size: 11px; }
+  .tablewrap.frozen { max-height: calc(100vh - 300px); }
   #main { padding: 18px 16px 30px; }
   /* Below this the wordmark, five tabs and the plan switch will not sit on one
      line, so the bar becomes two: the name and the switch above, the tabs
@@ -1182,6 +1207,7 @@ body.modal-open { overflow: hidden; }
   .cmp-pickers, .cmp-pfbtns, .periodbar, .cmp-groupbar, .cmp-download,
   .backlink, .chart-more, .snapcard-go { display: none !important; }
   #main { padding: 0; max-width: none; }
+  .tablewrap.frozen { overflow: visible; max-height: none; min-height: 0; }
   #masthead .brand { flex-direction: row; align-items: baseline; gap: 5px;
     border-right: 0; padding: 0; font-size: 15px; }
   .lede { font-size: 11px; }

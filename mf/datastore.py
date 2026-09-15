@@ -403,7 +403,7 @@ def shortlist(category, state=None, limit=8):
 # The horizons the card carries. Short enough a reader holds all five in their
 # head, long enough that the last two say something about a process rather than
 # about a quarter.
-RETURN_ROWS = tuple((h, h) for h in fw.RETURN_HORIZONS)
+RETURN_ROWS = tuple((h, fw.return_field(h)) for h in fw.RETURN_HORIZONS)
 
 
 def returns_table(fund, state=None):
@@ -418,19 +418,22 @@ def returns_table(fund, state=None):
     name, kind = fw.benchmark_for(fund.get("category"))
     bm = (state.get("benchmarks") or {}).get(name) or {}
 
-    def pair(prefix, horizon):
-        field = f"{prefix}{horizon}"
+    def pair(field):
         f_v, b_v = fund.get(field), bm.get(field)
         return {"fund": f_v, "bench": b_v,
                 "alpha": (round(f_v - b_v, 2)
                           if f_v is not None and b_v is not None else None)}
 
+    # The two halves are read off different columns: point to point off the
+    # feed's own return column for that horizon, rolling off a median window of
+    # the same length. Year to date has no rolling half and never will, because
+    # "the median of every year to date so far" is not a window.
     return {
         "benchmark": name, "benchmarkKind": kind,
         "rows": [{"label": label,
-                  "p2p": pair("return", h),
-                  "rolling": pair("medianRolling", h)}
-                 for label, h in RETURN_ROWS],
+                  "p2p": pair(field),
+                  "rolling": pair(f"medianRolling{label}")}
+                 for label, field in RETURN_ROWS],
     }
 
 
@@ -1028,7 +1031,11 @@ def _cap(seq, n):
 # here, which left the two index marks blank in a column every fund filled.
 _HORIZON_DAYS = {"1M": 30, "3M": 91, "6M": 182, "1Y": 365, "2Y": 730,
                  "3Y": 1095, "5Y": 1826, "7Y": 2557, "10Y": 3653}
-_RETURN_WINDOWS = tuple((f"return{h}", _HORIZON_DAYS[h]) for h in fw.RETURN_HORIZONS)
+# Year to date is not a length, so it is not in here. It is measured from the
+# first of January against whatever day the series ends on, which is a different
+# question and gets its own branch below.
+_RETURN_WINDOWS = tuple((fw.return_field(h), _HORIZON_DAYS[h])
+                        for h in fw.RETURN_HORIZONS if h != "YTD")
 _ANNUALISE_BEYOND = 400
 _MIN_ROLLING_WINDOWS = 12
 
@@ -1121,9 +1128,27 @@ def _series_metrics(series):
     out = {k: None for k in _COMPARE_METRICS}
     for name, win in _RETURN_WINDOWS:
         out[name] = _window_return(days, vals, win, spacing, end)
+    if "returnCYTD" in out:
+        out["returnCYTD"] = _ytd_return(days, vals, spacing, end)
     out["medianRolling3Y"] = _rolling_median(days, vals, 1095, spacing, end)
     out["medianRolling5Y"] = _rolling_median(days, vals, 1826, spacing, end)
     return out if any(v is not None for v in out.values()) else None
+
+
+def _ytd_return(days, vals, spacing, end):
+    """Growth since the last close of the previous year.
+
+    Not annualised whatever the date: a year to date figure is what has happened
+    so far, and scaling three months of it up to a year would be a forecast
+    dressed as a measurement.
+    """
+    jan1 = f"{_date.fromisoformat(days[end]).year}-01-01"
+    v1 = vals[end]
+    v0 = _nearest(days[:end + 1], vals[:end + 1], jan1,
+                  min(max(7, spacing * 0.55), 20))
+    if not v0 or not v1:
+        return None
+    return round(100.0 * (v1 / v0 - 1.0), 2)
 
 
 def _mark_metrics(mark, state):
@@ -1198,7 +1223,7 @@ _CSV_IDENTITY = (
     ("NAV", "nav"), ("NAV date", "navDate"),
 )
 _CSV_METRICS = (
-    *((f"Return {h} %", f"return{h}") for h in fw.RETURN_HORIZONS),
+    *((f"Return {h} %", fw.return_field(h)) for h in fw.RETURN_HORIZONS),
     ("Median rolling 3Y %", "medianRolling3Y"),
     ("Median rolling 5Y %", "medianRolling5Y"),
     ("Sharpe 3Y", "sharpe3Y"), ("Sortino 3Y", "sortino3Y"),
