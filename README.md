@@ -1,4 +1,4 @@
-# Mutual Fund Screener
+# The Filter
 
 An active equity fund screener built to `MF_Screener_Instructions.md`. One model
 with two jobs: rank the funds in each category and surface the shortlist, then

@@ -1,13 +1,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mutual Fund Screener</title>
+<title>The Filter</title>
 <link rel="stylesheet" href="/static/styles.css">
 
 <header id="masthead">
-  <div class="brand">
-    <h1>Mutual fund screener</h1>
-    <p>Actively managed equity: every fund read against its own category</p>
-  </div>
+  <h1 class="brand"><span>The</span><span>Filter</span></h1>
+
+  <nav id="tabs" role="tablist">
+    <button data-view="approach" role="tab">How we look at funds</button>
+    <button data-view="shortlist" role="tab" class="on">Category top funds</button>
+    <button data-view="all" role="tab">All funds</button>
+    <button data-view="compare" role="tab">Compare</button>
+    <button data-view="portfolio" role="tab">Portfolio builder</button>
+  </nav>
+
   <div class="masthead-right">
     <div id="plantoggle" class="segmented" role="group" aria-label="Plan">
       <button data-plan="direct" class="on" aria-pressed="true">Direct</button>
@@ -16,14 +22,6 @@
     <div id="buildmeta" class="buildmeta"></div>
   </div>
 </header>
-
-<nav id="tabs" role="tablist">
-  <button data-view="approach" role="tab">How we look at funds</button>
-  <button data-view="shortlist" role="tab" class="on">Category top funds</button>
-  <button data-view="all" role="tab">All funds</button>
-  <button data-view="compare" role="tab">Compare</button>
-  <button data-view="portfolio" role="tab">Portfolio builder</button>
-</nav>
 
 <main id="main" aria-live="polite">
   <div class="loading">Loading the universe…</div>

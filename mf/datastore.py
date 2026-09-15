@@ -1225,7 +1225,7 @@ def compare_csv(keys, marks=(), period="3y", state=None, weights=None):
     g = (portfolio_growth(weights, marks, period, state) if weights
          else compare_growth(keys, marks, period, state))
 
-    out = [["Mutual fund screener, compare"],
+    out = [["The Filter, compare"],
            ["Built", (state.get("meta") or {}).get("builtAt")]]
     if g.get("start"):
         out.append(["Chart window", g["start"], g["end"]])

@@ -104,19 +104,29 @@ a { color: var(--red); }
 /* ------------------------------------------------------------- masthead */
 /* Title over sub-title over a hairline with a short red lead segment: the
    template's slide header, reused as the page header. */
+/* The wordmark, the tabs and the plan switch on one line. The name stacks into
+   the height of the bar rather than sitting above it, which is what lets the
+   tabs come up beside it instead of costing a second row. */
 #masthead {
-  display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;
-  justify-content: space-between; padding: 24px 34px 12px;
-  background: var(--surface-1); position: relative;
+  display: flex; align-items: stretch; gap: 0;
+  padding: 0 34px; background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
 }
-#masthead::after {
-  content: ""; position: absolute; left: 34px; right: 34px; bottom: 0; height: 1px;
-  background: linear-gradient(to right, var(--red) 0 46px, var(--border) 46px);
+.brand {
+  display: flex; flex-direction: column; justify-content: center;
+  margin: 0; padding: 10px 22px 10px 0; font-size: 21px; line-height: 1.02;
+  font-family: var(--title); font-weight: 500; color: var(--ink-strong);
+  letter-spacing: -0.01em; white-space: nowrap;
 }
-.brand h1 { font-size: 25px; line-height: 1.15; }
-.brand p { margin: 3px 0 0; color: var(--text-secondary); font-size: 16px;
-  font-family: var(--title); }
-.masthead-right { display: flex; flex-direction: column; align-items: flex-end; gap: 9px; }
+/* "The" is the smaller half of the pair and sits back, so the eye lands on the
+   word that names the thing. */
+.brand span:first-child { font-size: 0.62em; font-weight: 400;
+  color: var(--text-muted); letter-spacing: 0.04em; text-transform: uppercase; }
+/* The rule the tabs sit against. A border on the brand rather than a separate
+   element, so it is exactly the height of the bar. */
+#masthead .brand { border-right: 1px solid var(--border); }
+.masthead-right { display: flex; align-items: center; gap: 16px;
+  margin-left: auto; padding-left: 22px; }
 .buildmeta { color: var(--text-muted); font-size: 11px; font-family: var(--mono); }
 
 .segmented { display: inline-flex; border: 1px solid var(--border-strong); }
@@ -132,11 +142,12 @@ a { color: var(--red); }
 .segmented button:disabled.on { opacity: 1; }
 
 /* ----------------------------------------------------------------- tabs */
-#tabs { display: flex; padding: 0 34px; background: var(--surface-1);
-  border-bottom: 1px solid var(--border); overflow-x: auto; }
+#tabs { display: flex; padding: 0 0 0 4px; background: none;
+  overflow-x: auto; scrollbar-width: none; }
+#tabs::-webkit-scrollbar { display: none; }
 #tabs button {
   border: 0; background: transparent; color: var(--text-secondary);
-  padding: 11px 18px 9px; font: inherit; font-family: var(--title); font-size: 13.5px;
+  padding: 11px 17px 9px; font: inherit; font-family: var(--title); font-size: 13.5px;
   cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap;
 }
 #tabs button:hover { color: var(--text-primary); }
@@ -969,9 +980,17 @@ body.modal-open { overflow: hidden; }
    row hairline that would otherwise cut through the block, and the fund name is
    pinned because a row of a dozen years scrolls. */
 /* The toggle sits in the page head, hard right, on the heading's own line. */
+/* With the headings gone the split head carries only the mode buttons, so it
+   pushes them to the right rather than spacing an absent left half against
+   them. */
 .section-head-split { display: flex; align-items: flex-start;
-  justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  justify-content: flex-end; gap: 24px; flex-wrap: wrap; }
 .catmodes { flex: none; }
+/* A head with no heading in it has nothing for the red rule to underline, and a
+   rule under nothing reads as a stray mark. The tiles below carry their own
+   top border, so the row just holds the buttons. */
+.section-head-bare { padding-bottom: 0; margin-bottom: 12px; }
+.section-head-bare::after { display: none; }
 /* The figures are the content here, not a supporting column, so they are set
    a step up from the dense table default rather than down with it. */
 .heat td.heatcell { border-bottom: 0; padding: 7px 10px; text-align: right;
@@ -1135,10 +1154,15 @@ body.modal-open { overflow: hidden; }
   .snaprow { grid-template-columns: 1fr; }
   .rettable { font-size: 11px; }
   #main { padding: 18px 16px 30px; }
-  #masthead { padding: 16px 16px 12px; }
-  #masthead::after { left: 16px; right: 16px; }
-  #tabs { padding: 0 8px; }
-  .masthead-right { align-items: flex-start; }
+  /* Below this the wordmark, five tabs and the plan switch will not sit on one
+     line, so the bar becomes two: the name and the switch above, the tabs
+     underneath, scrolling sideways if they have to. */
+  #masthead { padding: 0 16px; flex-wrap: wrap; align-items: center; }
+  #masthead .brand { border-right: 0; padding: 9px 0; font-size: 19px; }
+  .masthead-right { padding-left: 0; gap: 10px; }
+  #tabs { order: 3; width: 100%; padding: 0;
+    border-top: 1px solid var(--border); }
+  .buildmeta { display: none; }
   .pick { grid-template-columns: 26px 1fr; }
   .pick-stats { grid-column: 2; }
   .filterbar label:first-child input { min-width: 190px; }
@@ -1154,18 +1178,16 @@ body.modal-open { overflow: hidden; }
 
 @media print {
   html, body { background: #fff; }
-  #masthead { padding: 0 0 8px; }
-  #masthead::after { display: none; }
+  #masthead { padding: 0 0 6px; border-bottom: 0; }
   #tabs, #plantoggle, #pickbar, #tooltip, .modal-backdrop,
   .cmp-pickers, .cmp-pfbtns, .periodbar, .cmp-groupbar, .cmp-download,
   .backlink, .chart-more, .snapcard-go { display: none !important; }
   #main { padding: 0; max-width: none; }
-  .brand h1 { font-size: 19px; }
-  .brand p, .lede { font-size: 11px; }
+  #masthead .brand { flex-direction: row; align-items: baseline; gap: 5px;
+    border-right: 0; padding: 0; font-size: 15px; }
+  .lede { font-size: 11px; }
   .section-head { margin-bottom: 4px; padding-bottom: 2px; }
   .section-head::after { display: none; }
-  #masthead { padding: 0 0 4px; }
-  .brand p { display: none; }
 
   /* Nothing may break across a page: a table split mid body reads as two
      tables that disagree. */

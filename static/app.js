@@ -1,4 +1,4 @@
-/* Mutual Fund Screener.
+/* The Filter, a mutual fund screener.
  *
  * Four views: the methodology page, the per-category shortlists, the full table
  * with a fund detail card, and a side by side comparison.
@@ -498,12 +498,7 @@ async function renderShortlists(host) {
 
   host.innerHTML = `
     <section>
-      <div class="section-head section-head-split">
-        <div>
-          <h2>Category top funds</h2>
-          <p class="lede">Pick a category to see its shortlist. Click a fund for
-          the full view.</p>
-        </div>
+      <div class="section-head section-head-split section-head-bare">
         ${openCat === PASSIVE_CAT ? '' : `
           <div id="cat-modes" class="segmented catmodes" role="group"
                aria-label="How to read the category">
@@ -667,7 +662,6 @@ async function renderAll(host) {
   const amcs = state.meta.amcs || [];
   host.innerHTML = `
     <section>
-      <div class="section-head"><h2>All funds</h2></div>
       <div class="filterbar">
         <label>Search
           <input id="f-q" type="search" placeholder="Scheme, AMC or manager"
@@ -1865,13 +1859,6 @@ async function renderCompare(host) {
   const c = cmpState();
   host.innerHTML = `
     <section>
-      <div class="section-head">
-        <h2>Compare</h2>
-        <p class="lede">Put funds on one chart against up to ${MAX_CMP_MARKS}
-        benchmarks and read them side by side. To hold them together and read the
-        combination, use the portfolio builder.</p>
-      </div>
-
       <div class="cmp-pickers">
         <div class="cmp-pick">
           <label class="cmp-lab" for="cmp-lookup">Funds
@@ -2209,13 +2196,6 @@ async function renderPortfolio(host) {
   const c = builder('portfolio');
   host.innerHTML = `
     <section>
-      <div class="section-head">
-        <h2>Portfolio builder</h2>
-        <p class="lede">Weight a set of funds and read the combination: one
-        line, what it actually holds once the books are added together, and how
-        much of it is the same holding bought twice.</p>
-      </div>
-
       <div class="cmp-pickers">
         <div class="cmp-pick">
           <label class="cmp-lab" for="cmp-lookup">Holdings

@@ -589,9 +589,23 @@ colour each one takes on the chart.
   *Save as PDF* produces the file. The PDF is the page itself rather than a
   second rendering of it that could drift.
 
-### 5.9 Direct or regular
+### 5.9 The bar
 
-The masthead carries one toggle: **Direct** or **Regular**. It is a real
+Everything above the page sits on one line: the wordmark, a vertical rule, the
+five tabs, and the plan switch with the build stamp at the right. The name
+stacks — **THE** small and set back over **Filter** — so it fits the height of
+the bar rather than sitting above it, which is what lets the tabs come up beside
+it instead of costing a second row. Below 760px the bar wraps into two: the name
+and the switch above, the tabs underneath.
+
+No page repeats its own tab as a heading, and none of them explains itself in a
+line underneath. The tab says which page this is; a heading saying it again and
+a sentence saying a list can be clicked are both telling the reader what is
+already in front of them.
+
+#### Direct or regular
+
+The bar carries one toggle: **Direct** or **Regular**. It is a real
 distinction and not a presentation one. The two plans of a scheme are different
 products with different expense ratios and therefore different returns, and the
 feed currently carries the direct plan. **Regular is present and disabled** until
