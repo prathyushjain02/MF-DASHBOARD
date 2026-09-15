@@ -312,7 +312,8 @@ the copy once and left there.
 
 ### 5.2 Category top funds
 
-A tile per category, then that category's shortlist as a table: 3M, 6M, 1Y, 3Y
+A tile per category, then that category's shortlist as a table: the six return
+horizons (6.2), 3Y
 and 5Y returns, median rolling 3Y and 5Y, AUM, and the named managers. The
 category's **benchmark travels in the table footer**, on the same columns, so
 every row above it can be read against the same line rather than against a
@@ -396,7 +397,7 @@ What goes in which column follows the question being asked.
 | Card | Shows |
 |---|---|
 | Growth of 100 rupees | The fund, its category's index and the category average, rebased to zero on the same day, over a selectable window |
-| How it has done | 1M, 3M, 1Y, 3Y and 5Y across the top; fund, index and alpha down the side. Point to point across all five, median rolling at 3Y and 5Y only. The alpha row is set heavier than the two it is drawn from, green where the fund is ahead and red where it is behind |
+| How it has done | The six return horizons (6.2) across the top; fund, index and alpha down the side. Point to point across all six, median rolling at 3Y and 5Y only. The alpha row is set heavier than the two it is drawn from, green where the fund is ahead and red where it is behind |
 | Shape of the equity book | Top 5 weight, top 10 weight, largest position, names held |
 | Cap mix | Large / mid / small / cash as a ring with its key beside it, and the equity share through the hole |
 
@@ -484,9 +485,9 @@ every reader of the first had to look past the machinery of the second.
   The window is pulled forward to the youngest fund in the selection and says
   so: lines rebased on different days are not a comparison. The legend carries
   the annualised rate with the window's total beneath it, and a small table
-  under it gives the gap to the benchmark (see 6.3).
+  under it gives the gap to the benchmark (see 6.4).
 - **The table.** Funds as rows, metrics as columns, in four groups behind
-  checkboxes: returns 3M to 7Y, rolling 3Y and 5Y medians, risk metrics, capture
+  checkboxes: the six return horizons (6.2), rolling 3Y and 5Y medians, risk metrics, capture
   ratios. The best figure in each column is marked among the funds only — a
   benchmark is the thing being measured against, not a competitor in the race.
 - **Stock overlap.** A triangular matrix of the weight each pair holds in
@@ -676,7 +677,28 @@ sits on the mark. Tested as a categorical data palette it fails on lightness
 band and separation: `#C3DFF4` against `#A6B0BA` is ΔE 13.9, under the 15 floor
 for full colour vision.
 
-### 6.2 Tables
+### 6.2 One set of return horizons
+
+Every point to point return, everywhere, is shown over **1M, 3M, 6M, 1Y, 3Y and
+5Y**. One list, defined once in `framework.py` as `RETURN_HORIZONS`, served to
+the front end through `/framework` and read from there by every table that draws
+returns.
+
+It is one list because six lists drift. The fund page carried 1M to 5Y, the
+shortlist 3M to 5Y, the comparison 3M to 7Y and the detail modal all of those
+plus a year to date, so the same fund read on three pages answered three
+different questions and none of them said which.
+
+A month is noise and a decade is a different fund, but the short end is what
+somebody arriving has just watched happen and the long end is the only part that
+says anything about a process, so both are in. What is gone is 2Y and 7Y, which
+are neither, and the year to date, which is a calendar question answered
+properly by the calendar look through.
+
+Rolling returns are a different question and keep their own horizons: a rolling
+window needs several of itself to have a median, so the short end has none.
+
+### 6.3 Tables
 
 Ruled top and bottom in red, zebra body, square corners, numbers in a monospace
 face so digits line up in a column.
@@ -693,7 +715,7 @@ Two rules learned the hard way:
   since an even row's own background is transparent and the columns would
   otherwise slide visibly underneath the name.
 
-### 6.3 Charts
+### 6.4 Charts
 
 All charts are hand-drawn SVG or DOM in `static/charts.js`: horizontal bars, the
 block bar, rebased growth lines with a crosshair, a scatter, a histogram, a range
@@ -733,7 +755,7 @@ Representation decisions that are worth stating:
 - **Capture is drawn against 100**, the benchmark's own level, with downside in
   the serious tone and upside in the sequential ramp.
 
-### 6.4 Words
+### 6.5 Words
 
 Every technical term the dashboard prints has a glossary entry, attached on
 hover and on focus. A number nobody can read is not disclosure.

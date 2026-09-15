@@ -69,6 +69,9 @@ def framework():
     return jsonify({
         "blocks": fw.BLOCKS,
         "categories": fw.CATEGORIES,
+        # One list of horizons for every point to point return the front end
+        # draws, so the two cannot drift apart.
+        "returnHorizons": list(fw.RETURN_HORIZONS),
         "mandate": fw.MANDATE,
         "aumCurves": {c: fw.aum_curve(c) for c in fw.CATEGORIES},
         "loosePeerGroups": fw.LOOSE_PEER_GROUPS,
@@ -195,9 +198,8 @@ def shortlists():
             "count": len(group),
             "funds": [ds.row(f) for f in ds.shortlist(c, state)],
             "benchmark": {"name": name, "kind": kind,
-                          **{k: (bm or {}).get(k) for k in
-                             ("return3M", "return6M", "return1Y",
-                              "return3Y", "return5Y")}} if bm else None,
+                          **{k: (bm or {}).get(k)
+                             for k in fw.RETURN_FIELDS}} if bm else None,
         })
     return jsonify({"categories": out})
 

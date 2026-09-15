@@ -62,6 +62,14 @@ const cr = (v) => v == null ? '—'
 const ANALYST_ENABLED = false;
 const isAnalyst = () => ANALYST_ENABLED && state.mode === 'analyst';
 
+/* The horizons every point to point return is shown over, everywhere. They come
+   from the framework so there is one list rather than one per table: six lists
+   drift, and the same fund read on three pages then answers three different
+   questions without saying which. The literal is the fallback for the moment
+   before the framework has loaded. */
+const RETURN_HORIZONS = () =>
+  (state.fw && state.fw.returnHorizons) || ['1M', '3M', '6M', '1Y', '3Y', '5Y'];
+
 const BAND_TONE = { A: 'good', B: 'warning', C: 'serious', Review: 'critical',
                     'Not rated': 'neutral' };
 
@@ -540,6 +548,7 @@ async function drawCategoryPanel(category) {
   const c = catData.categories.find((x) => x.category === category);
   const panel = $('#catpanel');
   if (!c) { panel.innerHTML = ''; return; }
+  const hz = RETURN_HORIZONS();
   panel.innerHTML = `
     <div class="catpanel-head">
       <h3>${esc(c.category)}</h3>
@@ -552,15 +561,13 @@ async function drawCategoryPanel(category) {
           <tr>
             <th class="pickcell" rowspan="2"></th>
             <th rowspan="2">Fund</th>
-            <th class="r grouped" colspan="5">Returns</th>
+            <th class="r grouped" colspan="${hz.length}">Returns</th>
             <th class="r grouped" colspan="2">${term('Median rolling return')}</th>
             <th class="r" rowspan="2">${term('AUM')}</th>
             <th rowspan="2">Fund manager</th>
           </tr>
           <tr>
-            <th class="r sub2">3M</th><th class="r sub2">6M</th>
-            <th class="r sub2">1Y</th><th class="r sub2">3Y</th>
-            <th class="r sub2">5Y</th>
+            ${hz.map((h) => `<th class="r sub2">${esc(h)}</th>`).join('')}
             <th class="r sub2">3Y</th><th class="r sub2">5Y</th>
           </tr>
         </thead>
@@ -571,16 +578,12 @@ async function drawCategoryPanel(category) {
               <button class="fundlink" data-fund="${esc(f.key)}">${esc(f.name)}</button>
               <span class="muted sm">${esc(f.amc || '')}</span>
             </td>
-            <td class="r mono">${num(f.return3M, 1)}</td>
-            <td class="r mono">${num(f.return6M, 1)}</td>
-            <td class="r mono">${num(f.return1Y, 1)}</td>
-            <td class="r mono">${num(f.return3Y, 1)}</td>
-            <td class="r mono">${num(f.return5Y, 1)}</td>
+            ${hz.map((h) => `<td class="r mono">${num(f['return' + h], 1)}</td>`).join('')}
             <td class="r mono roll">${num(f.medianRolling3Y, 1)}</td>
             <td class="r mono roll">${num(f.medianRolling5Y, 1)}</td>
             <td class="r mono">${cr(f.aumCr)}</td>
             <td class="mgr">${esc(f.fundManager || '—')}</td>
-          </tr>`).join('') || '<tr><td colspan="11" class="muted">No scored funds in this category.</td></tr>'}
+          </tr>`).join('') || `<tr><td colspan="${hz.length + 6}" class="muted">No scored funds in this category.</td></tr>`}
         </tbody>
         ${c.benchmark ? `<tfoot>
           <tr class="bmrow">
@@ -590,11 +593,8 @@ async function drawCategoryPanel(category) {
               <span class="muted sm">${c.benchmark.kind === 'index'
                 ? 'closest available index' : 'category benchmark'}</span>
             </td>
-            <td class="r mono">${num(c.benchmark.return3M, 1)}</td>
-            <td class="r mono">${num(c.benchmark.return6M, 1)}</td>
-            <td class="r mono">${num(c.benchmark.return1Y, 1)}</td>
-            <td class="r mono">${num(c.benchmark.return3Y, 1)}</td>
-            <td class="r mono">${num(c.benchmark.return5Y, 1)}</td>
+            ${hz.map((h) => `<td class="r mono">${
+              num(c.benchmark['return' + h], 1)}</td>`).join('')}
             <td class="r mono roll">—</td>
             <td class="r mono roll">—</td>
             <td class="r mono">—</td>
@@ -1595,11 +1595,11 @@ function openCardModal(code) {
        'rather than the category\'s own benchmark.' : '.')) +
       `<div class="np-grid three">
         <div class="np-col"><h5>Every period</h5>
-          ${kvTable([['3M', num(f.return3M, 2) + '%'], ['6M', num(f.return6M, 2) + '%'],
-                     ['1Y', num(f.return1Y, 2) + '%'], ['2Y', num(f.return2Y, 2) + '%'],
-                     ['3Y', num(f.return3Y, 2) + '%'], ['5Y', num(f.return5Y, 2) + '%'],
-                     ['7Y', num(f.return7Y, 2) + '%'],
-                     ['Calendar year to date', num(f.returnCYTD, 2) + '%']])}</div>
+          ${kvTable(RETURN_HORIZONS().map((h) =>
+            [h, num(f['return' + h], 2) + '%']))}
+          <p class="muted sm">Against ${esc(bm.name || 'the benchmark')}:
+            ${RETURN_HORIZONS().map((h) => `${h} ${num(bm['return' + h], 1)}%`)
+              .join(' · ')}</p></div>
         <div class="np-col"><h5>Median rolling return</h5>
           ${kvTable([['1Y', num(f.medianRolling1Y, 2) + '%'],
                      ['3Y', num(f.medianRolling3Y, 2) + '%'],
@@ -1812,11 +1812,10 @@ const MAX_CMP_MARKS = 2;
    than the figure in it. The long name is kept for the glossary lookup.
    [label, field, suffix, decimals, direction to win, glossary term] */
 const CMP_GROUPS = [
-  { id: 'returns', label: 'Returns', note: 'annualised beyond one year', rows: [
-    ['3M', 'return3M', '%', 1, 'high'], ['6M', 'return6M', '%', 1, 'high'],
-    ['1Y', 'return1Y', '%', 1, 'high'], ['2Y', 'return2Y', '%', 1, 'high'],
-    ['3Y', 'return3Y', '%', 1, 'high'], ['5Y', 'return5Y', '%', 1, 'high'],
-    ['7Y', 'return7Y', '%', 1, 'high']] },
+  { id: 'returns', label: 'Returns', note: 'annualised beyond one year',
+    get rows() {
+      return RETURN_HORIZONS().map((h) => [h, 'return' + h, '%', 1, 'high']);
+    } },
   { id: 'rolling', label: 'Rolling returns', note: 'median of every window', rows: [
     ['3Y', 'medianRolling3Y', '%', 1, 'high', 'median rolling return'],
     ['5Y', 'medianRolling5Y', '%', 1, 'high', 'median rolling return']] },

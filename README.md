@@ -166,7 +166,7 @@ in them.
 | Page | What it is |
 |---|---|
 | How we look at funds | The six-factor staircase: basic requirements 1 to 3, performance drivers 4 to 6. Click any step for a modal explaining what it means, with live figures from the current universe. |
-| Category top funds | A tile per category. Click one for its shortlist as a table: 3M, 6M, 1Y, 3Y and 5Y returns, median rolling 3Y and 5Y, AUM and the named managers. Click a fund name for its own page. |
+| Category top funds | A tile per category. Click one for its shortlist as a table: returns at 1M, 3M, 6M, 1Y, 3Y and 5Y, median rolling 3Y and 5Y, AUM and the named managers. Click a fund name for its own page. |
 | All funds | Every scheme. Filter by search, category, AMC, band, minimum AUM, maximum downside capture, holdings and rated-only; sort on any column. Click a row for the fund page, or tick it to carry into Compare. |
 | Fund | A one-page snapshot in three columns. Left, the record: the growth chart, point to point and median rolling returns against the index with the alpha printed, and the shape of the book. Middle, the fund as an object: size and cost, largest sectors, top holdings. Right, risk and who is taking it: return per unit of risk, the drawdown periods it has lived through, how it behaves in a fall, and who runs it. Every card opens its full detail in a modal. |
 | Smart beta / Passive | Index funds and ETFs grouped by the index each one tracks, best tracker first. No score: two funds on one index are the same product, so what separates them is how much of the index they hand back. |

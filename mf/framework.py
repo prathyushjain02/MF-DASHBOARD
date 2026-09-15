@@ -583,15 +583,30 @@ def band_for(score):
 MEANINGFUL_GAP = 3.0
 
 # ---------------------------------------------------------------------------
+# Point to point horizons
+# ---------------------------------------------------------------------------
+
+# The horizons every point to point return is shown over, everywhere. One list
+# rather than six, because six lists drift: the fund page carried 1M to 5Y, the
+# shortlist 3M to 5Y, the comparison 3M to 7Y and the detail modal all of those
+# plus a year to date, so the same fund read on three pages answered three
+# different questions and none of them said which.
+#
+# A month is noise and a decade is a different fund, but the short end is what
+# somebody arriving has just watched happen and the long end is the only part
+# that says anything about a process. Both are here; what is gone is 2Y and 7Y,
+# which are neither, and 10Y, which almost nothing in the universe has.
+RETURN_HORIZONS = ("1M", "3M", "6M", "1Y", "3Y", "5Y")
+RETURN_FIELDS = tuple(f"return{h}" for h in RETURN_HORIZONS)
+
+
+# ---------------------------------------------------------------------------
 # Metrics shown but not scored
 # ---------------------------------------------------------------------------
 
 CONTEXT_METRICS = [
-    {"field": "return1Y", "label": "CAGR 1Y", "unit": "%", "group": "cagr"},
-    {"field": "return2Y", "label": "CAGR 2Y", "unit": "%", "group": "cagr"},
-    {"field": "return3Y", "label": "CAGR 3Y", "unit": "%", "group": "cagr"},
-    {"field": "return5Y", "label": "CAGR 5Y", "unit": "%", "group": "cagr"},
-    {"field": "return7Y", "label": "CAGR 7Y", "unit": "%", "group": "cagr"},
+    *({"field": f"return{h}", "label": f"CAGR {h}", "unit": "%", "group": "cagr"}
+      for h in RETURN_HORIZONS if h not in ("1M", "3M", "6M")),
     {"field": "returnCYTD", "label": "Calendar year to date", "unit": "%", "group": "cagr"},
     {"field": "cyBeatPct", "label": "Calendar years beating benchmark", "unit": "%",
      "group": "cagr"},

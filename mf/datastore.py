@@ -79,8 +79,7 @@ _ROW_FIELDS = (
     "key", "name", "category", "amc", "fundManager", "band", "bandMeaning",
     "composite", "evidence", "overallRank", "categoryRank", "categoryCount",
     "tier", "tierSize", "aumCr", "nav", "navDate",
-    "return3M", "return6M", "return1Y", "return2Y", "return3Y",
-    "return5Y", "return7Y",
+    *fw.RETURN_FIELDS,
     "medianRolling3Y", "medianRolling5Y",
     "sharpe3Y", "sortino3Y", "informationRatio3Y", "treynor3Y",
     "upsideCapture3Y", "downsideCapture3Y", "maxDrawdown3Y",
@@ -152,8 +151,7 @@ def detail(fund, state=None):
                         "kind": fund.get("benchmarkKind")
                                 or fw.benchmark_for(fund.get("category"))[1],
                         **{k: bm.get(k) for k in
-                           ("return3M", "return6M", "return1Y", "return3Y",
-                            "return5Y", "return7Y", "returnCYTD")}} if bm else None
+                           fw.RETURN_FIELDS + ("returnCYTD",)}} if bm else None
     rec["peers"] = category_comparison(fund, state)
     rec["closest"] = closest_books(fund, state, limit=5)
     rec["holdings"] = top_holdings(fund, limit=15)
@@ -401,7 +399,7 @@ def shortlist(category, state=None, limit=8):
 # The horizons the card carries. Short enough a reader holds all five in their
 # head, long enough that the last two say something about a process rather than
 # about a quarter.
-RETURN_ROWS = (("1M", "1M"), ("3M", "3M"), ("1Y", "1Y"), ("3Y", "3Y"), ("5Y", "5Y"))
+RETURN_ROWS = tuple((h, h) for h in fw.RETURN_HORIZONS)
 
 
 def returns_table(fund, state=None):
@@ -999,8 +997,7 @@ COMPARE_MARKS = [
 
 # The columns the compare table can show, per fund and per mark.
 _COMPARE_METRICS = (
-    "return3M", "return6M", "return1Y", "return2Y", "return3Y", "return5Y",
-    "return7Y", "medianRolling3Y", "medianRolling5Y",
+    *fw.RETURN_FIELDS, "medianRolling3Y", "medianRolling5Y",
     "sharpe3Y", "sortino3Y", "informationRatio3Y", "beta3Y",
     "upsideCapture3Y", "downsideCapture3Y",
 )
@@ -1022,9 +1019,12 @@ def _cap(seq, n):
 # read off their own series instead of being left blank: an empty column tells
 # the reader nothing, and the arithmetic behind a point to point return is not
 # the part of this that needs a vendor.
-_RETURN_WINDOWS = (("return3M", 91), ("return6M", 182), ("return1Y", 365),
-                   ("return2Y", 730), ("return3Y", 1095), ("return5Y", 1826),
-                   ("return7Y", 2557))
+# Days in each displayed horizon. Driven off the framework's list so a mark read
+# off its own series carries exactly the columns the tables draw: 1M was missing
+# here, which left the two index marks blank in a column every fund filled.
+_HORIZON_DAYS = {"1M": 30, "3M": 91, "6M": 182, "1Y": 365, "2Y": 730,
+                 "3Y": 1095, "5Y": 1826, "7Y": 2557, "10Y": 3653}
+_RETURN_WINDOWS = tuple((f"return{h}", _HORIZON_DAYS[h]) for h in fw.RETURN_HORIZONS)
 _ANNUALISE_BEYOND = 400
 _MIN_ROLLING_WINDOWS = 12
 
@@ -1194,10 +1194,7 @@ _CSV_IDENTITY = (
     ("NAV", "nav"), ("NAV date", "navDate"),
 )
 _CSV_METRICS = (
-    ("Return 3M %", "return3M"), ("Return 6M %", "return6M"),
-    ("Return 1Y %", "return1Y"), ("Return 2Y %", "return2Y"),
-    ("Return 3Y %", "return3Y"), ("Return 5Y %", "return5Y"),
-    ("Return 7Y %", "return7Y"),
+    *((f"Return {h} %", f"return{h}") for h in fw.RETURN_HORIZONS),
     ("Median rolling 3Y %", "medianRolling3Y"),
     ("Median rolling 5Y %", "medianRolling5Y"),
     ("Sharpe 3Y", "sharpe3Y"), ("Sortino 3Y", "sortino3Y"),
