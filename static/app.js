@@ -439,6 +439,15 @@ async function renderShortlists(host) {
             <h3>${esc(c)}</h3>
           </button>`).join('')}
       </div>
+      ${openCat === PASSIVE_CAT ? '' : `
+        <div id="cat-modes" class="segmented catmodes" role="group"
+             aria-label="How to read the category">
+          <button data-mode="shortlist" class="${
+            state.catMode === 'calendar' ? '' : 'on'}">Category top funds</button>
+          <button data-mode="calendar" class="${
+            state.catMode === 'calendar' ? 'on' : ''}">Calendar year look through</button>
+        </div>`}
+
       <div id="catpanel" class="catpanel"></div>
     </section>`;
 
@@ -447,12 +456,18 @@ async function renderShortlists(host) {
     state.fund = null;
     renderShortlists(host);
   });
+  const cal = $('#cat-modes');
+  if (cal) cal.querySelectorAll('button').forEach((b) => b.onclick = () => {
+    state.catMode = b.dataset.mode;
+    renderShortlists(host);
+  });
   drawCategoryPanel(openCat);
   wireGlossary(host);
 }
 
 async function drawCategoryPanel(category) {
   if (category === PASSIVE_CAT) return drawPassivePanel();
+  if (state.catMode === 'calendar') return drawCalendarPanel(category);
   const c = catData.categories.find((x) => x.category === category);
   const panel = $('#catpanel');
   if (!c) { panel.innerHTML = ''; return; }
@@ -751,6 +766,120 @@ function openFund(key) {
   $('#tabs').querySelectorAll('button').forEach((b) => b.classList.remove('on'));
   render();
   window.scrollTo({ top: 0 });
+}
+
+/* ------------------------------------------------ calendar year look through */
+
+/* A composite says how a fund has done. A row of calendar years says when, and
+   the two are different questions: a fund can carry a strong record because it
+   was extraordinary in one year and ordinary in nine, and only the row shows it.
+
+   Every year is coloured on its own scale. 2020 and 2022 were not the same
+   market, and a shared range would colour the years rather than the funds. The
+   scale is the house diverging pair, red below zero and slate above it, so the
+   sign is read before the number is. */
+function calState() {
+  if (!state.cal) state.cal = { sort: null, dir: 'desc' };
+  return state.cal;
+}
+
+function heatTone(v, lo, hi) {
+  if (v == null) return { bg: 'transparent', fg: 'var(--text-muted)' };
+  if (v < 0) {
+    const t = lo < 0 ? Math.min(1, v / lo) : 0;          // 0 at zero, 1 at worst
+    return { bg: `rgba(204, 25, 25, ${(0.10 + 0.45 * t).toFixed(3)})`,
+             fg: t > 0.75 ? '#fff' : 'var(--text-primary)' };
+  }
+  const t = hi > 0 ? Math.min(1, v / hi) : 0;
+  return { bg: `rgba(76, 89, 102, ${(0.08 + 0.52 * t).toFixed(3)})`,
+           fg: t > 0.72 ? '#fff' : 'var(--text-primary)' };
+}
+
+async function drawCalendarPanel(category) {
+  const panel = $('#catpanel');
+  const c = calState();
+  panel.innerHTML = '<div class="loading sm">Reading the calendar years…</div>';
+  const d = await get('/calendar/' + encodeURIComponent(category));
+
+  if (!d.years.length) {
+    panel.innerHTML = `<p class="muted sm">No calendar year history is published
+      for ${esc(category)}.</p>`;
+    return;
+  }
+
+  // Each column's own range, so the colour describes the fund and not the year.
+  const range = {};
+  d.years.forEach((y) => {
+    const vals = d.funds.map((f) => f.years[y.field]).filter((v) => v != null);
+    range[y.field] = { lo: Math.min(0, ...vals), hi: Math.max(0, ...vals) };
+  });
+
+  const funds = [...d.funds];
+  if (c.sort) {
+    // A fund with no figure for a year has not come last in it, so it sinks to
+    // the bottom whichever way the column points rather than winning the sort.
+    funds.sort((a, b) => {
+      const x = a.years[c.sort], y = b.years[c.sort];
+      if (x == null && y == null) return 0;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      return c.dir === 'asc' ? x - y : y - x;
+    });
+  }
+
+  const arrow = (y) => c.sort === y.field
+    ? `<span class="arrow">${c.dir === 'asc' ? '▲' : '▼'}</span>`
+    : '<span class="arrow">↕</span>';
+
+  panel.innerHTML = `
+    <div class="catpanel-head">
+      <h3>${esc(category)}</h3>
+      <span class="muted">top ${d.funds.length} of ${d.count} schemes,
+        by calendar year</span>
+    </div>
+    <p class="lede sm">Every year is coloured against its own range, because
+    2020 and 2022 were not the same market and one scale across both would
+    colour the years rather than the funds. Click a year to sort on it.</p>
+    <div class="tablewrap">
+      <table class="grid dense heat">
+        <thead><tr>
+          <th class="pickcell"></th>
+          <th class="namecell">Fund</th>
+          ${d.years.map((y) => `<th class="r sortable${
+            c.sort === y.field ? ' on' : ''}" data-year="${esc(y.field)}"
+            title="Sort on ${esc(y.label)}">${esc(y.label)}${arrow(y)}</th>`).join('')}
+        </tr></thead>
+        <tbody>
+          ${funds.map((f) => `<tr data-fund="${esc(f.key)}" tabindex="0">
+            <td class="pickcell">${pickBox(f.key)}</td>
+            <td class="fundcell namecell"><strong>${esc(f.name)}</strong></td>
+            ${d.years.map((y) => {
+              const v = f.years[y.field];
+              const t = heatTone(v, range[y.field].lo, range[y.field].hi);
+              return `<td class="r mono heatcell" style="background:${t.bg};color:${t.fg}"
+                >${v == null ? '–' : num(v, 1)}</td>`;
+            }).join('')}
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <p class="muted sm">Calendar year returns, not annualised. A blank year is
+    one the fund had not launched into, or had not completed.</p>`;
+
+  panel.querySelectorAll('th[data-year]').forEach((th) => th.onclick = () => {
+    const c2 = calState();
+    // Same column again reverses it; a new column opens on its best first.
+    c2.dir = c2.sort === th.dataset.year && c2.dir === 'desc' ? 'asc' : 'desc';
+    c2.sort = th.dataset.year;
+    drawCalendarPanel(category);
+  });
+  panel.querySelectorAll('[data-fund]').forEach((el) =>
+    el.onclick = (e) => {
+      if (e.target.closest('.pickcell')) return;
+      openFund(el.dataset.fund);
+    });
+  wirePicks(panel);
+  wireGlossary(panel);
 }
 
 const PASSIVE_CAT = 'Smart beta / Passive';

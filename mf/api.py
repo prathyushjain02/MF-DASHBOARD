@@ -144,7 +144,7 @@ def shortlists():
     """Category Top Funds: the shortlist for every category in one payload."""
     state = ds.load()
     out = []
-    for c in fw.CATEGORIES:
+    for c in fw.SHORTLIST_CATEGORIES:
         group = state["byCategory"].get(c, [])
         if not group:
             continue
@@ -164,6 +164,15 @@ def shortlists():
                               "return3Y", "return5Y")}} if bm else None,
         })
     return jsonify({"categories": out})
+
+
+@bp.get("/calendar/<path:name>")
+def calendar(name):
+    """One category's leading funds, year by year."""
+    state = ds.load()
+    if name not in state["byCategory"]:
+        return jsonify({"error": "unknown category", "category": name}), 404
+    return jsonify(ds.calendar_lookthrough(name, state=state))
 
 
 @bp.get("/passive")

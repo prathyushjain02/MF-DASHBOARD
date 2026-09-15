@@ -351,6 +351,60 @@ def shortlist(category, state=None, limit=8):
 
 
 # ---------------------------------------------------------------------------
+# Calendar years
+# ---------------------------------------------------------------------------
+
+# Below this many funds a column is one or two funds wide and the colour scale
+# across it is describing nothing.
+MIN_YEAR_COVERAGE = 5
+
+# How many funds the look through shows. Enough to see a pattern hold or break,
+# few enough to read across a row without losing the line.
+CALENDAR_LIMIT = 15
+
+
+def calendar_lookthrough(category, limit=CALENDAR_LIMIT, state=None):
+    """A category's leading funds against every calendar year they have.
+
+    A composite says how a fund has done. A row of calendar years says when, and
+    the two are different questions: a fund can carry a strong record because it
+    was extraordinary in one year and ordinary in nine, and only the row shows
+    it. Every year stands on its own scale, because 2020 and 2022 were not the
+    same market and colouring them against a common range would say more about
+    the years than about the funds.
+    """
+    state = state or load()
+    group = state["byCategory"].get(category, [])
+    if not group:
+        return {"category": category, "years": [], "funds": []}
+
+    ranked = sorted(group, key=lambda f: (f.get("composite") is None,
+                                          -(f.get("composite") or 0)))[:limit]
+
+    years = []
+    for field, label in _calendar_fields():
+        have = sum(1 for f in ranked if f.get(field) is not None)
+        if have >= MIN_YEAR_COVERAGE:
+            years.append({"field": field, "label": label, "have": have})
+
+    return {
+        "category": category,
+        "scored": fw.is_scored(category),
+        "count": len(group),
+        "years": years,
+        "funds": [{**row(f),
+                   "years": {y["field"]: f.get(y["field"]) for y in years}}
+                  for f in ranked],
+    }
+
+
+def _calendar_fields():
+    """The calendar columns the feed carries, oldest first, year to date last."""
+    out = [(f"returnCY{y:02d}", f"20{y:02d}") for y in range(12, 26)]
+    return out + [("returnCYTD", "YTD")]
+
+
+# ---------------------------------------------------------------------------
 # Passive
 # ---------------------------------------------------------------------------
 

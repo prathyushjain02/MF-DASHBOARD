@@ -59,6 +59,13 @@ SHOWN_CATEGORIES = [
 
 ALL_CATEGORIES = CATEGORIES + SHOWN_CATEGORIES
 
+# Categories that get a shortlist page of their own. Dividend yield is scored
+# and ranked like any other category and a fund in it carries its composite, but
+# twelve schemes chasing a yield is a corner of the market rather than a shelf
+# anybody is choosing from, so it does not get a tile.
+NO_SHORTLIST = {"Dividend Yield"}
+SHORTLIST_CATEGORIES = [c for c in CATEGORIES if c not in NO_SHORTLIST]
+
 
 def is_scored(category):
     return category in CATEGORIES

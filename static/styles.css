@@ -790,6 +790,17 @@ body.modal-open { overflow: hidden; }
   display: flex; flex-direction: column; gap: 4px; }
 .error span { color: var(--text-secondary); font-family: var(--mono); font-size: 12px; }
 
+/* ------------------------------------------------------ calendar years */
+/* A grid of years against funds. The cell carries the colour, so it loses the
+   row hairline that would otherwise cut through the block, and the fund name is
+   pinned because a row of a dozen years scrolls. */
+.catmodes { margin: 18px 0 0; }
+.heat td.heatcell { border-bottom: 0; padding: 6px 9px; text-align: right;
+  min-width: 56px; }
+.heat tbody tr:hover td.heatcell { filter: brightness(0.96); }
+.heat .namecell { min-width: 230px; }
+.heat th.sortable.on { color: var(--red); }
+
 /* ------------------------------------------------------------- passive */
 /* One block per index rather than one long table: the comparison that means
    anything is inside a group, and a single ranked list across every index would
