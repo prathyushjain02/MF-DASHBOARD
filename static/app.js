@@ -1301,7 +1301,7 @@ function returnsCard(f) {
   const block = (label, pick) => `
     <tr class="grp"><th colspan="${rows.length + 1}">${label}</th></tr>
     <tr><th>Fund</th>${cells((r) => pick(r).fund, pc)}</tr>
-    <tr><th>Index</th>${cells((r) => pick(r).bench, pc)}</tr>
+    <tr class="band"><th>Index</th>${cells((r) => pick(r).bench, pc)}</tr>
     <tr class="alpharow"><th>Alpha</th>${cells((r) => pick(r).alpha, al)}</tr>`;
 
   return `
@@ -1314,6 +1314,8 @@ function returnsCard(f) {
       </span>
       <span class="snapcard-body">
         <table class="rettable">
+          <colgroup><col class="stub">${
+            rows.map(() => '<col>').join('')}</colgroup>
           <thead><tr><th></th>${rows.map((r) =>
             `<th class="per">${esc(r.label)}</th>`).join('')}</tr></thead>
           <tbody>

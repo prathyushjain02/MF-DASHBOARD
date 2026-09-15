@@ -719,10 +719,22 @@ body.modal-open { overflow: hidden; }
    halves. Fixed layout, because the columns are all the same kind of number and
    letting content size them staggers them. */
 .rettable { width: 100%; border-collapse: collapse; table-layout: fixed;
-  margin-top: 2px; font-size: 15px; }
-.rettable th, .rettable td { padding: 1px 4px; text-align: right; }
-.rettable th:first-child, .rettable td:first-child { text-align: left; }
-.rettable tbody th { font-weight: 400; color: var(--text-muted); font-size: 12px; }
+  margin-top: 0; font-size: 15px; line-height: 1.15; }
+/* The stub column carries three short words and was taking a sixth of the
+   table, which pooled the figures against the right edge and opened a hole
+   under the block label. It gets what it needs and the five period columns
+   share the rest. */
+.rettable col.stub { width: 17%; }
+.rettable th, .rettable td { padding: 1.5px 6px; text-align: right; }
+/* Every label in this column starts on the same pixel: the block name, the row
+   name and nothing else. An asymmetric cell padding had the block name sitting
+   four pixels left of the rows it names, which reads as a mistake. */
+.rettable th:first-child, .rettable td:first-child { text-align: left;
+  padding-left: 0; }
+/* One rule between the words and the figures, so the table has a spine. */
+.rettable th:nth-child(2), .rettable td:nth-child(2) {
+  border-left: 1px solid var(--grid); }
+.rettable tbody th { font-weight: 400; color: var(--text-muted); font-size: 12.5px; }
 .rettable th.per { font-family: var(--mono); font-weight: 600; font-size: 12.5px;
   color: var(--ink-strong); border-bottom: 1px solid var(--border-strong);
   padding-bottom: 2px; }
@@ -730,17 +742,21 @@ body.modal-open { overflow: hidden; }
    names the three rows under it, not the row it is on. */
 .rettable tr.grp th { text-align: left; color: var(--text-muted);
   font-family: var(--sans); font-weight: 400; font-size: 10.5px;
-  text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 0 0; }
+  text-transform: uppercase; letter-spacing: 0.06em; padding: 5px 0 1px;
+  border-left: 0; }
+/* Alternate rows banded, so a figure belongs to a row the eye can follow across
+   rather than floating in the middle of a column. */
+.rettable tr.band { background: var(--zebra); }
 .rettable td.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 /* The alpha row is what the table is for: it is the only row here that has
    already done the subtraction, so it is the one the eye should land on. Set
    heavier than the two rows it is drawn from, and the only place on the page
    where a green and a red mean opposite directions rather than a brand and a
    warning. */
-.rettable tr.alpharow td { font-weight: 700; font-size: 15.5px;
-  border-bottom: 1px solid var(--grid); }
-.rettable tr.alpharow th { border-bottom: 1px solid var(--grid);
-  color: var(--text-primary); }
+.rettable tr.alpharow td { font-weight: 700; font-size: 15.5px; }
+.rettable tr.alpharow th { color: var(--text-primary); }
+.rettable tr.alpharow th, .rettable tr.alpharow td {
+  border-bottom: 1px solid var(--border); }
 .rettable td.alpha.up { color: var(--gain); }
 .rettable td.alpha.down { color: var(--red); }
 
