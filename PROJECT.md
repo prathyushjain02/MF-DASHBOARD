@@ -396,7 +396,7 @@ What goes in which column follows the question being asked.
 | Card | Shows |
 |---|---|
 | Growth of 100 rupees | The fund, its category's index and the category average, rebased to zero on the same day, over a selectable window |
-| How it has done | 1M, 3M, 1Y, 3Y and 5Y across the top; fund, index and alpha down the side, for point to point and median rolling. The alpha row is set heavier than the two it is drawn from, green where the fund is ahead and red where it is behind |
+| How it has done | 1M, 3M, 1Y, 3Y and 5Y across the top; fund, index and alpha down the side. Point to point across all five, median rolling at 3Y and 5Y only. The alpha row is set heavier than the two it is drawn from, green where the fund is ahead and red where it is behind |
 | Shape of the equity book | Top 5 weight, top 10 weight, largest position, names held |
 | Cap mix | Large / mid / small / cash as a ring with its key beside it, and the equity share through the hole |
 
@@ -405,7 +405,7 @@ What goes in which column follows the question being asked.
 | Card | Shows |
 |---|---|
 | Size and cost | AUM, net flow over 1Y, expense ratio |
-| Largest sectors | The five largest, as shares of the equity book |
+| Largest sectors | The eight largest, as shares of the equity book |
 | Top holdings | The fifteen largest positions and their weights |
 
 **Right — risk, and who is taking it.**
@@ -415,13 +415,13 @@ What goes in which column follows the question being asked.
 | Return per unit of risk | Sharpe, Sortino, Information Ratio, Beta |
 | Drawdown periods | Time below the high water mark as an underwater chart, and the worst three falls: when each began, how deep it went, how long until it was over |
 | How it behaves in a fall | Upside and downside capture against the benchmark at 100, plus maximum drawdown |
-| Who runs it | The longest-serving manager, tenure, and cycles run |
+| Who runs it | The three longest-serving managers with their tenure, how many more there are, the scheme's inception, market cycles run, and how much of the fund's own life the longest-serving manager has been on it |
 
 Each card opens its full detail in a modal — every horizon, the peer comparison,
 the decile, the definitions. The page stays readable at a glance and nothing is
 buried.
 
-Two of these deserve a note.
+Three of these deserve a note.
 
 **How it has done** runs periods across and measures down, because the question
 a reader brings is "how did it do over three years" and that question is one
@@ -433,6 +433,16 @@ paid, and a fund can look strong on one and ordinary on the other. Beyond a year
 both are annualised, so a 3Y column is a rate and not a total. The alpha row is
 printed rather than left to be worked out in the reader's head.
 
+**Who runs it** is the desk rather than one name. A single bold name over "7
+managers" says almost nothing: on a team that size the question is how much of it
+has been there a while, and whether the people running the money now are the ones
+who earned its record. So the three longest-serving are listed with their tenure,
+and **same hands for N% of its life** reads the longest tenure against the
+scheme's inception date rather than against `vintageYears`, which is itself
+derived from manager tenure and would be answering its own question. A ten year
+record run by somebody who arrived last year is a record of somebody else's work,
+and a tenure figure alone does not say which it is.
+
 **Drawdown periods** exists because a maximum drawdown is one number for a whole
 record and says nothing about how long the hole lasted, which is the part an
 investor actually sits through. A fall counts as an episode when it passes 8%
@@ -441,6 +451,12 @@ started, its depth, and how long the whole round trip took, or `still down`
 where the fund has not got back yet. The three are marked on the underwater
 chart, so the picture and the table are naming the same three things rather
 than five hand-written era labels the data does not itself assert.
+
+Both drawdown figures on the page **name their window**, because they are two
+answers to what looks like one question: this card reads the fund's whole NAV
+record, and the maximum drawdown under *how it behaves in a fall* is the feed's
+three year figure. Without the labels the underwater chart's floor and the
+capture card's footer read as a contradiction.
 
 The card face stops there on purpose. What the index did over the same stretch,
 the split between months down and months back, and the best run on the other

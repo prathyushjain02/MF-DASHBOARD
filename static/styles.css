@@ -764,6 +764,14 @@ body.modal-open { overflow: hidden; }
   font-family: var(--sans); font-weight: 400; font-size: 10.5px;
   text-transform: uppercase; letter-spacing: 0.06em; padding: 5px 0 1px;
   border-left: 0; }
+/* Which horizons the block below actually covers, said once in its header
+   rather than three times as a column of dashes. */
+.rettable .grp-note { text-transform: none; letter-spacing: 0;
+  font-family: var(--mono); margin-left: 6px; }
+/* The columns a block does not reach. Left open, not dashed: there is no median
+   three year window inside a one month horizon, and a dash reads as a figure
+   the feed happens to be missing. */
+.rettable td.na { border-left: 1px solid var(--grid); }
 /* Alternate rows banded, so a figure belongs to a row the eye can follow across
    rather than floating in the middle of a column. */
 .rettable tr.band { background: var(--zebra); }
@@ -802,6 +810,21 @@ body.modal-open { overflow: hidden; }
 .beatcell span { color: var(--text-muted); font-size: 11px; }
 .beatcell.strong b { color: var(--gain); }
 .beatcell.weak b { color: var(--red); }
+
+/* The desk, longest serving first. A name and a number per line, so the card
+   answers "how settled is this team" at a glance rather than naming one person
+   and leaving the rest as a count. */
+.mgrlist { list-style: none; margin: 4px 0 0; padding: 0; }
+.mgrlist li { display: flex; align-items: baseline; gap: 8px; padding: 1.5px 0;
+  font-size: 12.5px; }
+.mgrlist li span { overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+.mgrlist li b { margin-left: auto; font-family: var(--mono); font-weight: 600;
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mgrlist li b em { font-style: normal; font-weight: 400; font-size: 9.5px;
+  color: var(--text-muted); margin-left: 3px; }
+.mgrlist li.more { color: var(--text-muted); }
+.mgrlist li.more b { color: var(--text-muted); font-weight: 400; }
 
 /* Fifteen names in a narrow column. Numbered, because the order is the point,
    and the weight is pinned right so the column of figures stays a column. */

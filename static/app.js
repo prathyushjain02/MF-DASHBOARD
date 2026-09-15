@@ -1111,7 +1111,7 @@ async function renderFundPage(host) {
                   <span>${term('Expense ratio')}</span>
                     <b>${f.ter == null ? '—' : num(f.ter, 2) + '%'}</b></div>`)}
 
-        ${card('holds', 'Largest sectors', 'the five largest, as shares of the equity book',
+        ${card('holds', 'Largest sectors', 'share of the equity book',
                (f.sectors || []).length ? '<div id="c-sectors"></div>'
                  : '<p class="muted sm nobook">No sector detail on file.</p>')}
 
@@ -1136,23 +1136,18 @@ async function renderFundPage(host) {
 
         ${drawdownCard(f)}
 
-        ${card('risk', 'How it behaves in a fall', 'capture against the benchmark at 100',
+        ${card('risk', 'How it behaves in a fall',
+               'three years, capture against the benchmark at 100',
                '<div id="c-capture"></div>' +
-               `<div class="cardfoot"><span>${term('Maximum drawdown')}</span>
+               // Named for its window. The card above reads the whole NAV
+               // record and this one reads three years, so without the label
+               // they look like two answers to one question.
+               `<div class="cardfoot"><span>${term('Maximum drawdown')} over 3Y</span>
                   <b>${num(f.maxDrawdown3Y, 1)}%</b></div>`)}
 
         ${card('who', 'Who runs it', mgrs.length === 1 ? 'one manager'
-                : `${mgrs.length} managers`,
-               `<div class="bigstat name">
-                  <span class="v">${esc(lead ? lead.name : 'Not on file')}</span>
-                  <span class="k">${lead && lead.tenureYears != null
-                    ? num(lead.tenureYears, 1) + ' yrs on this scheme'
-                    : 'tenure not stated'}</span>
-                </div>
-                <div class="cardfoot">
-                  <span>${term('Market cycles run')}</span>
-                    <b>${num(f.managerCycles, 0)}</b>
-                  ${mgrs.length > 1 ? `<span>and ${mgrs.length - 1} more</span>` : ''}</div>`)}
+                : `${mgrs.length} managers, longest serving first`,
+               managerList(f, mgrs))}
       </div>
     </div>
 
@@ -1299,18 +1294,29 @@ function returnsCard(f) {
   const rows = t.rows || [];
   if (!rows.length) return '';
 
-  const cells = (pick, fmtOne) => rows.map((r) => fmtOne(pick(r))).join('');
   const pc = (v) => v == null ? '<td class="mono muted">—</td>'
     : `<td class="mono">${num(v, 1)}</td>`;
   const al = (v) => v == null ? '<td class="mono muted">—</td>'
     : `<td class="mono alpha ${v >= 0 ? 'up' : 'down'}">${
         v > 0 ? '+' : ''}${num(v, 1)}</td>`;
 
-  const block = (label, pick) => `
-    <tr class="grp"><th colspan="${rows.length + 1}">${label}</th></tr>
-    <tr><th>Fund</th>${cells((r) => pick(r).fund, pc)}</tr>
-    <tr class="band"><th>Index</th>${cells((r) => pick(r).bench, pc)}</tr>
-    <tr class="alpharow"><th>Alpha</th>${cells((r) => pick(r).alpha, al)}</tr>`;
+  /* A rolling window needs several of itself to have a median, so the short
+     horizons have none and never will. Rather than three rows of dashes under
+     1M and 3M, the block starts where its figures do and the columns it does not
+     reach are left open. The horizons still line up, which is the whole reason
+     the table is laid out this way. */
+  const skip = (n) => n ? `<td class="na" colspan="${n}"></td>` : '';
+  const block = (label, pick, from) => {
+    const n = from ? rows.findIndex((r) => r.label === from) : 0;
+    const keep = rows.slice(n);
+    const half = (get, fmtOne) =>
+      skip(n) + keep.map((r) => fmtOne(get(pick(r)))).join('');
+    return `
+      <tr class="grp"><th colspan="${rows.length + 1}">${label}</th></tr>
+      <tr><th>Fund</th>${half((h) => h.fund, pc)}</tr>
+      <tr class="band"><th>Index</th>${half((h) => h.bench, pc)}</tr>
+      <tr class="alpharow"><th>Alpha</th>${half((h) => h.alpha, al)}</tr>`;
+  };
 
   return `
     <button class="snapcard" data-card="returns">
@@ -1328,7 +1334,8 @@ function returnsCard(f) {
             `<th class="per">${esc(r.label)}</th>`).join('')}</tr></thead>
           <tbody>
             ${block(term('Point to point'), (r) => r.p2p)}
-            ${block(term('Median rolling'), (r) => r.rolling)}
+            ${block(term('Median rolling') + ' <span class="grp-note">3Y and 5Y</span>',
+                    (r) => r.rolling, '3Y')}
           </tbody>
         </table>
       </span>
@@ -1348,6 +1355,83 @@ function capSlices(f) {
     { label: 'Small cap', value: f.smallCapPct || 0, ink: '#b5d0e2' },
     { label: 'Cash and others', value: f.cashPct || 0, ink: '#dcdcd8' },
   ];
+}
+
+/* Who runs it, as the record rather than as one name. A single bold name over
+   "7 managers" says almost nothing: on a team that size the question is how much
+   of it has been there a while, and whether the people running the money now are
+   the ones who earned its record. So: the three longest serving with their
+   tenure, the scheme's own age beside the longest tenure on it, and the number of
+   market cycles that tenure spans. A manager who has not run money through a
+   fall has not been tested by one. */
+const WHO_SHOWN = 3;
+
+function managerList(f, mgrs) {
+  const ranked = [...(mgrs || [])].sort(
+    (a, b) => (b.tenureYears || 0) - (a.tenureYears || 0));
+  const shown = ranked.slice(0, WHO_SHOWN);
+  const rest = ranked.length - shown.length;
+  const longest = ranked[0];
+
+  if (!ranked.length) {
+    return `<p class="muted sm nobook">No manager record on file for this
+      scheme.</p>`;
+  }
+  return `
+    <ul class="mgrlist">
+      ${shown.map((m) => `<li>
+        <span>${esc(m.name)}</span>
+        <b>${m.tenureYears == null ? '—' : num(m.tenureYears, 1)}<em>yrs</em></b>
+      </li>`).join('')}
+      ${rest > 0 ? `<li class="more"><span>and ${rest} more</span>
+        <b>${num(ranked[WHO_SHOWN].tenureYears, 1)}<em>or less</em></b></li>` : ''}
+    </ul>
+    <div class="cardfoot">
+      <span>Fund since</span><b>${fmtInception(f.inceptionDate)}</b>
+      <span>${term('Market cycles run')}</span><b>${num(f.managerCycles, 0)}</b>
+      ${sameHands(f, longest) != null
+        ? `<span>Same hands for</span><b>${num(sameHands(f, longest), 0)}%</b>
+           <span>of its life</span>` : ''}
+    </div>`;
+}
+
+/* How much of the fund's own life the longest serving manager has been on it.
+   A ten year record run by somebody who arrived last year is a record of
+   somebody else's work, and the tenure figure alone does not say which it is.
+   Read against inception rather than against `vintageYears`, which is itself
+   derived from manager tenure and would answer its own question. */
+function sameHands(f, longest) {
+  const age = fundAgeYears(f.inceptionDate);
+  if (!age || !longest || longest.tenureYears == null) return null;
+  return Math.min(100, 100 * longest.tenureYears / age);
+}
+
+function fundAgeYears(raw) {
+  const d = parseFeedDate(raw);
+  return d ? (Date.now() - d.getTime()) / (365.25 * 24 * 3600 * 1000) : null;
+}
+
+const FEED_MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+                      jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+
+/* The feed writes inception as 28-May-13, which is three ways ambiguous read
+   cold. Two digit years here are always this century: the oldest scheme in the
+   universe is from the nineties and would arrive as a four digit year. */
+function parseFeedDate(raw) {
+  if (!raw) return null;
+  const m = /^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/.exec(String(raw).trim());
+  if (!m) return null;
+  const mo = FEED_MONTHS[m[2].toLowerCase()];
+  if (mo == null) return null;
+  const y = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
+  return new Date(y, mo, Number(m[1]));
+}
+
+function fmtInception(raw) {
+  const d = parseFeedDate(raw);
+  if (!d) return raw ? esc(String(raw)) : '—';
+  return `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
+             'Oct', 'Nov', 'Dec'][d.getMonth()]} ${d.getFullYear()}`;
 }
 
 function bookList(f) {
@@ -1384,8 +1468,8 @@ function drawdownCard(f) {
     <button class="snapcard" data-card="drawdown">
       <span class="snapcard-head">
         <span class="snapcard-title">Drawdown periods</span>
-        <span class="snapcard-sub">how far below its own high, and how long back${
-          d.inDrawdown ? ` &middot; ${num(Math.abs(d.current), 1)}% below it today`
+        <span class="snapcard-sub">the whole record since ${mon(d.from)}${
+          d.inDrawdown ? ` &middot; ${num(Math.abs(d.current), 1)}% below its high today`
             : ' &middot; at a new high today'}</span>
         <span class="snapcard-go" aria-hidden="true">&rsaquo;</span>
       </span>

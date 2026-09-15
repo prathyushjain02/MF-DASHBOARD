@@ -91,6 +91,7 @@ _ROW_FIELDS = (
     "benchmark", "benchmarkKind",
     "netFlow1YPct", "cyBeatPct", "rated", "scored", "upsideCapture3Y",
     "managerExperienceYears", "vintageBasis", "rollingHitRate3Y",
+    "inceptionDate",
 )
 
 
@@ -139,7 +140,7 @@ def detail(fund, state=None):
     # travel with the record instead of costing a second request each.
     rec["returns"] = returns_table(fund, state)
     rec["drawdowns"] = drawdowns(fund, state)
-    rec["sectors"] = top_sectors(fund, limit=5)
+    rec["sectors"] = top_sectors(fund, limit=8)
     rec["topFive"] = top_weight(fund, 5)
     return rec
 
