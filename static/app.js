@@ -156,7 +156,8 @@ function drawPickbar() {
   let bar = $('#pickbar');
   // Not on the compare tab: the selection has arrived, the chips are the record
   // of it now, and a bar floating over the chart is in the way.
-  if (!state.picked.length || state.view === 'compare') {
+  if (!state.picked.length || state.view === 'compare'
+      || state.view === 'portfolio') {
     if (bar) bar.remove();
     return;
   }
@@ -169,12 +170,18 @@ function drawPickbar() {
   bar.innerHTML = `
     <span class="pickbar-n"><b>${n}</b> ${n === 1 ? 'fund' : 'funds'} selected</span>
     <button class="pickbar-go" id="pick-compare">Compare</button>
+    <button class="pickbar-go" id="pick-portfolio">Build portfolio</button>
     <button class="pickbar-clear" id="pick-clear">Clear</button>`;
-  $('#pick-compare').onclick = () => {
-    cmpState().keys = [...state.picked];
-    cmpState().weights = null;
-    setView('compare');
+  // Two destinations, because the same tick answers two questions: read these
+  // side by side, or hold them together.
+  const carry = (view) => {
+    const b = builder(view);
+    b.keys = [...state.picked];
+    b.weights = null;
+    setView(view);
   };
+  $('#pick-compare').onclick = () => carry('compare');
+  $('#pick-portfolio').onclick = () => carry('portfolio');
   $('#pick-clear').onclick = () => {
     state.picked = [];
     drawPickbar();
@@ -1010,7 +1017,8 @@ async function drawPassivePanel() {
 }
 
 const VIEW_LABEL = { shortlist: 'category top funds', all: 'all funds',
-                     compare: 'compare', approach: 'how we look at funds' };
+                     compare: 'compare', portfolio: 'the portfolio builder',
+                     approach: 'how we look at funds' };
 
 /* The fund page is a one page snapshot: a card per question, each showing the
    headline and nothing more. The detail behind every card is a click away in a
@@ -1674,13 +1682,21 @@ const CMP_GROUPS = [
     ['Down', 'downsideCapture3Y', '', 0, 'low', 'downside capture']] },
 ];
 
-function cmpState() {
-  if (!state.cmp) {
-    state.cmp = { keys: [], marks: [], period: '3y', weights: null, holdings: false,
-                  groups: new Set(CMP_GROUPS.map((g) => g.id)) };
+/* Compare and the portfolio builder are the same machinery asking two
+   questions, so they share every drawing function and keep two separate
+   selections. Picking three funds to read side by side and picking three to
+   hold are different acts, and one should not overwrite the other. */
+function builder(view) {
+  const k = (view || state.view) === 'portfolio' ? 'pf' : 'cmp';
+  if (!state[k]) {
+    state[k] = { keys: [], marks: [], period: '3y', weights: null, holdings: false,
+                 groups: new Set(CMP_GROUPS.map((g) => g.id)) };
   }
-  return state.cmp;
+  return state[k];
 }
+
+const cmpState = () => builder();
+const isPortfolio = () => state.view === 'portfolio';
 
 /* The weights travel in the query string as key:amount, so a portfolio view can
    be linked, exported and printed without a body to post. */
@@ -1699,7 +1715,8 @@ async function renderCompare(host) {
       <div class="section-head">
         <h2>Compare</h2>
         <p class="lede">Put funds on one chart against up to ${MAX_CMP_MARKS}
-        benchmarks, read them side by side, and weight them into a portfolio.</p>
+        benchmarks and read them side by side. To hold them together and read the
+        combination, use the portfolio builder.</p>
       </div>
 
       <div class="cmp-pickers">
@@ -1802,21 +1819,12 @@ async function drawCmpBody() {
   host.innerHTML = `
     <section class="snapcard chartcard cmp-chart">
       <span class="snapcard-head">
-        <span class="snapcard-title">${c.weights ? 'Portfolio, growth of 100 rupees'
-          : 'Growth of 100 rupees'}</span>
+        <span class="snapcard-title">Growth of 100 rupees</span>
         <span class="snapcard-sub" id="cmp-sub">rebased to zero at the start of
           the window</span>
       </span>
       <div class="cmp-bar">
         <div class="periodbar" id="cmp-periods" role="group" aria-label="Chart period"></div>
-        <div class="cmp-pfbtns">
-          ${c.weights ? `
-            <label class="cmp-group"><input type="checkbox" id="cmp-holdings"
-              ${c.holdings ? 'checked' : ''}> Show holdings</label>
-            <button class="cmp-ghost" id="cmp-editpf">Edit weights</button>
-            <button class="cmp-ghost" id="cmp-clearpf">Clear portfolio</button>`
-          : `<button class="cmp-ghost strong" id="cmp-makepf">Make this a portfolio</button>`}
-        </div>
       </div>
       <div id="cmp-growth"></div>
       <p class="cardnote muted sm" id="cmp-note"></p>
@@ -1846,11 +1854,6 @@ async function drawCmpBody() {
   /* The print stylesheet lays this page out as one sheet in the house format, so
      the PDF is the page rather than a second rendering of it that could drift. */
   on('#cmp-pdf', () => window.print());
-  on('#cmp-makepf', () => openWeights());
-  on('#cmp-editpf', () => openWeights());
-  on('#cmp-clearpf', () => { c.weights = null; c.holdings = false; drawCmpBody(); });
-  const hold = $('#cmp-holdings');
-  if (hold) hold.onchange = () => { c.holdings = hold.checked; drawCmpGrowth(); };
 
   await Promise.all([drawCmpGrowth(), drawCmpTable(), drawCmpOverlap()]);
 }
@@ -1909,7 +1912,7 @@ async function drawCmpGrowth() {
     if (s.code === 'portfolio') return { ...s, ink: 'var(--ink-strong)', width: 2.6 };
     return { ...s, ink: Chart.MARK_INK, dash: '5 3', width: 1.5 };
   }).filter((s) => s.code !== 'holding' || c.holdings);
-  Chart.growthLines(host, series, { height: 300 });
+  Chart.growthLines(host, series, { height: isPortfolio() ? 330 : 300 });
 
   c.names = Object.fromEntries(g.series
     .filter((s) => s.code === 'fund' || s.code === 'holding')
@@ -2024,6 +2027,245 @@ async function drawCmpTable() {
   wireGlossary(wrap);
 }
 
+/* ========================================================== portfolio builder
+
+   Compare asks how these funds differ. The builder asks what they come to when
+   they are all held: one line rather than several, one book rather than several
+   books, and the overlap read as duplication rather than as resemblance.
+
+   It runs on the same machinery as compare and keeps its own selection, because
+   picking three funds to read side by side and picking three to hold are
+   different acts and one should not overwrite the other. */
+
+async function renderPortfolio(host) {
+  const c = builder('portfolio');
+  host.innerHTML = `
+    <section>
+      <div class="section-head">
+        <h2>Portfolio builder</h2>
+        <p class="lede">Weight a set of funds and read the combination: one
+        line, what it actually holds once the books are added together, and how
+        much of it is the same holding bought twice.</p>
+      </div>
+
+      <div class="cmp-pickers">
+        <div class="cmp-pick">
+          <label class="cmp-lab" for="cmp-lookup">Holdings
+            <span class="muted">tick them in any list, or search here</span></label>
+          <div class="cmp-search">
+            <input id="cmp-lookup" type="search" autocomplete="off"
+                   placeholder="Type a scheme name">
+            <div id="cmp-suggest" class="suggest" hidden></div>
+          </div>
+          <div id="cmp-chips" class="cmp-chips"></div>
+        </div>
+        <div class="cmp-pick">
+          <span class="cmp-lab">Benchmarks
+            <span class="muted">up to ${MAX_CMP_MARKS}</span></span>
+          <div id="cmp-marks" class="cmp-marks"></div>
+        </div>
+      </div>
+
+      <div id="cmp-body"></div>
+    </section>`;
+
+  const meta = await get('/compare');
+  c.available = meta.available || [];
+  drawCmpMarks();
+  wireCmpSearch();
+  drawCmpChips();
+  await drawPfBody();
+  wireGlossary(host);
+}
+
+/* An unweighted portfolio is not a portfolio, so rather than showing an empty
+   page until somebody fills a form, the tab opens on an equal split and says
+   so. It is a real allocation and a common one, and it is one click from being
+   replaced. */
+function evenWeights(keys) {
+  const each = Math.round(10000 / keys.length) / 100;
+  return Object.fromEntries(keys.map((k) => [k, each]));
+}
+
+async function drawPfBody() {
+  const c = cmpState();
+  const host = $('#cmp-body');
+  if (!host) return;
+  if (!c.keys.length) {
+    host.innerHTML = `<div class="cmp-empty">Add a fund above to start a
+      portfolio.</div>`;
+    return;
+  }
+  // Weights follow the holdings: a fund added after they were set has no share,
+  // and a fund removed leaves its share stranded on nothing.
+  const same = c.weights && c.keys.length === Object.keys(c.weights).length
+    && c.keys.every((k) => c.weights[k] != null);
+  if (!same) { c.weights = evenWeights(c.keys); c.even = true; }
+
+  host.innerHTML = `
+    <div class="pf-top">
+      <section class="snapcard chartcard pf-chart">
+        <span class="snapcard-head">
+          <span class="snapcard-title">The portfolio, growth of 100 rupees</span>
+          <span class="snapcard-sub" id="cmp-sub">rebased to zero at the start of
+            the window</span>
+        </span>
+        <div class="cmp-bar">
+          <div class="periodbar" id="cmp-periods" role="group"
+               aria-label="Chart period"></div>
+          <div class="cmp-pfbtns">
+            <label class="cmp-group"><input type="checkbox" id="cmp-holdings"
+              ${c.holdings ? 'checked' : ''}> Show holdings</label>
+            <button class="cmp-ghost strong" id="cmp-editpf">${
+              c.even ? 'Set weights' : 'Edit weights'}</button>
+          </div>
+        </div>
+        <div id="cmp-growth"></div>
+        <p class="cardnote muted sm" id="cmp-note"></p>
+      </section>
+
+      <div class="pf-tiles" id="pf-tiles">
+        <div class="loading sm">Adding the books together…</div>
+      </div>
+    </div>
+
+    <div class="cmp-groupbar" id="cmp-groupbar">
+      ${CMP_GROUPS.map((g) => `
+        <label class="cmp-group"><input type="checkbox" data-group="${g.id}"
+          ${c.groups.has(g.id) ? 'checked' : ''}> ${esc(g.label)}</label>`).join('')}
+      <a id="cmp-csv" class="cmp-download" href="#" download
+         title="Every metric, the overlap between each pair, and the daily series behind the chart, whichever groups are ticked">Download CSV</a>
+      <button id="cmp-pdf" class="cmp-download"
+         title="Lays the portfolio out on one sheet and opens the print dialog, where Save as PDF gives you the file">PDF</button>
+    </div>
+    <div class="tablewrap" id="cmp-tablewrap"></div>
+
+    <div id="cmp-overlap"></div>`;
+
+  $('#cmp-groupbar').querySelectorAll('[data-group]').forEach((b) =>
+    b.onchange = () => {
+      if (b.checked) c.groups.add(b.dataset.group);
+      else c.groups.delete(b.dataset.group);
+      drawCmpTable();
+    });
+  const on = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
+  on('#cmp-pdf', () => window.print());
+  on('#cmp-editpf', () => openWeights());
+  const hold = $('#cmp-holdings');
+  if (hold) hold.onchange = () => { c.holdings = hold.checked; drawCmpGrowth(); };
+
+  await Promise.all([drawCmpGrowth(), drawPfTiles(),
+                     drawCmpTable(), drawCmpOverlap()]);
+}
+
+/* Four tiles beside the line. What a portfolio holds is not what its funds hold
+   listed four times: the same stock bought by three of them is one position at
+   the sum of its three weights, and only the combined book says how big that
+   position actually is. The cap mix here is read off those underlying stocks
+   rather than off the funds' categories, because a flexi cap fund holding small
+   caps is holding small caps whatever the label on it says. */
+const PF_CAP_INK = { large: '#3d4f5c', mid: '#6e93ab', small: '#b5d0e2' };
+const PF_CAP_LABEL = { large: 'Large cap', mid: 'Mid cap', small: 'Small cap' };
+
+async function drawPfTiles() {
+  const host = $('#pf-tiles');
+  if (!host) return;
+  const c = cmpState();
+  let d;
+  try {
+    d = await get('/portfolio/lookthrough?x=1' + cmpWeightQuery());
+  } catch (e) {
+    host.innerHTML = `<div class="empty sm">${esc(e.message)}</div>`;
+    return;
+  }
+  if (!(d.funds || []).length) {
+    host.innerHTML = `<div class="empty sm">None of these schemes has a
+      disclosed book, so the combined holdings cannot be read.</div>`;
+    return;
+  }
+
+  const capped = Object.values(d.capMix || {}).reduce((a, b) => a + b, 0);
+  const slices = ['large', 'mid', 'small']
+    .map((k) => ({ label: PF_CAP_LABEL[k], value: d.capMix[k] || 0,
+                   ink: PF_CAP_INK[k] }))
+    .concat(capped < 99.5
+      ? [{ label: 'Unclassified', value: Math.max(0, 100 - capped),
+           ink: '#dcdcd8' }] : []);
+
+  /* Eight rather than the fund page's five. A portfolio's sector shape is the
+     reason somebody built it, and eight rows is where the tail starts telling
+     you something: three names at thirty percent and everything else at four is
+     a different portfolio from one spread evenly across eight. */
+  const sectors = (d.sectors || []).slice(0, 8);
+  const stocks = (d.stocks || []).slice(0, 12);
+  const largest = d.stocks && d.stocks[0];
+
+  host.innerHTML = `
+    <section class="snapcard pf-tile">
+      <span class="snapcard-head">
+        <span class="snapcard-title">What it comes to</span>
+        <span class="snapcard-sub">${d.funds.length} ${
+          d.funds.length === 1 ? 'holding' : 'holdings'}, added together at weight</span>
+      </span>
+      <div class="shapegrid">
+        <div><span class="k">${term('Effective holdings')}</span>
+             <span class="v">${num(d.effectiveStocks, 0)}</span></div>
+        <div><span class="k">Distinct names</span>
+             <span class="v">${d.distinctStocks}</span></div>
+        <div><span class="k">${term('Top 10 weight')}</span>
+             <span class="v">${num(d.topTen, 0)}%</span></div>
+        <div><span class="k">Largest</span>
+             <span class="v">${num(largest ? largest.weight : null, 1)}%</span></div>
+      </div>
+    </section>
+
+    <section class="snapcard pf-tile">
+      <span class="snapcard-head">
+        <span class="snapcard-title">Cap mix</span>
+        <span class="snapcard-sub">the stocks underneath, not the mandates</span>
+      </span>
+      <div class="donutwrap"><div id="pf-caps"></div>
+        <div class="donutkey" id="pf-caps-key"></div></div>
+    </section>
+
+    <section class="snapcard pf-tile">
+      <span class="snapcard-head">
+        <span class="snapcard-title">Largest sectors</span>
+        <span class="snapcard-sub">share of the combined book</span>
+      </span>
+      <div id="pf-sectors"></div>
+    </section>
+
+    <section class="snapcard pf-tile pf-book">
+      <span class="snapcard-head">
+        <span class="snapcard-title">Top holdings</span>
+        <span class="snapcard-sub">largest ${stocks.length} of ${d.distinctStocks}</span>
+      </span>
+      <ol class="booklist">${stocks.map((x) => `<li>
+        <span>${esc(x.name)}</span><b>${num(x.weight, 1)}%</b></li>`).join('')}</ol>
+    </section>`;
+
+  Chart.donut($('#pf-caps'), slices, { size: 104, thickness: 19,
+    centreLabel: `${num(d.capMix.large || 0, 0)}%`, centreNote: 'large cap' });
+  $('#pf-caps-key').innerHTML = slices.map((x) => `<span>
+    <i style="background:${x.ink}"></i>${esc(x.label)}
+    <b>${num(x.value, 0)}%</b></span>`).join('');
+
+  if (sectors.length) Chart.bars($('#pf-sectors'),
+    sectors.map((x) => ({ label: x.sector, value: x.weight })),
+    { suffix: '%', decimals: 0, max: Math.max(...sectors.map((x) => x.weight)),
+      colorFor: () => 'var(--seq-450)' });
+
+  if ((d.missing || []).length) {
+    const note = document.createElement('p');
+    note.className = 'muted sm pf-missnote';
+    note.textContent = `${d.missing.length} of ${c.keys.length} schemes have no `
+      + 'disclosed book and are left out of these four, though they are still in '
+      + 'the line and the table.';
+    host.appendChild(note);
+  }
+}
+
 /* ------------------------------------------------------------- portfolio */
 
 /* Weights are entered in whichever unit the reader thinks in. Rupees are what
@@ -2115,9 +2357,9 @@ function openWeights(opener) {
     const total = Object.values(w).reduce((a, b) => a + b, 0);
     c.weights = Object.fromEntries(Object.entries(w)
       .map(([k, v]) => [k, Math.round(v / total * 10000) / 100]));
-    c.holdings = false;
+    c.even = false;
     closeModal();
-    drawCmpBody();
+    drawPfBody();
   };
   refresh();
 }
@@ -2155,35 +2397,7 @@ async function drawCmpOverlap() {
         >${num(v, 2)}</button></td>`;
   };
 
-  /* With weights on it, the question stops being "how alike are these two" and
-     becomes "what does the combination actually hold". Effective holdings is the
-     number that answers it: four funds of sixty names each are not two hundred
-     and forty positions, because they own many of the same ones. */
-  const pf = o.portfolio;
   host.innerHTML = `
-    ${pf ? `<section class="snapcard cmp-pfcard">
-      <span class="snapcard-head">
-        <span class="snapcard-title">What the portfolio holds</span>
-        <span class="snapcard-sub">every holding's book added together at its weight</span>
-      </span>
-      <div class="pf-stats">
-        <div><span class="k">${term('Effective holdings')}</span>
-             <span class="v">${num(pf.effectiveStocks, 1)}</span>
-             <span class="s">of ${pf.distinctStocks} distinct names</span></div>
-        <div><span class="k">${term('Top 10 weight')}</span>
-             <span class="v">${num(pf.topTen, 1)}%</span>
-             <span class="s">largest ${esc((pf.stocks[0] || {}).name || '—')}
-               at ${num((pf.stocks[0] || {}).weight, 1)}%</span></div>
-        <div><span class="k">Largest sector</span>
-             <span class="v">${num((pf.sectors[0] || {}).weight, 1)}%</span>
-             <span class="s">${esc((pf.sectors[0] || {}).sector || '—')}</span></div>
-      </div>
-      <p class="cardnote muted sm">Effective holdings is the inverse Herfindahl of
-      the combined book: what the portfolio behaves like it holds once the same
-      names bought twice are counted once and the small positions are counted for
-      what they are.</p>
-    </section>` : ''}
-
     <section class="snapcard cmp-ovcard">
       <span class="snapcard-head">
         <span class="snapcard-title">Stock overlap</span>
@@ -2275,6 +2489,7 @@ async function render() {
     else if (state.view === 'approach') await renderApproach(host);
     else if (state.view === 'shortlist') await renderShortlists(host);
     else if (state.view === 'all') await renderAll(host);
+    else if (state.view === 'portfolio') await renderPortfolio(host);
     else await renderCompare(host);
   } catch (e) {
     host.innerHTML = `<div class="error"><strong>Could not load.</strong>

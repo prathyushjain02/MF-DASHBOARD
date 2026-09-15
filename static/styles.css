@@ -472,6 +472,26 @@ th.sortable.on .arrow { opacity: 1; }
 .cmp-leadrow td { background: var(--wash); font-weight: 500; }
 .cmp-leadrow .cmp-name { background: var(--wash); }
 
+/* The builder's top band: the line on the left, and beside it the four things
+   that only exist once the books have been added together. Two by two rather
+   than a column of four, because a single narrow column would make the sector
+   bars unreadable and the ring the size of a coin. */
+.pf-top { display: grid; gap: 8px; grid-template-columns: 1.45fr 1fr;
+  align-items: start; margin-top: 14px; }
+.pf-top > * { min-width: 0; }
+.pf-chart { margin: 0; cursor: default; }
+.pf-chart:hover { background: var(--surface-2); border-top-color: var(--slate); }
+.pf-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  align-content: start; }
+.pf-tiles > * { min-width: 0; }
+.pf-tile { cursor: default; }
+.pf-tile:hover { background: var(--surface-2); border-top-color: var(--slate); }
+/* A true two by two. The list of names is the tallest of the four and sits in
+   the bottom right, which is what brings the block down level with the chart
+   beside it. */
+.pf-book .booklist { margin-top: 2px; }
+.pf-missnote { grid-column: 1 / -1; margin: 0; }
+
 .cmp-pfcard { margin-top: 18px; cursor: default; }
 .cmp-pfcard:hover { background: var(--surface-2); border-top-color: var(--slate); }
 .pf-stats { display: grid; gap: 10px 26px;
@@ -1076,6 +1096,7 @@ body.modal-open { overflow: hidden; }
 /* The wireframe collapses in two steps: first the cards go to two across while
    the chart takes the full width, then everything stacks. */
 @media (max-width: 1100px) {
+  .pf-top { grid-template-columns: 1fr; }
   .snapshot { grid-template-columns: 1fr 1fr; }
   .snapcol:first-child { grid-column: 1 / -1; }
   .snapcard.chartcard { grid-column: 1 / -1; grid-row: auto; }
@@ -1120,6 +1141,8 @@ body.modal-open { overflow: hidden; }
 
   /* Nothing may break across a page: a table split mid body reads as two
      tables that disagree. */
+  .pf-top { grid-template-columns: 1.3fr 1fr; gap: 5px; margin-top: 4px; }
+  .pf-tiles { gap: 5px; }
   .snapcard, .cmp-ovcard, .cmp-pfcard, table, tr, .tablewrap {
     break-inside: avoid; page-break-inside: avoid; }
   /* One sheet is the brief, and the chart is the only thing on the page that can

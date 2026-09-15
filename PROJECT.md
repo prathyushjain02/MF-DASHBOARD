@@ -459,6 +459,10 @@ Any number of funds against up to two benchmarks. There is no ceiling on the
 funds: past a handful the chart is a thicket, but that is a judgement for
 whoever is reading it, and a portfolio of twelve is a real thing.
 
+Compare asks how these funds differ. Holding them together is a different
+question and it has its own tab (5.6), because carrying both on one screen meant
+every reader of the first had to look past the machinery of the second.
+
 - **The chart.** Every selection rebased to zero on one day, funds in colour,
   benchmarks grey and dashed because they are the backdrop rather than entrants.
   The window is pulled forward to the youngest fund in the selection and says
@@ -476,40 +480,67 @@ whoever is reading it, and a portfolio of twelve is a real thing.
   the stocks behind it, with each fund's weight and the common part.
 - **Download CSV** and **PDF.** See 5.8.
 
-### 5.6 A portfolio
+### 5.6 Portfolio builder
 
-**Make this a portfolio** turns the selection into a weighted holding.
+Its own tab. It runs on the same machinery as compare and keeps a **separate
+selection**, because picking three funds to read side by side and picking three
+to hold are different acts and one should not overwrite the other. The tick bar
+offers both destinations.
 
 Weights are entered in **rupees or percent** — the same question once the total
-is divided out, so the form takes either, shows each line's share as it is
-typed, and nothing has to add to a round number. *Split evenly* is there for the
-common case.
+is divided out, so the form takes either, shows each line's share as it is typed,
+and nothing has to add to a round number. *Split evenly* is there for the common
+case. An unweighted portfolio is not a portfolio, so the tab **opens on an equal
+split and says so** rather than showing an empty page until somebody fills a
+form: it is a real allocation, a common one, and one click from being replaced.
 
-What changes once there is one:
+The top band is the line on the left and four tiles beside it — what a portfolio
+holds is not what its funds hold listed four times.
 
 - **One line.** The portfolio is drawn bold and black, its holdings hidden
   behind a *show holdings* switch that brings them back thin and pale. Any
   benchmark stays available. The line is **bought once at the start of the
   window and held**, so the weights drift: no rebalancing is assumed, because
   assuming one would quietly add a return the investor never earned.
+- **What it comes to.** **Effective holdings**, the inverse Herfindahl of the
+  combined book, beside the distinct name count, the top-10 weight and the
+  largest single position. Four funds of sixty names each are not 240 positions,
+  because they own many of the same ones, and the plain count will not say so.
+- **Cap mix**, as a ring, read off **the underlying stocks and not the funds'
+  categories**. A flexi cap fund holding small caps is holding small caps
+  whatever the label on it says, and a portfolio built out of three mandates can
+  be a different shape from any of them. What the feed does not band — overseas
+  names, mostly — is shown as unclassified rather than dropped, so the ring is
+  the whole book.
+- **Largest sectors**, eight of them, as shares of the combined book. Eight
+  rather than the fund page's five because a portfolio's sector shape is the
+  reason somebody built it, and the tail is where it shows: three names at thirty
+  percent and everything else at four is a different portfolio from one spread
+  evenly across eight.
+- **Top holdings.** The twelve largest positions in the combination. The same
+  stock bought by three of the funds is one position at the sum of its three
+  weights, and only the combined book says how big that position actually is.
+
+Below the band, the same metric table and overlap matrix as compare, with two
+differences:
+
 - **A row of its own.** The portfolio leads the metric table, with its returns
   and rolling medians read off its own series rather than averaged from the
   holdings — averaging point-to-point returns of things bought on different days
   is not a portfolio return. Risk and capture stay blank for the same reason a
   price index's do: they need a benchmark to be measured against.
-- **What it actually holds.** A look-through card: **effective holdings**, the
-  inverse Herfindahl of the combined book, beside the distinct name count, the
-  top-10 weight and the largest sector. Four funds of sixty names each are not
-  240 positions, because they own many of the same ones, and the plain count
-  will not say so.
+- **Overlap reads as duplication** rather than as resemblance: on this tab the
+  question is not how alike two funds are but how much of the money is in the
+  same stock twice.
 
 ### 5.7 Ticking funds anywhere
 
 Every row in **Category top funds** and **All funds** carries a tick box. A bar
 appears at the foot of the page as soon as anything is ticked — *N funds
-selected · Compare · Clear* — and the selection survives moving between the two
-tabs, so a comparison can be built out of two different lists without writing
-any names down. The order things were ticked in is kept, because it decides the
+selected · Compare · Build portfolio · Clear* — and the selection survives moving
+between the two tabs, so a comparison can be built out of two different lists
+without writing any names down. Two destinations, because the same tick answers
+two questions: read these side by side, or hold them together. The order things were ticked in is kept, because it decides the
 colour each one takes on the chart.
 
 ### 5.8 Taking it away
