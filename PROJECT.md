@@ -512,14 +512,14 @@ holds is not what its funds hold listed four times.
   be a different shape from any of them. What the feed does not band — overseas
   names, mostly — is shown as unclassified rather than dropped, so the ring is
   the whole book.
-- **Largest sectors**, eight of them, as shares of the combined book. Eight
-  rather than the fund page's five because a portfolio's sector shape is the
-  reason somebody built it, and the tail is where it shows: three names at thirty
-  percent and everything else at four is a different portfolio from one spread
-  evenly across eight.
-- **Top holdings.** The twelve largest positions in the combination. The same
+- **Largest sectors**, five of them, as shares of the combined book.
+- **Top holdings.** The five largest positions in the combination. The same
   stock bought by three of the funds is one position at the sum of its three
   weights, and only the combined book says how big that position actually is.
+
+Both lists stop at five so the two lower tiles are the same height: the four are
+a block beside the chart, and the block only reads as one thing while its halves
+line up. The full lists are in the CSV.
 
 Below the band, the same metric table and overlap matrix as compare, with two
 differences:

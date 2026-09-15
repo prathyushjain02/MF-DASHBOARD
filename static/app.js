@@ -1912,7 +1912,7 @@ async function drawCmpGrowth() {
     if (s.code === 'portfolio') return { ...s, ink: 'var(--ink-strong)', width: 2.6 };
     return { ...s, ink: Chart.MARK_INK, dash: '5 3', width: 1.5 };
   }).filter((s) => s.code !== 'holding' || c.holdings);
-  Chart.growthLines(host, series, { height: isPortfolio() ? 330 : 300 });
+  Chart.growthLines(host, series, { height: isPortfolio() ? 205 : 300 });
 
   c.names = Object.fromEntries(g.series
     .filter((s) => s.code === 'fund' || s.code === 'holding')
@@ -2192,12 +2192,11 @@ async function drawPfTiles() {
       ? [{ label: 'Unclassified', value: Math.max(0, 100 - capped),
            ink: '#dcdcd8' }] : []);
 
-  /* Eight rather than the fund page's five. A portfolio's sector shape is the
-     reason somebody built it, and eight rows is where the tail starts telling
-     you something: three names at thirty percent and everything else at four is
-     a different portfolio from one spread evenly across eight. */
-  const sectors = (d.sectors || []).slice(0, 8);
-  const stocks = (d.stocks || []).slice(0, 12);
+  /* Five and five. The four tiles are a block beside the chart, and the block
+     only reads as one thing while its two halves are the same height. The long
+     versions of both lists are a click away in the CSV. */
+  const sectors = (d.sectors || []).slice(0, 5);
+  const stocks = (d.stocks || []).slice(0, 5);
   const largest = d.stocks && d.stocks[0];
 
   host.innerHTML = `
