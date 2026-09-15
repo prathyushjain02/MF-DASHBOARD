@@ -23,8 +23,9 @@
 
 const API = '/api/mf';
 const $ = (s, r = document) => r.querySelector(s);
-const state = { mode: 'client', view: 'shortlist', fw: null, meta: null, fund: null,
-                category: null, returnView: null, gloss: {}, picked: [] };
+const state = { mode: 'client', plan: 'direct', view: 'shortlist', fw: null,
+                meta: null, fund: null, category: null, returnView: null,
+                gloss: {}, picked: [] };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
   (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -52,7 +53,14 @@ const num = (v, d = 1) =>
    per the template's formatting guidelines. */
 const cr = (v) => v == null ? '—'
   : (v >= 100000 ? `INR ${num(v / 100000, 2)} lakh cr` : `INR ${num(v, 0)} cr`);
-const isAnalyst = () => state.mode === 'analyst';
+/* The analyst view is switched off at the front door rather than taken out.
+   Everything it draws, every block score, every rank, every piece of the
+   methodology page, is still here and still correct; the toggle that reached it
+   is gone, so nothing renders it and nothing asks the server for it. Flip this
+   to read `state.mode === 'analyst'` and put the buttons back to have it
+   again. */
+const ANALYST_ENABLED = false;
+const isAnalyst = () => ANALYST_ENABLED && state.mode === 'analyst';
 
 const BAND_TONE = { A: 'good', B: 'warning', C: 'serious', Review: 'critical',
                     'Not rated': 'neutral' };
@@ -120,11 +128,26 @@ function bandPill(band) {
 }
 
 function applyMode() {
-  document.body.dataset.mode = state.mode;
-  $('#viewtoggle').querySelectorAll('button').forEach((b) => {
-    const on = b.dataset.mode === state.mode;
+  // Still stamped, because it is what hides the analyst-only cells in CSS.
+  document.body.dataset.mode = isAnalyst() ? 'analyst' : 'client';
+}
+
+/* Direct or regular, which is a real distinction and not a presentation one: the
+   two plans of a scheme are different products with different expense ratios and
+   therefore different returns, and the feed carries one of them. The toggle is
+   here and does nothing until the other plan's figures arrive. Saying so on the
+   button is better than a switch that silently shows the same numbers twice. */
+function applyPlan() {
+  const bar = $('#plantoggle');
+  if (!bar) return;
+  bar.querySelectorAll('button').forEach((b) => {
+    const on = b.dataset.plan === state.plan;
     b.classList.toggle('on', on);
     b.setAttribute('aria-pressed', String(on));
+    b.disabled = b.dataset.plan !== 'direct';
+    b.title = b.dataset.plan === 'direct'
+      ? 'Direct plan figures, which is what the feed carries'
+      : 'Regular plan figures are not in the feed yet';
   });
 }
 
@@ -2661,11 +2684,13 @@ async function render() {
 
 (async function boot() {
   applyMode();
-  $('#viewtoggle').querySelectorAll('button').forEach((b) =>
+  applyPlan();
+  $('#plantoggle').querySelectorAll('button').forEach((b) =>
     b.onclick = () => {
-      state.mode = b.dataset.mode;
-      applyMode();
-      render();          // the two modes render different content, not just CSS
+      if (b.disabled) return;
+      state.plan = b.dataset.plan;
+      applyPlan();
+      render();          // the two plans are different numbers, not just a label
     });
   $('#tabs').querySelectorAll('button').forEach((b) =>
     b.onclick = () => setView(b.dataset.view));

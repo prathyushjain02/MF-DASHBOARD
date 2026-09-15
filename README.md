@@ -173,23 +173,21 @@ in them.
 | Compare | Any number of funds against up to two benchmarks: one rebased chart, a metric table behind group checkboxes, a pairwise stock overlap matrix, and a CSV or one page PDF of the lot. |
 | Portfolio builder | The same funds held together rather than read side by side. Weights in rupees or percent, opening on an equal split. One bold line with the holdings behind a switch, and beside it four tiles on the combined book: what it comes to (effective holdings, distinct names, top 10 weight), the cap mix read off the underlying stocks rather than the funds' categories, the five largest sectors, and the five largest positions. Below, the metric table with the portfolio's own row and the overlap matrix read as duplication. |
 
-The **Client / Analyst toggle** decides what the page is for, not just how much of
-it shows.
+The masthead carries one toggle: **Direct** or **Regular**. The two plans of a
+scheme are different products with different expense ratios and so different
+returns, and the feed carries the direct plan; regular is present and disabled
+until its figures arrive.
 
-| | Client | Analyst |
-|---|---|---|
-| The snapshot cards and their modals | yes | yes |
-| Filter by band, rated-only, and the rank column | no | yes |
-| The book: cap mix, sectors, top holdings | yes | yes |
-| Drawdown periods and the returns table | yes | yes |
-| Composite, band, rank, tier | no | yes |
-| Block scores, weights, coverage, evidence | no | yes |
-| Where the remaining points are | no | yes |
-| Engine flags: New Manager, Mandate shortfall, Capacity watch | no | yes |
-| Peer-group caveat, methodology and band tables | no | yes |
+The **Client / Analyst** toggle that used to sit there is switched off rather
+than removed. Everything the analyst view drew is still in the code and still
+correct: the composite, band, rank and tier, the block scores with their weights
+and coverage, the engine flags, the rank column and band filter, and the
+methodology tables. One constant in `app.js`, `ANALYST_ENABLED`, gates all of
+it. Set it to `true` and restore the two buttons in the masthead to have it
+back. Nothing on the server changed.
 
-Anything score-bearing is removed from the DOM in client view rather than dimmed,
-so a screenshot of client view cannot leak it.
+Anything score-bearing is removed from the DOM rather than dimmed, so a
+screenshot cannot leak it.
 
 ## Architecture
 

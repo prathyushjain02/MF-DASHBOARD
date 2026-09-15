@@ -379,7 +379,7 @@ first is declared per column, so the reader never has to work out which way is
 up. Missing values always sink to the bottom whichever way the column points, so
 an empty cell never wins a "best downside capture" sort.
 
-In analyst view the table runs to 18 columns and has to scroll sideways, so the
+With the analyst view on (5.9) the table runs to 18 columns and has to scroll sideways, so the
 **scheme name is pinned to the left edge** — a row of figures whose name has
 scrolled away belongs to nobody.
 
@@ -466,7 +466,7 @@ index figure there is deliberately not the index's own worst fall over the
 window, because the question is what the market was doing while this fund was
 falling.
 
-In analyst view a further card runs the full width beneath: **the score**, as
+With the analyst view on (5.9) a further card runs the full width beneath: **the score**, as
 seven weighted blocks with coverage on each, plus the flags.
 
 ### 5.5 Compare
@@ -589,23 +589,42 @@ colour each one takes on the chart.
   *Save as PDF* produces the file. The PDF is the page itself rather than a
   second rendering of it that could drift.
 
-### 5.9 The Client / Analyst toggle
+### 5.9 Direct or regular
 
-The toggle decides what the page is *for*, not just how much of it shows.
+The masthead carries one toggle: **Direct** or **Regular**. It is a real
+distinction and not a presentation one. The two plans of a scheme are different
+products with different expense ratios and therefore different returns, and the
+feed currently carries the direct plan. **Regular is present and disabled** until
+the other plan's figures arrive: a toggle that silently showed the same numbers
+under both labels would be worse than no toggle at all.
 
-| | Client | Analyst |
-|---|---|---|
-| Snapshot cards and their modals | yes | yes |
-| What it holds, including cash | yes | yes |
-| Composite, band, rank, tier | no | yes |
-| Block scores, weights, coverage, evidence | no | yes |
-| Where the remaining points are | no | yes |
-| Engine flags | no | yes |
-| Filter by band and rated-only, rank column | no | yes |
-| Methodology and band tables | no | yes |
+#### The analyst view, switched off
 
-Anything score-bearing is **removed from the DOM** in client view rather than
-dimmed, so a screenshot of a client view cannot leak it.
+There was a second toggle here, **Client / Analyst**, deciding what the page was
+for rather than how much of it showed: the analyst side carried the composite,
+the band, the rank and tier, the seven block scores with their weights and
+coverage, where the remaining points were, the engine flags, the rank column and
+the band filter, and the methodology tables.
+
+It is **switched off at the front door rather than taken out**. Every one of
+those views is still in the code and still correct; what is gone is the toggle
+that reached them, so nothing renders them and nothing asks for them. One
+constant in `app.js` does it:
+
+```js
+const ANALYST_ENABLED = false;
+const isAnalyst = () => ANALYST_ENABLED && state.mode === 'analyst';
+```
+
+Flip that to `true` and put the two buttons back in the masthead to have it
+again. The server side never changed: the model still scores every fund, the
+`/funds` list still carries the composite, band, rank and evidence, and the
+methodology endpoints still answer. Scoring is what produces the ordering the
+client view depends on, so there is nothing to switch off there and nothing to
+be gained by trying.
+
+Anything score-bearing is **removed from the DOM** rather than dimmed, so a
+screenshot cannot leak it.
 
 ---
 

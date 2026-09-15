@@ -125,6 +125,11 @@ a { color: var(--red); }
   padding: 6px 18px; font: inherit; font-size: 12.5px; cursor: pointer;
 }
 .segmented button.on { background: var(--red); color: #fff; font-weight: 500; }
+/* A choice that is not available yet reads as one, rather than as a button that
+   does nothing when pressed. */
+.segmented button:disabled { cursor: not-allowed; color: var(--text-muted);
+  opacity: 0.55; }
+.segmented button:disabled.on { opacity: 1; }
 
 /* ----------------------------------------------------------------- tabs */
 #tabs { display: flex; padding: 0 34px; background: var(--surface-1);
@@ -1151,7 +1156,7 @@ body.modal-open { overflow: hidden; }
   html, body { background: #fff; }
   #masthead { padding: 0 0 8px; }
   #masthead::after { display: none; }
-  #tabs, #viewtoggle, #pickbar, #tooltip, .modal-backdrop,
+  #tabs, #plantoggle, #pickbar, #tooltip, .modal-backdrop,
   .cmp-pickers, .cmp-pfbtns, .periodbar, .cmp-groupbar, .cmp-download,
   .backlink, .chart-more, .snapcard-go { display: none !important; }
   #main { padding: 0; max-width: none; }
