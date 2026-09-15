@@ -112,10 +112,14 @@ def row(fund):
 # the full record costs nothing worth saving.
 _LIST_FIELDS = (
     "key", "name", "category", "amc", "band", "composite", "evidence",
-    "categoryRank", "aumCr", "ter", "managerYears",
-    "medianRolling3Y", "medianRolling5Y", "rollingHitRate3Y", "return3Y",
+    "categoryRank", "aumCr", "ter",
+    *fw.RETURN_FIELDS,
+    "medianRolling3Y", "medianRolling5Y", "rollingHitRate3Y",
     "sortino3Y", "informationRatio3Y",
     "downsideCapture3Y", "upsideCapture3Y", "maxDrawdown3Y",
+    # Shares of the whole fund rather than of the equity book, cash included,
+    # which is the only basis on which the four add to a hundred.
+    "largeCapPct", "midCapPct", "smallCapPct", "cashPct",
     "hasHoldings", "rated", "scored",
 )
 

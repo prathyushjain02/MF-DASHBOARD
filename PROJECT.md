@@ -379,9 +379,31 @@ first is declared per column, so the reader never has to work out which way is
 up. Missing values always sink to the bottom whichever way the column points, so
 an empty cell never wins a "best downside capture" sort.
 
-With the analyst view on (5.9) the table runs to 18 columns and has to scroll sideways, so the
-**scheme name is pinned to the left edge** — a row of figures whose name has
-scrolled away belongs to nobody.
+**The columns come in bands behind checkboxes**, the same way the comparison
+table's do. A thousand funds against every metric the feed publishes is a
+spreadsheet, and a spreadsheet with every column showing is one nobody reads;
+the reader says which question they are asking and the table answers that one.
+
+| Band | Columns | Starts |
+|---|---|---|
+| Returns | The six horizons (6.2), point to point | on |
+| Rolling returns | Median rolling 3Y and 5Y, and the 3Y hit rate | on |
+| Risk metrics | Sortino, Information Ratio, maximum drawdown | on |
+| Capture ratios | Downside and upside capture | on |
+| Market cap breakdown | Large, mid, small and cash, as shares of the whole fund | off |
+| Size and cost | Expense ratio and AUM | on |
+
+The name and category are always there. The cap breakdown starts off because it
+is a second question about the same funds and waits to be asked; sorting the
+universe on small cap share is how you find what a fund is actually doing with a
+mandate, and it is one tick away.
+
+**Turning a band off does not re-sort.** The sort is a decision the reader made,
+the line above the table still says what it is, and a column leaving the view is
+not a reason to reorder the rows under them.
+
+The table scrolls sideways, so the **scheme name is pinned to the left edge** — a
+row of figures whose name has scrolled away belongs to nobody.
 
 ### 5.4 The fund page
 

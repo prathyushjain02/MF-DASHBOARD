@@ -615,36 +615,70 @@ async function drawCategoryPanel(category) {
 
 /* ------------------------------------------------------------ 3. all funds */
 
+/* The bands of columns, each behind a checkbox. A thousand funds against every
+   metric the feed publishes is a spreadsheet, and a spreadsheet with every
+   column showing is one nobody reads. The reader says which question they are
+   asking and the table answers that one.
+
+   `on` is whether the band starts ticked. Returns, rolling and risk are what
+   the page is for; the cap breakdown is a second question about the same funds
+   and waits to be asked. */
+const ALL_GROUPS = [
+  { id: 'returns', label: 'Returns', on: true },
+  { id: 'rolling', label: 'Rolling returns', on: true },
+  { id: 'risk', label: 'Risk metrics', on: true },
+  { id: 'capture', label: 'Capture ratios', on: true },
+  { id: 'caps', label: 'Market cap breakdown', on: false },
+  { id: 'size', label: 'Size and cost', on: true },
+];
+
 /* Columns the table can sort on. `field` is what the API sorts by; `dir` is the
    direction that puts "good" first, so one click on any column shows the best of
-   it rather than making the reader work out which way is up. */
-const COLUMNS = [
+   it rather than making the reader work out which way is up. `group` is the
+   checkbox it hides behind; a column with none is always there. */
+const COLUMNS = () => [
   { field: 'categoryRank', label: '#', analyst: true, dir: 'asc', fmt: (f) => f.categoryRank ?? '—' },
   { field: 'name', label: 'Fund', dir: 'asc', text: true },
   { field: 'category', label: 'Category', dir: 'asc', text: true },
   { field: 'band', label: 'Band', analyst: true, dir: 'asc', text: true },
   { field: 'composite', label: 'Composite', analyst: true, dir: 'desc', d: 1 },
+  /* Bare horizons: the group they sit in is named on the checkbox above, and
+     the rolling columns beside them carry "Rolling" in their own labels, so the
+     contrast does the work a repeated word would. The gloss says which kind of
+     return these are for anybody who wants it spelled out. */
+  ...RETURN_HORIZONS().map((h) => ({ field: 'return' + h, label: h,
+                                     dir: 'desc', d: 1, group: 'returns',
+                                     gloss: 'point to point' })),
   { field: 'medianRolling3Y', label: 'Rolling 3Y', dir: 'desc', d: 1,
-    gloss: 'median rolling return' },
+    group: 'rolling', gloss: 'median rolling return' },
   { field: 'medianRolling5Y', label: 'Rolling 5Y', dir: 'desc', d: 1,
-    gloss: 'median rolling return' },
-  { field: 'rollingHitRate3Y', label: 'Hit rate', dir: 'desc', d: 0 },
-  { field: 'return3Y', label: 'CAGR 3Y', dir: 'desc', d: 1 },
-  { field: 'sortino3Y', label: 'Sortino', dir: 'desc', d: 2 },
+    group: 'rolling', gloss: 'median rolling return' },
+  { field: 'rollingHitRate3Y', label: 'Hit rate', dir: 'desc', d: 0,
+    group: 'rolling' },
+  { field: 'sortino3Y', label: 'Sortino', dir: 'desc', d: 2, group: 'risk' },
   { field: 'informationRatio3Y', label: 'Info ratio', dir: 'desc', d: 2,
-    gloss: 'information ratio' },
-  { field: 'downsideCapture3Y', label: 'Down capture', dir: 'asc', d: 0,
-    gloss: 'downside capture' },
-  { field: 'upsideCapture3Y', label: 'Up capture', dir: 'desc', d: 0,
-    gloss: 'upside capture' },
+    group: 'risk', gloss: 'information ratio' },
   { field: 'maxDrawdown3Y', label: 'Max drawdown', dir: 'desc', d: 1,
-    gloss: 'maximum drawdown' },
-  { field: 'ter', label: 'Expense', dir: 'asc', d: 2, gloss: 'expense ratio' },
-  { field: 'managerYears', label: 'Tenure', dir: 'desc', d: 1,
-    gloss: 'tenure on this scheme' },
-  { field: 'aumCr', label: 'AUM', dir: 'desc', money: true },
+    group: 'risk', gloss: 'maximum drawdown' },
+  { field: 'downsideCapture3Y', label: 'Down capture', dir: 'asc', d: 0,
+    group: 'capture', gloss: 'downside capture' },
+  { field: 'upsideCapture3Y', label: 'Up capture', dir: 'desc', d: 0,
+    group: 'capture', gloss: 'upside capture' },
+  /* Shares of the whole fund, cash included, which is why they add to a hundred
+     and why cash is beside them rather than left out. */
+  { field: 'largeCapPct', label: 'Large cap', dir: 'desc', d: 0, group: 'caps' },
+  { field: 'midCapPct', label: 'Mid cap', dir: 'desc', d: 0, group: 'caps' },
+  { field: 'smallCapPct', label: 'Small cap', dir: 'desc', d: 0, group: 'caps' },
+  { field: 'cashPct', label: 'Cash', dir: 'desc', d: 0, group: 'caps',
+    gloss: 'cash and others' },
+  { field: 'ter', label: 'Expense', dir: 'asc', d: 2, group: 'size',
+    gloss: 'expense ratio' },
+  { field: 'aumCr', label: 'AUM', dir: 'desc', money: true, group: 'size' },
   { field: 'evidence', label: 'Evidence', analyst: true, dir: 'desc', d: 0 },
 ];
+
+const visibleColumns = () => COLUMNS().filter((c) =>
+  (!c.analyst || isAnalyst()) && (!c.group || filters.groups.has(c.group)));
 
 /* Only categories with funds in them. The framework defines eleven; the current
    feed carries no Dividend Yield scheme at all, and a filter option that can
@@ -655,6 +689,7 @@ function liveCategories() {
 }
 
 const filters = { category: 'All', band: 'All', amc: 'All', q: '',
+                  groups: new Set(ALL_GROUPS.filter((g) => g.on).map((g) => g.id)),
                   minAum: '', maxDownside: '', hasHoldings: false, ratedOnly: false,
                   sort: 'medianRolling3Y', dir: 'desc' };
 
@@ -693,6 +728,11 @@ async function renderAll(host) {
         <span class="spacer"></span>
         <button id="f-reset" class="ghost">Reset</button>
       </div>
+      <div class="cmp-groupbar" id="all-groupbar">
+        ${ALL_GROUPS.map((g) => `
+          <label class="cmp-group"><input type="checkbox" data-group="${g.id}"
+            ${filters.groups.has(g.id) ? 'checked' : ''}> ${esc(g.label)}</label>`).join('')}
+      </div>
       <div id="tablewrap" class="tablewrap"></div>
     </section>`;
 
@@ -705,6 +745,15 @@ async function renderAll(host) {
   bind('f-q', 'q'); bind('f-cat', 'category'); bind('f-amc', 'amc');
   bind('f-band', 'band'); bind('f-aum', 'minAum'); bind('f-dn', 'maxDownside');
   bind('f-hold', 'hasHoldings', 'checked'); bind('f-rated', 'ratedOnly', 'checked');
+  /* Turning a band off does not re-sort. The sort is a decision the reader made
+     and the meta line above the table still says what it is, so a column leaving
+     the view is not a reason to reorder the rows under them. */
+  $('#all-groupbar').querySelectorAll('[data-group]').forEach((b) =>
+    b.onchange = () => {
+      if (b.checked) filters.groups.add(b.dataset.group);
+      else filters.groups.delete(b.dataset.group);
+      loadTable();
+    });
   $('#f-reset').onclick = () => {
     Object.assign(filters, { category: 'All', band: 'All', amc: 'All', q: '',
       minAum: '', maxDownside: '', hasHoldings: false, ratedOnly: false });
@@ -719,7 +768,7 @@ function debounce(fn, ms) {
 }
 
 function sortBy(field) {
-  const col = COLUMNS.find((c) => c.field === field);
+  const col = COLUMNS().find((c) => c.field === field);
   if (!col) return;
   // First click on a column uses its natural direction; clicking the active
   // column flips it.
@@ -742,7 +791,7 @@ async function loadTable() {
   if (filters.ratedOnly) p.set('rated', '1');
 
   const data = await get('/funds?' + p);
-  const cols = COLUMNS.filter((c) => !c.analyst || isAnalyst());
+  const cols = visibleColumns();
   const wrap = $('#tablewrap');
   const arrow = (c) => filters.sort === c.field
     ? `<span class="arrow">${filters.dir === 'asc' ? '▲' : '▼'}</span>`
@@ -750,7 +799,7 @@ async function loadTable() {
 
   wrap.innerHTML = `
     <div class="tablemeta">${data.funds.length} of ${data.total} shown ·
-      sorted by ${esc(COLUMNS.find((c) => c.field === filters.sort)?.label || filters.sort)}
+      sorted by ${esc(COLUMNS().find((c) => c.field === filters.sort)?.label || filters.sort)}
       ${filters.dir === 'asc' ? 'ascending' : 'descending'}</div>
     <table class="grid dense sticky">
       <thead><tr>
