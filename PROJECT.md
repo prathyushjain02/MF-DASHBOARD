@@ -315,7 +315,14 @@ still draws them; nothing calls either.
 ### 5.2 Category top funds
 
 A tile per category, then that category's shortlist as a table: the six return
-horizons (6.2), median rolling 3Y and 5Y, AUM, and the named managers. The
+horizons (6.2), median rolling 3Y and 5Y, AUM, and the managers.
+
+At most **three names** in the manager column, then a count. A seven manager
+scheme written out in full is a paragraph in a table cell and reads as noise
+rather than as seven people. The three are the **longest serving**, not the
+feed's own order, which is in no order that means anything: the question a name
+answers in a table is who has been running this money. The rest are on the fund's
+own page. The
 category's **benchmark travels in the table footer**, on the same columns, so
 every row above it can be read against the same line rather than against a
 number held somewhere else.

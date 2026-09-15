@@ -559,6 +559,18 @@ async function renderShortlists(host) {
   wireGlossary(host);
 }
 
+/* Three names, then a count. A seven manager scheme written out in full is a
+   paragraph in a cell and reads as noise rather than as seven people; the three
+   longest serving are the ones the question is about, and the rest are on the
+   fund's own page. */
+function managerCell(f) {
+  const names = f.leadManagers || [];
+  if (!names.length) return '—';
+  const rest = (f.managerCount || names.length) - names.length;
+  return esc(names.join(', '))
+    + (rest > 0 ? ` <span class="muted">and ${rest} more</span>` : '');
+}
+
 async function drawCategoryPanel(category) {
   if (category === PASSIVE_CAT) return drawPassivePanel();
   if (state.catMode === 'calendar') return drawCalendarPanel(category);
@@ -599,7 +611,7 @@ async function drawCategoryPanel(category) {
             <td class="r mono roll">${num(f.medianRolling3Y, 1)}</td>
             <td class="r mono roll">${num(f.medianRolling5Y, 1)}</td>
             <td class="r mono">${cr(f.aumCr)}</td>
-            <td class="mgr">${esc(f.fundManager || '—')}</td>
+            <td class="mgr">${managerCell(f)}</td>
           </tr>`).join('') || `<tr><td colspan="${hz.length + 6}" class="muted">No scored funds in this category.</td></tr>`}
         </tbody>
         ${c.benchmark ? `<tfoot>

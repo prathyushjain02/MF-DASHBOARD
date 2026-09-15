@@ -99,9 +99,33 @@ def public(fund):
     return {k: v for k, v in fund.items() if k not in _PRIVATE}
 
 
+# How many names a table shows before it stops naming them. A seven manager
+# scheme listed in full is a paragraph in a cell, and the eye reads it as noise
+# rather than as seven people.
+LEAD_MANAGERS = 3
+
+
+def lead_managers(fund, n=LEAD_MANAGERS):
+    """The longest serving managers, and how many there are in all.
+
+    Longest serving rather than the feed's own order, because the question a
+    name answers in a table is who has been running this money, and the feed
+    lists them in no order that means anything.
+    """
+    ranked = sorted((fund.get("managers") or []),
+                    key=lambda m: -(m.get("tenureYears") or 0))
+    names = [m["name"] for m in ranked[:n]]
+    if not names and fund.get("fundManager"):
+        # Older records carry the names as one string and nothing else.
+        names = [x.strip() for x in str(fund["fundManager"]).split(",")][:n]
+        return names, len(names)
+    return names, len(ranked)
+
+
 def row(fund):
     out = {k: fund.get(k) for k in _ROW_FIELDS}
     out["flags"] = [f["label"] for f in fund.get("flags", [])]
+    out["leadManagers"], out["managerCount"] = lead_managers(fund)
     return out
 
 
