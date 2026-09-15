@@ -15,6 +15,9 @@ live in two different documents:
 
 1. **Rank.** Score every actively managed equity scheme against the other
    schemes in its own category, on seven weighted blocks, and order a shortlist.
+   Passive, thematic, ELSS and fund of funds schemes are carried in full and
+   deliberately not scored: an index fund is not trying to beat its index, so
+   ranking it on alpha would answer a question nobody asked of it.
 2. **Present.** Show that shortlist the way a client should see it, with a
    written rationale, and keep the number itself behind an analyst toggle.
 
@@ -33,16 +36,14 @@ and every fund carries the share of the model's weight that was evidenced.
 
 | | |
 |---|---|
-| Schemes in the feed | 606 |
-| In scope after the category and AMC rules | 211 |
-| Carrying a composite score | 175 |
-| Not rated for want of evidence | 36 |
-| Categories | 9 (Dividend Yield currently has no scheme in scope) |
-| Fund houses represented | 32 |
-| Bands | A 21 · B 51 · C 76 · Review 27 |
-| Median evidence across the universe | 100% |
-| Daily NAV series held | 211 funds, 4 indices, 8 category averages |
-| Disclosed holdings books | 210 of 211 in scope |
+| Rows in the feed | 1,231 |
+| Mutual funds in the universe | 1,177 |
+| Inside the model, actively managed equity | 280 |
+| Carrying a composite score | 225 |
+| Shown but not scored | 897 |
+| Categories | 9 scored, 4 shown |
+| Bands | A 32 · B 62 · C 95 · Review 36 · Not rated 55 · Not scored 897 |
+| Daily NAV series held | the scored universe, 4 indices, 8 category averages |
 
 ---
 
@@ -72,6 +73,8 @@ what the model claims rather than by guessing.
 
 | Gap | What it costs | How it is handled |
 |---|---|---|
+| The feed's category column is unreliable | Peer groups would be wrong | Category is read from the scheme name; every disagreement is reported by the build |
+| No NAV history for the 897 unscored schemes | No growth chart on their pages | Deliberate: carrying daily NAV for every ETF as well would quadruple a file committed and redeployed each morning, for a chart of a line that is by construction its index |
 | No holdings file from a year earlier | Name retention cannot be computed | The metric is wired but carries **zero weight**, so it cannot silently move a score |
 | No benchmark constituent weights | True active share is unavailable | Differentiation is proxied by overlap against the category's own average book |
 | Expense ratio is thin: 94 of 211 | Cost cannot be scored | It is a context field only, printed where known and dashed where not |
@@ -89,25 +92,31 @@ price history.
 ### 3.1 The quantitative feed (Sheety)
 
 ```
-https://api.sheety.co/.../allFundsQuantData/allFunds
+https://api.sheety.co/.../fundQuantDataAll/flexiCap
 ```
 
-A Google Sheet published as JSON, edited by hand every few weeks. It carries
-every ratio and return the model scores: median rolling returns at 1, 3, 5, 7
-and 10 years, Sharpe, Sortino, Information Ratio and Treynor at each horizon,
-upside and downside capture, maximum drawdown, standard deviation, beta, AUM,
-NAV, net flow and the deciles.
-
-The sheet has a **two-row header**: row 1 is the metric, row 2 is the horizon.
-Sheety turns row 1 into the JSON key and hands row 2 back as the first data row.
-The ETL reads that horizon rather than assuming it, which is not cosmetic — a
-past version of this feed published a 1Y median rolling return where the
-previous one published 3Y, and a hardcoded suffix would have relabelled a
-one-year number as a three-year one and scored it as such.
+A Google Sheet published as JSON, edited by hand every few weeks. 1,231 rows and
+105 columns covering every scheme the sheet tracks, active and passive: median
+rolling returns at 1 through 10 years, Sharpe, Sortino, Information Ratio and
+Treynor at each horizon, upside and downside capture, maximum drawdown, standard
+deviation, beta, the calendar year series, AUM and its date, net flow, the cap
+allocation, the AMFI code and the inception date.
 
 Columns are matched **by synonym, not by exact string**, and anything unmatched
 is printed at the end of the run under "unmapped columns". That is the one place
-a quiet data loss would otherwise hide.
+a quiet data loss would otherwise hide. The parser reads the horizon out of the
+column rather than assuming it — `sharpe [3Y]` and `3MP2P` both resolve without
+a list of names — which is why a feed with an entirely different shape from its
+predecessor mapped 103 of its 105 columns on the first run.
+
+**The category column is not used.** Its "Flexi Cap Fund" bucket holds 190 rows,
+of which 80 are thematic funds, 21 are index funds and ETFs, and the remainder
+includes every Quant and Quantum scheme whatever its actual category: Quant
+Small Cap, Quant Value, Quant Focused and Quant Large Cap are all filed as flexi
+cap. Every score in this model is a percentile inside a category, so one misfiled
+row does not merely mislabel itself, it moves the score of every fund measured
+against it. The category is read from the scheme's own name instead, which is
+regulated: SEBI requires the category to be in it. See `mf/classify.py`.
 
 ### 3.2 The Underlying workbook (optional, for a full rebuild)
 

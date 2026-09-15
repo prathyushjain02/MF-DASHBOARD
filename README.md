@@ -5,8 +5,11 @@ with two jobs: rank the funds in each category and surface the shortlist, then
 present that shortlist the way a client should see it, with a written rationale
 and the number kept behind an analyst toggle.
 
-211 actively managed equity schemes in scope, 175 of them carrying a composite,
-scored on seven weighted blocks, every metric percentiled inside its own category.
+1,177 schemes in the universe. 280 of them are actively managed equity and go
+through the model, 225 of those carry a composite, and every metric behind it is
+a percentile inside the fund's own category. The other 897 are index funds and
+ETFs, thematic and sectoral funds, ELSS and fund of funds: carried in full,
+searchable, and deliberately not scored.
 
 For the long account of what the project does, what the dashboard shows and why it
 is drawn the way it is, see [PROJECT.md](PROJECT.md).
@@ -166,6 +169,7 @@ in them.
 | Category top funds | A tile per category. Click one for its shortlist as a table: 3M, 6M, 1Y, 3Y and 5Y returns, median rolling 3Y and 5Y, AUM and the named managers. Click a fund name for its own page. |
 | All funds | Every scheme. Filter by search, category, AMC, band, minimum AUM, maximum downside capture, holdings and rated-only; sort on any column. Click a row for the fund page, or tick it to carry into Compare. |
 | Fund | A one-page snapshot: how it has done against its benchmark, what a holding period gave, how it behaves in a fall, what it holds, who runs it, size and cost. Every card opens its full detail in a modal. |
+| Smart beta / Passive | Index funds and ETFs grouped by the index each one tracks, best tracker first. No score: two funds on one index are the same product, so what separates them is how much of the index they hand back. |
 | Compare | Any number of funds against up to two benchmarks: one rebased chart, a metric table behind group checkboxes, a pairwise stock overlap matrix, and a CSV or one page PDF of the lot. Weight the selection and it becomes a portfolio: one line, its own row in the table, and a look-through with effective holdings. |
 
 The **Client / Analyst toggle** decides what the page is for, not just how much of

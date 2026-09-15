@@ -166,6 +166,14 @@ def shortlists():
     return jsonify({"categories": out})
 
 
+@bp.get("/passive")
+def passive():
+    """Index funds and ETFs grouped by the index each one tracks."""
+    return jsonify({"families": ds.passive_families(),
+                    "minFamily": ds.MIN_FAMILY,
+                    "implausibleGap": ds.IMPLAUSIBLE_GAP})
+
+
 @bp.get("/holdings/<key>")
 def holdings(key):
     state = ds.load()

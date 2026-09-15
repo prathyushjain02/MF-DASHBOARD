@@ -790,6 +790,28 @@ body.modal-open { overflow: hidden; }
   display: flex; flex-direction: column; gap: 4px; }
 .error span { color: var(--text-secondary); font-family: var(--mono); font-size: 12px; }
 
+/* ------------------------------------------------------------- passive */
+/* One block per index rather than one long table: the comparison that means
+   anything is inside a group, and a single ranked list across every index would
+   invite exactly the comparison that does not. */
+.tile-passive h3 { color: var(--text-secondary); }
+.tile-passive.on h3 { color: var(--text-primary); }
+.fam-grid { display: grid; gap: 18px 26px; margin-top: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+.fam { break-inside: avoid; }
+.fam-head { display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; border-bottom: 1px solid var(--red); padding-bottom: 4px; }
+.fam-head h4 { font-size: 13.5px; font-weight: 500; margin: 0; }
+.fam-table { border-top: 0; border-bottom: 1px solid var(--grid); }
+.fam-table td { padding: 5px 8px; }
+.fam-rank { width: 22px; color: var(--text-muted); font-family: var(--mono);
+  font-size: 11px; }
+.fam-name { font-size: 12px; }
+.fam-foot { margin: 5px 0 0; }
+.fam-foot b { font-family: var(--mono); color: var(--text-primary); }
+.fam-note { margin-top: 20px; padding-top: 10px; border-top: 1px solid var(--grid);
+  max-width: 96ch; }
+
 /* ------------------------------------------------------------ selection */
 /* A tick beside every fund in every list, and a bar that appears once anything
    is ticked. The bar is fixed to the foot because the lists are long and the

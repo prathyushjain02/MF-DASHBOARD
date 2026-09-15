@@ -34,14 +34,15 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mf.framework import CATEGORY_MAP, CATEGORIES, benchmark_for  # noqa: E402
+from mf.classify import classify  # noqa: E402
+from mf.framework import ALL_CATEGORIES, CATEGORIES, benchmark_for  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(ROOT, "data")
 HISTORY_DIR = os.path.join(DATA_DIR, "history")
 
 SHEETY_URL = ("https://api.sheety.co/26381234f19b00348c9bb3d7604a8d84"
-              "/allFundsQuantData/allFunds")
+              "/fundQuantDataAll/flexiCap")
 
 DEFAULT_BENCHMARK = "Nifty 500 TRI"
 
@@ -68,6 +69,7 @@ STEMS = {
     "category": "category",
     "benchmark": "benchmark",
 
+    "inceptiondate": "inceptionDate",
     "aumcurrentdate": "aumDate",
     "aumcurrent": "aumCr",
     "aum1ydate": "aum1YAgoDate",
@@ -300,22 +302,26 @@ def parse_pack(rows):
             benchmarks[name] = {**rec, "name": name}
             continue
 
-        # Most rows carry a numeric AMFI code. PMS and AIF vehicles carry a
-        # sentinel instead, and they are not SEBI mutual fund schemes, so they
-        # are kept out of the scored universe rather than ranked against it.
         try:
-            amfi_code, vehicle = int(rec.get("amfiCode")), "MF"
+            amfi_code = int(rec.get("amfiCode"))
         except (TypeError, ValueError):
-            amfi_code, vehicle = None, "PMS/AIF"
+            amfi_code = None
+
+        # The category comes from the scheme's own name, not from the feed's
+        # column. See mf/classify.py: the column puts consumption, manufacturing
+        # and business cycle funds in the flexi cap bucket, and every score in
+        # this model is a percentile inside a category, so one misfiled row moves
+        # the score of every fund measured against it.
+        cat, why = classify(name, category)
 
         rec["key"] = fund_key(name)
         rec["name"] = clean_display_name(name)
         rec["rawName"] = name
         rec["amfiCode"] = amfi_code
-        rec["vehicle"] = vehicle
+        rec["vehicle"] = "MF" if cat else "not a mutual fund"
         rec["sourceCategory"] = category
-        rec["category"] = (CATEGORY_MAP.get(category.strip().lower())
-                           if vehicle == "MF" else None)
+        rec["category"] = cat
+        rec["categoryFrom"] = why
         # The feed publishes no benchmark column, so it comes from the category
         # rather than from a blanket default that would read every small cap
         # fund against a broad market index.
@@ -387,7 +393,8 @@ def parse_workbook(path, funds):
     holdings = defaultdict(list)
     if "Underlying Portfolio" in sheets:
         rows_seen = 0
-        in_scope = {k for k, f in funds.items() if f.get("category") in CATEGORIES}
+        in_scope = {k for k, f in funds.items()
+                    if f.get("category") in ALL_CATEGORIES}
         for row in wb["Underlying Portfolio"].iter_rows(min_row=5, max_col=15,
                                                         values_only=True):
             name = row[0]
@@ -712,27 +719,33 @@ def validate(funds, holdings, previous_meta, strict=True):
     anything failing. These checks turn that into a visible error.
     """
     problems, warnings = [], []
-    in_scope = [f for f in funds.values() if f.get("category") in CATEGORIES]
+    in_scope = [f for f in funds.values()
+                if f.get("category") in ALL_CATEGORIES]
+    # The coverage checks below are about whether the model can still be run, so
+    # they are asked of the funds the model scores. Holdings and manager records
+    # were never collected for index funds, and their absence there is the
+    # expected state rather than a join that has come apart.
+    scored = [f for f in in_scope if f.get("category") in CATEGORIES]
 
     if not funds:
         problems.append("no funds parsed at all")
-    if len(in_scope) < 50:
-        problems.append(f"only {len(in_scope)} in-scope funds; expected a few hundred")
+    if len(scored) < 50:
+        problems.append(f"only {len(scored)} scored funds; expected a few hundred")
 
-    join = 100.0 * len(holdings) / max(1, len(in_scope))
+    join = 100.0 * sum(1 for f in scored if holdings.get(f["key"])) / max(1, len(scored))
     if holdings and join < 50:
-        problems.append(f"holdings joined to only {join:.0f}% of in-scope funds")
+        problems.append(f"holdings joined to only {join:.0f}% of the scored funds")
 
     for field, floor in (("medianRolling3Y", 40), ("sortino3Y", 40),
                          ("downsideCapture3Y", 40), ("aumCr", 60)):
-        have = 100.0 * sum(1 for f in in_scope if f.get(field) is not None) / max(1, len(in_scope))
+        have = 100.0 * sum(1 for f in scored if f.get(field) is not None) / max(1, len(scored))
         if have < floor:
-            warnings.append(f"{field} present on only {have:.0f}% of in-scope funds")
+            warnings.append(f"{field} present on only {have:.0f}% of the scored funds")
 
-    prev = (previous_meta or {}).get("inScopeFunds")
-    if prev and len(in_scope) < prev * 0.8:
+    prev = (previous_meta or {}).get("scoredFunds")
+    if prev and len(scored) < prev * 0.8:
         problems.append(f"in-scope count fell from {prev} to {len(in_scope)}, "
-                        f"more than a fifth of the universe")
+                        f"more than a fifth of the scored universe")
 
     for w in warnings:
         print(f"  warning: {w}")
@@ -839,10 +852,15 @@ def carry_forward(funds):
     if not os.path.exists(path):
         return 0
     with open(path, encoding="utf-8") as fh:
-        old = {f["key"]: f for f in json.load(fh) if f.get("key")}
+        previous = json.load(fh)
+    old = {f["key"]: f for f in previous if f.get("key")}
+    # A scheme renamed upstream changes its key and would silently lose
+    # everything the feed does not publish, so the AMFI code is the fallback: it
+    # is the one identifier that does not move when a name is restyled.
+    by_code = {str(f["amfiCode"]): f for f in previous if f.get("amfiCode")}
     filled = 0
     for key, fund in funds.items():
-        prev = old.get(key)
+        prev = old.get(key) or by_code.get(str(fund.get("amfiCode")))
         if not prev:
             continue
         for k, v in prev.items():
@@ -882,8 +900,10 @@ def main():
     else:
         rows = fetch_pack(cache)
     funds, benchmarks, unmapped = parse_pack(rows)
-    in_scope = [f for f in funds.values() if f.get("category") in CATEGORIES]
-    print(f"  {len(funds)} schemes, {len(in_scope)} inside the eleven equity categories")
+    in_scope = [f for f in funds.values()
+                if f.get("category") in ALL_CATEGORIES]
+    print(f"  {len(funds)} rows, {len(in_scope)} schemes in the universe "
+          f"({sum(1 for f in in_scope if f['category'] in CATEGORIES)} scored)")
 
     # A run without the workbook is a feed refresh, not a rebuild. The sheet is
     # the authority on which schemes exist and on every number it publishes, but
@@ -924,9 +944,10 @@ def main():
         "builtAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "totalFunds": len(funds),
         "inScopeFunds": len(in_scope),
+        "scoredFunds": sum(1 for f in in_scope if f["category"] in CATEGORIES),
         "fundsWithHoldings": len(holdings),
         "categories": {c: sum(1 for f in in_scope if f["category"] == c)
-                       for c in CATEGORIES},
+                       for c in ALL_CATEGORIES},
         "source": SHEETY_URL,
         "unmappedColumns": unmapped,
         "marketCycles": cycles,

@@ -14,6 +14,7 @@ import threading
 from collections import defaultdict
 from datetime import date as _date, timedelta as _timedelta
 
+from . import classify
 from . import framework as fw
 from . import narrative
 from .screener import (pairwise_overlap, score_universe)
@@ -88,7 +89,7 @@ _ROW_FIELDS = (
     "top10", "holdingCount", "mandateFit", "differentiation",
     "categoryOverlap", "capMix", "hasHoldings", "loosePeerGroup", "cashPct",
     "benchmark", "benchmarkKind",
-    "netFlow1YPct", "cyBeatPct", "rated", "upsideCapture3Y",
+    "netFlow1YPct", "cyBeatPct", "rated", "scored", "upsideCapture3Y",
     "managerExperienceYears", "vintageBasis", "rollingHitRate3Y",
 )
 
@@ -195,7 +196,15 @@ def growth(fund, period="1y", state=None):
     key, cat = fund["key"], fund.get("category")
     own = (navs.get("funds") or {}).get(key)
     if not own or len(own.get("d") or []) < 2:
-        return {"period": period, "series": [], "unavailable": "No NAV history on file."}
+        # Daily NAV is collected for the universe the model scores. Carrying it
+        # for every index fund and ETF as well would quadruple a file that is
+        # committed and redeployed every morning, for a chart of a line that is,
+        # by construction, its index.
+        return {"period": period, "series": [],
+                "unavailable": ("No NAV history on file. It is collected for the "
+                                "actively managed universe."
+                                if not fw.is_scored(fund.get("category"))
+                                else "No NAV history on file.")}
 
     first, last = own["d"][0], own["d"][-1]
     period = period if period in PERIODS else "1y"
@@ -339,6 +348,81 @@ def shortlist(category, state=None, limit=8):
     state = state or load()
     group = [f for f in state["byCategory"].get(category, []) if f.get("composite") is not None]
     return group[:limit]
+
+
+# ---------------------------------------------------------------------------
+# Passive
+# ---------------------------------------------------------------------------
+
+# A family has to have enough trackers in it for the spread between them to mean
+# anything. Below this the "best" is one of two, which is a coin toss dressed up
+# as a finding.
+MIN_FAMILY = 3
+
+# Longest first: a tracker is judged over the longest window it has, because a
+# year of tracking error is noise and five is a record.
+_PASSIVE_WINDOWS = (("return5Y", "5Y"), ("return3Y", "3Y"), ("return1Y", "1Y"))
+
+# Two funds tracking one index cannot be this far apart. Cost and tracking error
+# together run to a fraction of a percent a year, and a smart beta family with
+# different rebalancing dates to perhaps a point or two. A figure this far from
+# its own family is an error in the source, not a tracking difference, and
+# ranking on it would put a broken row at one end of the table. They are counted
+# and named rather than quietly dropped.
+IMPLAUSIBLE_GAP = 5.0
+
+
+def passive_families(state=None, limit=4):
+    """Passive schemes grouped by the index each one names, best tracker first.
+
+    There is no alpha to rank a tracker on, and there is no need for one. Two
+    funds on the same index are the same product, so the only thing separating
+    them is how much of the index they hand back: cost and tracking error, which
+    arrive together in the return. The fund at the top of a family is the one
+    that gave the investor most of its index, and the spread at the foot of each
+    group is what the choice was worth.
+
+    Nothing here crosses families. A Nifty 50 fund ranked against a Nifty Bank
+    fund would be ranking two market calls rather than two trackers.
+    """
+    state = state or load()
+    groups = defaultdict(list)
+    for f in state["byCategory"].get("Smart beta / Passive", []):
+        fam = classify.index_family(f["name"])
+        if fam:
+            groups[fam].append(f)
+
+    out = []
+    for fam, funds in groups.items():
+        if len(funds) < MIN_FAMILY:
+            continue
+        field, label = next(
+            ((fld, lab) for fld, lab in _PASSIVE_WINDOWS
+             if sum(1 for f in funds if f.get(fld) is not None) >= MIN_FAMILY),
+            (None, None))
+        if not field:
+            continue
+        measured = [f for f in funds if f.get(field) is not None]
+        mid = _median([f[field] for f in measured])
+        ranked, broken = [], []
+        for f in measured:
+            (broken if abs(f[field] - mid) > IMPLAUSIBLE_GAP else ranked).append(f)
+        ranked.sort(key=lambda f: -f[field])
+        if len(ranked) < MIN_FAMILY:
+            continue
+        out.append({
+            "index": fam,
+            "window": label,
+            "field": field,
+            "count": len(funds),
+            "measured": len(ranked),
+            "spread": round(ranked[0][field] - ranked[-1][field], 2),
+            "implausible": [{"name": f["name"], "value": f[field]} for f in broken],
+            "funds": [row(f) for f in ranked[:limit]],
+        })
+    # The families a reader is most likely to be choosing inside come first.
+    out.sort(key=lambda g: (-g["measured"], g["index"]))
+    return out
 
 
 def category_dossier(category, state=None):
@@ -537,28 +621,40 @@ def process_stats(state=None):
 
 
 def meta_summary(state=None):
+    """Two populations, counted separately.
+
+    The universe is everything the feed carries that is a mutual fund. The
+    scored part of it is actively managed equity. Every figure about the model
+    below is asked of the scored part only: an evidence median that averaged in
+    five hundred index funds the model never tried to score would describe
+    nothing at all.
+    """
     state = state or load()
-    scored = [f for f in state["funds"] if f.get("composite") is not None]
+    in_model = [f for f in state["funds"] if f.get("scored")]
+    scored = [f for f in in_model if f.get("composite") is not None]
+    evidence = sorted(f["evidence"] for f in in_model if f.get("evidence") is not None)
     return {
         "universeCount": state["universeCount"],
         "inScope": len(state["funds"]),
+        "inModel": len(in_model),
         "scored": len(scored),
         "withHoldings": sum(1 for f in state["funds"] if f.get("_book")),
         "categories": [
             {"name": c,
              "count": len(state["byCategory"].get(c, [])),
+             "scoredCategory": fw.is_scored(c),
              "scored": sum(1 for f in state["byCategory"].get(c, [])
                            if f.get("composite") is not None)}
-            for c in fw.CATEGORIES
+            for c in fw.ALL_CATEGORIES
         ],
         "bands": {b["code"]: sum(1 for f in state["funds"] if f.get("band") == b["code"])
                   for b in fw.BANDS},
-        "notRated": sum(1 for f in state["funds"] if not f.get("rated")),
+        "notRated": sum(1 for f in in_model if not f.get("rated")),
+        "notScored": len(state["funds"]) - len(in_model),
         "minEvidence": fw.MIN_EVIDENCE,
         "amcs": sorted({f["amc"] for f in state["funds"] if f.get("amc")}),
         "marketCycles": state["meta"].get("marketCycles", []),
-        "medianEvidence": (sorted(f["evidence"] for f in state["funds"])[len(state["funds"]) // 2]
-                           if state["funds"] else None),
+        "medianEvidence": evidence[len(evidence) // 2] if evidence else None,
         "build": state["meta"],
     }
 

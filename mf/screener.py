@@ -270,10 +270,19 @@ def add_deciles(funds):
 # ---------------------------------------------------------------------------
 
 def score_universe(funds, holdings):
-    """Score every fund. Mutates and returns the list."""
-    in_scope = [f for f in funds
-                if f.get("category") in fw.CATEGORIES
-                and not fw.excluded_amc(f.get("amc"))]
+    """Score the active equity universe and return it alongside everything else
+    the feed carries.
+
+    Two populations come back. The scored one is actively managed equity, where
+    the seven blocks run and a composite is published. The shown one is passive,
+    thematic, ELSS and fund of funds: real schemes a reader may be looking for,
+    carried in full with every figure the feed publishes, and deliberately not
+    given a score. Ranking an index fund on alpha would be answering a question
+    nobody asked of it.
+    """
+    universe = [f for f in funds if f.get("category") in fw.ALL_CATEGORIES]
+    in_scope = [f for f in universe if fw.is_scored(f.get("category"))]
+    shown = [f for f in universe if not fw.is_scored(f.get("category"))]
 
     # Derived inputs first: the category book needs every fund's book in hand
     # before differentiation can be measured for any of them.
@@ -309,7 +318,21 @@ def score_universe(funds, holdings):
             _score_fund(f, pops)
 
     _rank(in_scope)
-    return in_scope
+    for f in shown:
+        _mark_unscored(f)
+    return in_scope + shown
+
+
+def _mark_unscored(fund):
+    """A scheme the model does not rank, carrying its data and saying so."""
+    fund.update({
+        "blocks": [], "blockScore": {}, "composite": None, "evidence": None,
+        "rated": False, "scored": False,
+        "band": fw.NOT_SCORED["code"], "bandMeaning": fw.NOT_SCORED["meaning"],
+        "flags": [{"code": "not-scored", "label": "Not scored", "tone": "neutral",
+                   "why": fw.NOT_SCORED["meaning"]}],
+    })
+    return fund
 
 
 def _metric_score(fund, m, pops):
@@ -371,6 +394,7 @@ def _score_fund(fund, pops):
     fund["composite"] = composite
     fund["evidence"] = round(available, 0)          # share of model weight scored
     fund["rated"] = composite is not None
+    fund["scored"] = True
     fund["band"] = band["code"]
     fund["bandMeaning"] = band["meaning"]
     fund["flags"] = _flags(fund)

@@ -417,8 +417,11 @@ async function renderShortlists(host) {
   host.innerHTML = '<div class="loading">Building shortlists…</div>';
   if (!catData) catData = await get('/shortlists');
 
-  const openCat = state.category
-    || (catData.categories[0] && catData.categories[0].category);
+  /* The passive category sits alongside the scored ones but is read a different
+     way, so it gets a tile and its own panel rather than a place in a table it
+     does not belong in. */
+  const tiles = [...catData.categories.map((c) => c.category), PASSIVE_CAT];
+  const openCat = state.category || tiles[0];
 
   host.innerHTML = `
     <section>
@@ -428,11 +431,12 @@ async function renderShortlists(host) {
         full view.</p>
       </div>
       <div class="tiles">
-        ${catData.categories.map((c) => `
-          <button class="tile${c.category === openCat ? ' on' : ''}"
-                  data-cat="${esc(c.category)}" aria-pressed="${c.category === openCat}">
+        ${tiles.map((c) => `
+          <button class="tile${c === openCat ? ' on' : ''}${
+            c === PASSIVE_CAT ? ' tile-passive' : ''}"
+                  data-cat="${esc(c)}" aria-pressed="${c === openCat}">
             <span class="tile-open">&rsaquo;</span>
-            <h3>${esc(c.category)}</h3>
+            <h3>${esc(c)}</h3>
           </button>`).join('')}
       </div>
       <div id="catpanel" class="catpanel"></div>
@@ -447,7 +451,8 @@ async function renderShortlists(host) {
   wireGlossary(host);
 }
 
-function drawCategoryPanel(category) {
+async function drawCategoryPanel(category) {
+  if (category === PASSIVE_CAT) return drawPassivePanel();
   const c = catData.categories.find((x) => x.category === category);
   const panel = $('#catpanel');
   if (!c) { panel.innerHTML = ''; return; }
@@ -588,7 +593,8 @@ async function renderAll(host) {
             `<option${c === filters.amc ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>
         </label>
         <label class="analyst-only">Band
-          <select id="f-band">${['All', 'A', 'B', 'C', 'Review', 'Not rated'].map((c) =>
+          <select id="f-band">${['All', 'A', 'B', 'C', 'Review', 'Not rated',
+                                 'Not scored'].map((c) =>
             `<option${c === filters.band ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>
         </label>
         <label>Min AUM (₹ cr)
@@ -747,6 +753,68 @@ function openFund(key) {
   window.scrollTo({ top: 0 });
 }
 
+const PASSIVE_CAT = 'Smart beta / Passive';
+
+/* Index funds and ETFs, grouped by the index each one tracks and ranked inside
+   that group. There is no alpha to rank a tracker on and no need for one: two
+   funds on the same index are the same product, so what separates them is how
+   much of the index they hand back, and that arrives in the return. Nothing
+   crosses families, because a Nifty 50 fund against a Nifty Bank fund is two
+   market calls rather than two trackers. */
+async function drawPassivePanel() {
+  const panel = $('#catpanel');
+  panel.innerHTML = '<div class="loading sm">Grouping the trackers…</div>';
+  const d = await get('/passive');
+  const bad = d.families.flatMap((g) =>
+    g.implausible.map((x) => ({ ...x, index: g.index })));
+
+  panel.innerHTML = `
+    <div class="catpanel-head">
+      <h3>${esc(PASSIVE_CAT)}</h3>
+      <span class="muted">${d.families.length} indices with
+        ${d.minFamily} or more funds tracking them</span>
+    </div>
+    <p class="lede sm">A tracker is not trying to beat its index, so there is no
+    alpha to rank it on. What separates two funds on the same index is how much
+    of it they hand back: cost and tracking error, which arrive together in the
+    return. Each group below is one index, best tracker first, and the spread is
+    what the choice inside that group was worth.</p>
+
+    <div class="fam-grid">
+      ${d.families.map((g) => `
+        <section class="fam">
+          <div class="fam-head">
+            <h4>${esc(g.index)}</h4>
+            <span class="muted sm">${g.measured} funds &middot; over ${esc(g.window)}</span>
+          </div>
+          <table class="grid dense fam-table">
+            <tbody>
+              ${g.funds.map((f, i) => `
+                <tr data-fund="${esc(f.key)}" tabindex="0">
+                  <td class="fam-rank">${i + 1}</td>
+                  <td class="fam-name">${esc(f.name)}</td>
+                  <td class="r mono">${num(f[g.field], 2)}%</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+          <p class="fam-foot muted sm">Best to worst in this group:
+            <b>${num(g.spread, 2)}</b> percentage points a year</p>
+        </section>`).join('')}
+    </div>
+
+    ${bad.length ? `<p class="muted sm fam-note">${bad.length} figures were left
+      out of these rankings as impossible: two funds tracking one index cannot be
+      ${d.implausibleGap} percentage points apart, so a gap that size is an error
+      in the source rather than a tracking difference.
+      ${bad.map((b) => `${esc(b.name)} at ${num(b.value, 1)}%`).join('; ')}.
+      They are still listed in All funds, with the figure the feed published.</p>`
+      : ''}`;
+
+  panel.querySelectorAll('[data-fund]').forEach((el) =>
+    el.onclick = () => openFund(el.dataset.fund));
+  wireGlossary(panel);
+}
+
 const VIEW_LABEL = { shortlist: 'category top funds', all: 'all funds',
                      compare: 'compare', approach: 'how we look at funds' };
 
@@ -798,11 +866,18 @@ async function renderFundPage(host) {
         <p class="cardnote muted sm" id="growth-note"></p>
       </section>
 
-      ${card('holds', 'What it holds', `${f.holdingCount || 0} names`,
-             '<div id="c-caps"></div>' +
-             `<div class="cardfoot">
-                <span>${term('Top 10 weight')}</span><b>${num(f.top10, 0)}%</b>
-                <span>Largest</span><b>${num(f.largestPosition, 1)}%</b></div>`)}
+      ${card('holds', 'What it holds',
+             f.holdingCount ? `${f.holdingCount} names` : 'no disclosed book',
+             f.holdingCount
+               ? '<div id="c-caps"></div>' +
+                 `<div class="cardfoot">
+                    <span>${term('Top 10 weight')}</span><b>${num(f.top10, 0)}%</b>
+                    <span>Largest</span><b>${num(f.largestPosition, 1)}%</b></div>`
+               // Four bars all reading zero look like a broken card rather than
+               // an absent one, so the card says which it is.
+               : `<p class="muted sm nobook">No security level holdings are
+                  collected for this scheme, so concentration and overlap cannot
+                  be read for it.</p>`)}
 
       ${card('rolling', 'What a holding period gave',
              'median of every window of that length',
@@ -850,7 +925,7 @@ async function renderFundPage(host) {
                 <span>${term('Expense ratio')}</span>
                   <b>${f.ter == null ? '—' : num(f.ter, 2) + '%'}</b></div>`)}
 
-      ${analyst ? card('score', 'The score', 'seven blocks, weighted',
+      ${analyst && f.scored ? card('score', 'The score', 'seven blocks, weighted',
              '<div id="c-blocks"></div>') : ''}
     </div>
 
@@ -876,7 +951,7 @@ async function renderFundPage(host) {
      are on different denominators: capMix is a share of the equity sleeve and
      sums to less than 100, while these four are shares of the whole fund and sum
      to exactly 100, which is the only basis on which cash belongs beside them. */
-  Chart.bars($('#c-caps'), [
+  if (f.holdingCount) Chart.bars($('#c-caps'), [
     { label: 'Large cap', value: f.largeCapPct || 0 },
     { label: 'Mid cap', value: f.midCapPct || 0 },
     { label: 'Small cap', value: f.smallCapPct || 0 },
@@ -887,7 +962,7 @@ async function renderFundPage(host) {
        // the bar length was not already saying.
        colorFor: (x) => x.cash ? 'var(--axis)' : 'var(--seq-450)' });
 
-  if (analyst) Chart.blockBar($('#c-blocks'), f.blocks);
+  if (analyst && f.scored) Chart.blockBar($('#c-blocks'), f.blocks);
 
   drawGrowth(f.key, state.growthPeriod || '1y');
 

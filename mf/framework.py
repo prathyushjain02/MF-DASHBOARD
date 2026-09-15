@@ -30,7 +30,9 @@ from __future__ import annotations
 # Categories
 # ---------------------------------------------------------------------------
 
-# Scope is actively managed equity. Index funds, ETFs and fund of funds are out.
+# The categories the seven block model scores: actively managed equity, where
+# beating a benchmark is the job and a percentile against peers doing the same
+# job is a fair way to ask whether it was done.
 CATEGORIES = [
     "Flexicap",
     "Largecap",
@@ -42,6 +44,25 @@ CATEGORIES = [
     "Value / Contra",
     "Dividend Yield",
 ]
+
+# Shown, not scored. These are real peer groups and they belong in the universe,
+# but this model has nothing to say about them: an index fund is not trying to
+# beat its index, so ranking it on alpha answers a question nobody asked, and a
+# thematic fund's return is a call on its theme rather than a manager's record.
+# They carry every figure the feed publishes and no composite.
+SHOWN_CATEGORIES = [
+    "Smart beta / Passive",
+    "Sectoral / Thematic",
+    "ELSS",
+    "Fund of funds",
+]
+
+ALL_CATEGORIES = CATEGORIES + SHOWN_CATEGORIES
+
+
+def is_scored(category):
+    return category in CATEGORIES
+
 
 # Feed category label -> screener category. Anything not listed is out of scope.
 CATEGORY_MAP = {
@@ -132,7 +153,14 @@ DEFAULT_BENCHMARK = ("Nifty 500 TRI", "benchmark")
 
 def benchmark_for(category):
     """(name, kind) for a category. kind is 'benchmark' where the series is the
-    category's own, 'index' where it is the closest available stand-in."""
+    category's own, 'index' where it is the closest available stand-in.
+
+    The categories this model does not score get no benchmark rather than the
+    default one. A banking ETF read against the Nifty 500 is not being measured,
+    it is being mismeasured, and naming a benchmark for it would invite exactly
+    that reading."""
+    if category in SHOWN_CATEGORIES:
+        return None, None
     return BENCHMARKS.get(category, DEFAULT_BENCHMARK)
 
 
@@ -225,33 +253,15 @@ def index_proxy(category):
     return {"name": name, **INDEX_PROXIES[name]}
 
 
-# Fund houses held out of the scored universe. This is a coverage decision made
-# outside the model, not a judgement the model reached, so it is applied when the
-# universe is assembled rather than expressed as a score anywhere.
-#
-# Matched on the AMC name as the feed spells it. Note that Quant and Quantum are
-# two different houses; only Quantum is held out.
-EXCLUDED_AMCS = {
-    "LIC Mutual Fund",
-    "Groww Mutual Fund",
-    "Shriram Mutual Fund",
-    "The Wealth Company Mutual Fund",
-    "Unifi Mutual Fund",
-    "Union Mutual Fund",
-    "UTI Mutual Fund",
-    "ITI Mutual Fund",
-    "NJ Mutual Fund",
-    "Navi Mutual Fund",
-    "Capitalmind Mutual Fund",
-    "Samco Mutual Fund",
-    "Quantum Mutual Fund",
-    "Jio BlackRock Mutual Fund",
-    "Taurus Mutual Fund",
-}
+# Every fund house the feed carries is in the universe. An earlier build held a
+# dozen of them out as a coverage decision taken outside the model, which meant
+# a reader looking for a scheme could not find out that it existed. A judgement
+# about a house belongs next to the fund, not in front of it.
+EXCLUDED_AMCS = set()
 
 
 def excluded_amc(amc):
-    return (amc or "").strip() in EXCLUDED_AMCS
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -508,6 +518,16 @@ BANDS = [
      "meaning": "Weak across the blocks that scored. Needs an analyst before it goes "
                 "in front of anyone."},
 ]
+
+# A fund the model does not attempt to score, as against one it tried and could
+# not. The distinction matters to the reader: Not rated is a gap in the evidence,
+# Not scored is a statement that the question does not apply.
+NOT_SCORED = {
+    "code": "Not scored", "label": "Not scored", "min": None, "tone": "neutral",
+    "meaning": "This model ranks actively managed equity on whether it beat its "
+               "benchmark. That is not what this scheme is for, so it carries "
+               "every figure the feed publishes and no score.",
+}
 
 NOT_RATED = {
     "code": "Not rated", "label": "Not rated", "min": None, "tone": "neutral",
