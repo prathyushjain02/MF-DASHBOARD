@@ -102,9 +102,30 @@ def public(fund):
 
 def row(fund):
     out = {k: fund.get(k) for k in _ROW_FIELDS}
-    out["blockScore"] = fund.get("blockScore", {})
     out["flags"] = [f["label"] for f in fund.get("flags", [])]
-    out["whyWeLikeIt"] = narrative.why_we_like_it(fund)
+    return out
+
+
+# What the All funds table reads, and nothing else. That table is the one place
+# that asks for five hundred funds at once, and it was being sent sixty four
+# fields each to draw fifteen columns: most of a megabyte of JSON, of which
+# three quarters was never looked at. Every other list is a dozen rows, where
+# the full record costs nothing worth saving.
+_LIST_FIELDS = (
+    "key", "name", "category", "amc", "band", "composite", "evidence",
+    "categoryRank", "aumCr", "ter", "managerYears",
+    "medianRolling3Y", "medianRolling5Y", "rollingHitRate3Y", "return3Y",
+    "sortino3Y", "informationRatio3Y",
+    "downsideCapture3Y", "upsideCapture3Y", "maxDrawdown3Y",
+    "hasHoldings", "rated", "scored",
+)
+
+
+def list_row(fund):
+    out = {k: fund.get(k) for k in _LIST_FIELDS}
+    # One flag is shown against the name; the rest are on the fund page.
+    flags = fund.get("flags") or []
+    out["flags"] = [flags[0]["label"]] if flags else []
     return out
 
 

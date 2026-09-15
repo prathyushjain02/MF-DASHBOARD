@@ -775,6 +775,38 @@ The front end is three files and no framework: `index.html`, `styles.css`,
 `app.js` and `charts.js`. State lives in one object; views render into one
 `<main>`; there is no router, no virtual DOM and nothing to install.
 
+#### What makes it quick
+
+Three things, each found by measuring rather than by guessing. The numbers below
+are for All funds, the only view that asks for five hundred rows at once.
+
+- **Responses are gzipped** on the way out. They are tables of numbers written as
+  text, which is close to the best case for deflate: the fund list goes from
+  833 KB to 41 KB on the wire, the passive families from 252 KB to 20 KB.
+  Nothing upstream does this, so without it every reader on a slow connection
+  paid full price for a table they were about to filter down to twenty rows.
+- **The fund list carries what the table reads and nothing else.** It was sending
+  all sixty four fields of every record to draw fifteen columns, including a
+  narrative sentence built per fund and never displayed. Twenty four fields now,
+  which halves the JSON before it is even compressed. Every other list is a
+  dozen rows, where the full record costs nothing worth saving.
+- **Number formatters are built once and kept.** `toLocaleString` looks cheap and
+  is not: it resolves a locale and constructs a formatter on every call, and the
+  format helper runs on nearly every cell of every table, every axis label and
+  every figure on every card. Over seven and a half thousand cells that was
+  143 ms against 5 ms with the formatter kept, and it was the single largest cost
+  in drawing any page.
+
+Together: the All funds table went from **324 ms to about 200 ms** to render, on
+**41 KB instead of 833 KB**.
+
+One plausible culprit turned out not to be one, which is worth recording so
+nobody spends the afternoon on it again. Auto table layout has to measure every
+cell before it can size a column, so a 7,500 cell table looked like an obvious
+target for `table-layout: fixed`. Measured head to head on the same markup it
+made no difference at all — 125 ms against 121 ms — and it would have cost
+ellipsis clipping on every long scheme name. It is not in the code.
+
 ---
 
 ## 8. Operations

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import csv as _csvmod
+import gzip
 import io
 from datetime import date
+from functools import lru_cache
 
 from flask import Blueprint, Response, jsonify, request
 
@@ -12,6 +14,40 @@ from . import datastore as ds
 from . import framework as fw
 
 bp = Blueprint("mf", __name__, url_prefix="/api/mf")
+
+# Below this a response is smaller than the round trip that would carry it and
+# compressing it costs more than it saves.
+_GZIP_MIN = 1024
+
+
+@bp.after_request
+def _compress(resp):
+    """Gzip JSON and CSV on the way out.
+
+    These payloads are tables of numbers written as text, which is close to the
+    best case for deflate: the fund list goes from roughly a quarter of a
+    megabyte to a few tens of kilobytes. Nothing upstream does this for us, so
+    without it every reader on a slow connection pays full price for a table
+    they will filter down to twenty rows.
+    """
+    if (resp.direct_passthrough
+            or resp.status_code >= 300
+            or "gzip" not in (request.headers.get("Accept-Encoding") or "")
+            or resp.headers.get("Content-Encoding")):
+        return resp
+    ctype = (resp.mimetype or "")
+    if not (ctype.startswith("application/json") or ctype.startswith("text/csv")):
+        return resp
+    data = resp.get_data()
+    if len(data) < _GZIP_MIN:
+        return resp
+    # Level 6 is the point where the curve flattens: level 9 costs noticeably
+    # more CPU for a percent or two of size on text like this.
+    resp.set_data(gzip.compress(data, 6))
+    resp.headers["Content-Encoding"] = "gzip"
+    resp.headers["Content-Length"] = resp.content_length
+    resp.headers.add("Vary", "Accept-Encoding")
+    return resp
 
 
 def _f(v):
@@ -109,7 +145,7 @@ def funds():
     limit = int(request.args.get("limit") or 0)
     if limit:
         rows = rows[:limit]
-    return jsonify({"total": total, "funds": [ds.row(f) for f in rows]})
+    return jsonify({"total": total, "funds": [ds.list_row(f) for f in rows]})
 
 
 @bp.get("/fund/<key>")
