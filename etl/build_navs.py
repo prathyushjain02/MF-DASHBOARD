@@ -8,6 +8,8 @@ the feed already carries, and writes one compact file.
 Three series end up on the chart, and each is built here:
 
     fund        the scheme's own daily NAV.
+    history     month-end closes for the Sensex and Nifty 50, their whole
+                length, for the long-run views on the overview page.
     index       the index itself, from Yahoo through yfinance. These are price
                 indices, so they exclude the dividends a fund's NAV already
                 contains and read low against the funds by roughly the market's
@@ -216,6 +218,27 @@ def fetch_index_yahoo(tickers, refresh=False, session=None):
     return None, None
 
 
+def month_ends(series):
+    """Last observation in each calendar month, the whole length of the series.
+
+    The long history is monthly so that forty years of a benchmark stay small.
+    Nothing is capped here: the point of it is the years before MAX_YEARS.
+    """
+    out = {}
+    for d, v in series:
+        out[(d.year, d.month)] = (d, v)
+    return [out[k] for k in sorted(out)]
+
+
+# Broad benchmarks whose whole history the overview reads: rolling windows, the
+# start-year by holding-period grid, the crisis table. Yahoo carries the Sensex
+# from 1997 and the Nifty 50 from 2007; first ticker that answers wins.
+LONG_HISTORY = {
+    "S&P BSE Sensex": ["^BSESN"],
+    "Nifty 50": ["^NSEI"],
+}
+
+
 # ---------------------------------------------------------------------------
 # Benchmarks, from the workbook's own benchmark sheet
 # ---------------------------------------------------------------------------
@@ -403,6 +426,18 @@ def main():
         indices[name] = {"label": spec["fallbackLabel"], "source": "fund",
                          "code": spec["fallback"], "dividends": True, **encode(s)}
 
+    _log("long history:")
+    history = dict(previous.get("history") or {})
+    for name, tickers in LONG_HISTORY.items():
+        series, ticker = fetch_index_yahoo(tickers, args.refresh, yf_session)
+        if not series:
+            _log(f"  {name}: no data, {'carried forward' if name in history else 'absent'}")
+            continue
+        s = month_ends(series)
+        history[name] = {"label": name, "ticker": ticker, "monthly": True,
+                         "dividends": False, **encode(s)}
+        _log(f"  {name}: {len(s)} month ends, {s[0][0]} to {s[-1][0]}")
+
     _log("benchmarks:")
     wanted_bm = {fw.benchmark_series_for(c) for c in fw.CATEGORIES}
     benchmarks = {}
@@ -433,6 +468,7 @@ def main():
         "funds": by_key,
         "indices": indices,
         "indexByCategory": {c: fw.index_name_for(c) for c in fw.CATEGORIES},
+        "history": history,
         "benchmarks": benchmarks,
         "benchmarkByCategory": {c: fw.benchmark_series_for(c)
                                 for c in fw.CATEGORIES},
