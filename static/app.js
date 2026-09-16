@@ -1251,9 +1251,7 @@ async function renderFundPage(host) {
 
         ${returnsCard(f)}
 
-        ${card('holds', 'Shape of the equity book',
-                 f.holdingCount ? 'concentration of the disclosed book'
-                   : 'no disclosed book',
+        ${card('holds', 'Shape of the equity book', '',
                  f.holdingCount
                    ? `<div class="shapegrid">
                         <div><span class="k">${term('Top 5 weight')}</span>
@@ -1677,12 +1675,14 @@ function mon(iso) {
              'Oct', 'Nov', 'Dec'][d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
 }
 
+/* A card with nothing useful to say under its title says nothing: an empty
+   sub-title element would still hold a row of the header grid open. */
 function card(code, title, sub, body) {
   return `
     <button class="snapcard" data-card="${esc(code)}">
       <span class="snapcard-head">
         <span class="snapcard-title">${esc(title)}</span>
-        <span class="snapcard-sub">${sub}</span>
+        ${sub ? `<span class="snapcard-sub">${sub}</span>` : ''}
         <span class="snapcard-go" aria-hidden="true">&rsaquo;</span>
       </span>
       <span class="snapcard-body">${body}</span>
