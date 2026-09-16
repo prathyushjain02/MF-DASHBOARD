@@ -489,15 +489,14 @@ Each card opens its full detail in a modal — every horizon, the peer compariso
 the decile, the definitions. The page stays readable at a glance and nothing is
 buried.
 
-At the end of the line that names the fund sit **Add to compare** and **Add to
-portfolio**, the two tabs that take a selection, in the order they sit in the bar
-above. They are the tick box in a list by another name: they **add and stay
-put**, so three funds can be gathered by reading three funds rather than by
-going back twice. Clicking again takes the fund out.
+At the end of the line that names the fund sits **Select this fund**. It is the
+tick box from the lists wearing a button, on the same selection, and the same bar
+appears at the foot offering the same two destinations. A fund gathered here and
+a fund gathered from a table are the same fund in the same place: select one from
+its page and it is already ticked when the reader gets back to All funds.
 
-**The two tabs carry a count** of what is waiting on them. Without it, adding
-from a fund page would be an action with no visible result anywhere on the
-screen, and the tabs themselves are the way there.
+**The two tabs carry a count** of what is loaded on them, which is a different
+number from the selection the bar is holding.
 
 Three of these deserve a note.
 
@@ -657,9 +656,18 @@ differences:
 Every row in **Category top funds** and **All funds** carries a tick box. A bar
 appears at the foot of the page as soon as anything is ticked — *N funds
 selected · Compare · Build portfolio · Clear* — and the selection survives moving
-between the two tabs, so a comparison can be built out of two different lists
-without writing any names down. Two destinations, because the same tick answers
-two questions: read these side by side, or hold them together. The order things were ticked in is kept, because it decides the
+between tabs, so a comparison can be built out of two different lists without
+writing any names down. Two destinations, because the same tick answers two
+questions: read these side by side, or hold them together.
+
+**One selection, everywhere.** Every tick box in every list, and the button on a
+fund's own page, are the same list. There is no second staging area and no
+per-tab collection to keep in step with it.
+
+**Both destinations add rather than replace.** A reader who sends two funds to
+compare, then reads a third and sends that, means three; replacing meant the
+second trip quietly threw the first away, which is exactly what it did before
+this was fixed. The order things were ticked in is kept, because it decides the
 colour each one takes on the chart.
 
 ### 5.9 Taking it away

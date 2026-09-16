@@ -183,8 +183,20 @@ function togglePick(key) {
     ? state.picked.filter((k) => k !== key)
     : [...state.picked, key];
   drawPickbar();
+  const on = isPicked(key);
   document.querySelectorAll(`[data-pick="${CSS.escape(key)}"]`)
-    .forEach((b) => { b.checked = isPicked(key); });
+    .forEach((b) => { b.checked = on; });
+  // The fund page's own control is the same selection wearing a button, so it
+  // follows the same state rather than keeping a second copy of it.
+  document.querySelectorAll(`[data-picklabel="${CSS.escape(key)}"]`)
+    .forEach((el) => paintPickButton(el, on));
+}
+
+function paintPickButton(el, on) {
+  el.classList.toggle('picked', on);
+  el.innerHTML = on ? '&check; Selected' : 'Select this fund';
+  el.title = on ? 'Click again to take it out of the selection'
+                : 'Adds it to the selection at the foot of the page';
 }
 
 function pickBox(key) {
@@ -231,15 +243,19 @@ function drawPickbar() {
     <button class="pickbar-go" id="pick-compare">Compare</button>
     <button class="pickbar-go" id="pick-portfolio">Build portfolio</button>
     <button class="pickbar-clear" id="pick-clear">Clear</button>`;
-  // Two destinations, because the same tick answers two questions: read these
-  // side by side, or hold them together.
+  /* Two destinations, because the same tick answers two questions: read these
+     side by side, or hold them together.
+
+     They add to what is already on that tab rather than replacing it. A reader
+     who sends two funds to compare, then reads a third and sends that, means
+     three: replacing meant the second trip quietly threw the first away. */
   $('#pick-compare').onclick = () => {
     const b = builder('compare');
-    b.keys = [...state.picked];
-    b.weights = null;
+    b.keys = [...new Set([...b.keys, ...state.picked])];
     setView('compare');
   };
-  $('#pick-portfolio').onclick = (e) => buildPortfolio(e.currentTarget);
+  $('#pick-portfolio').onclick = (e) =>
+    buildPortfolio(e.currentTarget, [...state.picked], true);
   $('#pick-clear').onclick = () => {
     state.picked = [];
     drawPickbar();
@@ -276,22 +292,6 @@ async function buildPortfolio(opener, keys, append) {
     focusKey: append ? keys[0] : null,
     onSave: () => setView('portfolio'),
   });
-}
-
-/* From a fund's own page: put this one in a selection and stay put. It is the
-   tick box in a list by another name, and a tick box that navigated would make
-   collecting three funds a matter of going back twice. The tab counts say what
-   has been gathered and the tabs themselves are the way there.
-
-   Clicking again takes it out, because a button that only ever adds gives the
-   reader no way to undo a mistake without leaving the page. */
-function toggleInBuilder(view, key) {
-  const b = builder(view);
-  b.keys = b.keys.includes(key) ? b.keys.filter((k) => k !== key)
-                                : [...b.keys, key];
-  // The weights belonged to a different set of holdings, so they are stale.
-  if (view === 'portfolio') { b.weights = null; b.even = false; }
-  return b.keys.includes(key);
 }
 
 /* A count on the two tabs that hold a selection. Without it, adding from a fund
@@ -1221,11 +1221,12 @@ async function renderFundPage(host) {
           <span class="muted sm">${f.categoryRank
             ? `rank ${f.categoryRank} of ${f.categoryCount}` : 'unranked'}</span>
         </div>` : ''}
+        <!-- The tick box from the lists, wearing a button. Same selection, same
+             bar at the foot, same two destinations: a fund gathered here and a
+             fund gathered from a table are the same fund in the same place. -->
         <div class="fundhead-add">
-          <button class="cmp-ghost${builder('compare').keys.includes(f.key)
-            ? ' picked' : ''}" id="fund-cmp"></button>
-          <button class="cmp-ghost${builder('portfolio').keys.includes(f.key)
-            ? ' picked' : ''}" id="fund-pf"></button>
+          <button class="cmp-ghost" id="fund-pick"
+                  data-picklabel="${esc(f.key)}"></button>
         </div>
       </div>
     </div>
@@ -1375,18 +1376,8 @@ async function renderFundPage(host) {
   // --- wiring ------------------------------------------------------------
   $('#fund-back').onclick = () => { state.fund = null; setView(back); };
 
-  const addBtn = (id, view, inLabel, outLabel) => {
-    const el = $(id);
-    const paint = (on) => {
-      el.classList.toggle('picked', on);
-      el.innerHTML = on ? `&check; ${inLabel}` : outLabel;
-      el.title = on ? 'Click again to take it out' : '';
-    };
-    paint(builder(view).keys.includes(f.key));
-    el.onclick = () => { paint(toggleInBuilder(view, f.key)); drawTabCounts(); };
-  };
-  addBtn('#fund-cmp', 'compare', 'In compare', 'Add to compare');
-  addBtn('#fund-pf', 'portfolio', 'In portfolio', 'Add to portfolio');
+  paintPickButton($('#fund-pick'), isPicked(f.key));
+  $('#fund-pick').onclick = () => togglePick(f.key);
   host.querySelectorAll('[data-card]').forEach((el) =>
     el.onclick = (e) => {
       if (e.target.closest('.term')) return;   // a glossary hover is not a click
