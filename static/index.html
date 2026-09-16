@@ -1,18 +1,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Filter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500&family=Libre+Franklin:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="/static/styles.css">
+<link rel="stylesheet" href="/static/overview.css">
+<link rel="stylesheet" href="/static/fund.css">
 
 <header id="masthead">
-  <h1 class="brand"><span>The</span><span>Filter</span></h1>
+  <h1 class="brand"><span class="logo">Avendus<b>^</b></span><span class="prod">The Filter</span><span class="crumb" id="crumb"></span></h1>
 
   <nav id="tabs" role="tablist">
-    <button data-view="approach" role="tab" class="on">How we look at funds</button>
+    <button data-view="overview" role="tab" class="on">Equity overview</button>
     <button data-view="shortlist" role="tab">Category top funds</button>
     <button data-view="all" role="tab">All funds</button>
     <button data-view="sectors" role="tab">Sectors</button>
     <button data-view="compare" role="tab">Compare</button>
     <button data-view="portfolio" role="tab">Portfolio builder</button>
+    <span class="ind" id="tab-ind"></span>
   </nav>
 
   <div class="masthead-right">
@@ -31,3 +36,5 @@
 
 <script src="/static/charts.js"></script>
 <script src="/static/app.js"></script>
+<script src="/static/overview.js"></script>
+<script src="/static/fund.js"></script>

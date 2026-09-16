@@ -12,6 +12,7 @@ from flask import Blueprint, Response, jsonify, request
 
 from . import datastore as ds
 from . import framework as fw
+from . import overview as ov
 
 bp = Blueprint("mf", __name__, url_prefix="/api/mf")
 
@@ -89,6 +90,13 @@ def framework():
         "glossary": fw.GLOSSARY,
         "notScoredWhy": fw.NOT_SCORED_WHY,
     })
+
+
+@bp.get("/overview")
+def overview():
+    """The Equity overview landing page: live benchmarks, the quarter's house
+    view and the long-run tables, each marked with its source."""
+    return jsonify(ov.build(ds.load()))
 
 
 @bp.get("/process")

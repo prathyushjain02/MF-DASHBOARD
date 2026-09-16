@@ -1,0 +1,1176 @@
+{
+ "crises": [
+  {
+   "event": "DotCom Bubble",
+   "peakDate": "11-Feb-00",
+   "peak": "5,934",
+   "peakCagr": "10.7%",
+   "bottomDate": "21-Sep-01",
+   "bottom": "2,600",
+   "bottomCagr": "15.3%",
+   "drawdown": "-56.2%"
+  },
+  {
+   "event": "NDA losing",
+   "peakDate": "13-May-04",
+   "peak": "5,399",
+   "peakCagr": "13.4%",
+   "bottomDate": "23-Jun-04",
+   "bottom": "4,644",
+   "bottomCagr": "14.3%",
+   "drawdown": "-14.0%"
+  },
+  {
+   "event": "Chinese Hard Landing",
+   "peakDate": "10-May-06",
+   "peak": "12,612",
+   "peakCagr": "10.0%",
+   "bottomDate": "26-Jun-06",
+   "bottom": "10,042",
+   "bottomCagr": "11.4%",
+   "drawdown": "-20.4%"
+  },
+  {
+   "event": "Global Financial Crisis",
+   "peakDate": "8-Jan-08",
+   "peak": "20,873",
+   "peakCagr": "7.9%",
+   "bottomDate": "9-Mar-09",
+   "bottom": "8,160",
+   "bottomCagr": "14.8%",
+   "drawdown": "-60.9%"
+  },
+  {
+   "event": "European Bank Crisis",
+   "peakDate": "3-Mar-15",
+   "peak": "29,594",
+   "peakCagr": "9.9%",
+   "bottomDate": "25-Feb-16",
+   "bottom": "22,976",
+   "bottomCagr": "13.9%",
+   "drawdown": "-22.4%"
+  },
+  {
+   "event": "COVID-19 Outbreak",
+   "peakDate": "6-Feb-20",
+   "peak": "41,306",
+   "peakCagr": "12.5%",
+   "bottomDate": "23-Mar-20",
+   "bottom": "25,981",
+   "bottomCagr": "22.6%",
+   "drawdown": "-37.1%"
+  }
+ ],
+ "rolling": [
+  {
+   "h": "3 years",
+   "n": "285",
+   "neg": "8%",
+   "gt10": "60%",
+   "max": "56.2%",
+   "min": "-13.8%",
+   "median": "11.6%"
+  },
+  {
+   "h": "5 years",
+   "n": "260",
+   "neg": "1%",
+   "gt10": "70%",
+   "max": "44.0%",
+   "min": "-1.0%",
+   "median": "12.3%"
+  },
+  {
+   "h": "7 years",
+   "n": "237",
+   "neg": "0%",
+   "gt10": "75%",
+   "max": "28%",
+   "min": "4.4%",
+   "median": "12.2%"
+  },
+  {
+   "h": "10 years",
+   "n": "201",
+   "neg": "0%",
+   "gt10": "76%",
+   "max": "20%",
+   "min": "5.1%",
+   "median": "12.63%"
+  }
+ ],
+ "matrix": [
+  {
+   "year": 2000,
+   "cells": [
+    "-13",
+    "-14",
+    "-8",
+    "8",
+    "9",
+    "14",
+    "17",
+    "22",
+    "10",
+    "15",
+    "16",
+    "12",
+    "13",
+    "13",
+    "14",
+    "13",
+    "12",
+    "13",
+    "13",
+    "13",
+    "13",
+    "13",
+    "13",
+    "13",
+    "13"
+   ]
+  },
+  {
+   "year": 2001,
+   "cells": [
+    "-15",
+    "-5",
+    "16",
+    "16",
+    "20",
+    "23",
+    "28",
+    "13",
+    "19",
+    "19",
+    "14",
+    "15",
+    "15",
+    "16",
+    "15",
+    "14",
+    "15",
+    "14",
+    "14",
+    "14",
+    "15",
+    "14",
+    "15",
+    "15",
+    ""
+   ]
+  },
+  {
+   "year": 2002,
+   "cells": [
+    "5",
+    "36",
+    "28",
+    "31",
+    "33",
+    "37",
+    "18",
+    "24",
+    "24",
+    "18",
+    "19",
+    "18",
+    "19",
+    "17",
+    "16",
+    "17",
+    "16",
+    "16",
+    "16",
+    "17",
+    "16",
+    "16",
+    "16",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2003,
+   "cells": [
+    "77",
+    "41",
+    "40",
+    "41",
+    "44",
+    "20",
+    "27",
+    "26",
+    "19",
+    "20",
+    "19",
+    "20",
+    "18",
+    "17",
+    "18",
+    "17",
+    "17",
+    "17",
+    "17",
+    "17",
+    "17",
+    "17",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2004,
+   "cells": [
+    "13",
+    "25",
+    "31",
+    "37",
+    "11",
+    "20",
+    "20",
+    "13",
+    "15",
+    "14",
+    "16",
+    "14",
+    "13",
+    "15",
+    "14",
+    "14",
+    "14",
+    "15",
+    "14",
+    "14",
+    "14",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2005,
+   "cells": [
+    "39",
+    "40",
+    "46",
+    "11",
+    "22",
+    "21",
+    "13",
+    "15",
+    "15",
+    "16",
+    "14",
+    "13",
+    "15",
+    "14",
+    "14",
+    "14",
+    "15",
+    "14",
+    "15",
+    "14",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2006,
+   "cells": [
+    "42",
+    "49",
+    "3",
+    "18",
+    "18",
+    "10",
+    "12",
+    "12",
+    "14",
+    "12",
+    "11",
+    "13",
+    "12",
+    "12",
+    "13",
+    "13",
+    "13",
+    "13",
+    "13",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2007,
+   "cells": [
+    "57",
+    "-13",
+    "11",
+    "13",
+    "4",
+    "8",
+    "8",
+    "11",
+    "9",
+    "9",
+    "11",
+    "10",
+    "10",
+    "11",
+    "12",
+    "11",
+    "12",
+    "12",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2008,
+   "cells": [
+    "-51",
+    "-7",
+    "1",
+    "-6",
+    "0",
+    "2",
+    "6",
+    "4",
+    "4",
+    "7",
+    "7",
+    "7",
+    "8",
+    "9",
+    "9",
+    "10",
+    "10",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2009,
+   "cells": [
+    "78",
+    "46",
+    "17",
+    "20",
+    "18",
+    "20",
+    "16",
+    "15",
+    "17",
+    "15",
+    "15",
+    "15",
+    "16",
+    "15",
+    "16",
+    "15",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2010,
+   "cells": [
+    "19",
+    "-5",
+    "6",
+    "6",
+    "11",
+    "9",
+    "8",
+    "11",
+    "10",
+    "10",
+    "11",
+    "12",
+    "11",
+    "12",
+    "12",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2011,
+   "cells": [
+    "-24",
+    "-1",
+    "2",
+    "9",
+    "7",
+    "6",
+    "9",
+    "9",
+    "9",
+    "10",
+    "11",
+    "11",
+    "12",
+    "11",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2012,
+   "cells": [
+    "29",
+    "18",
+    "23",
+    "16",
+    "13",
+    "16",
+    "14",
+    "14",
+    "14",
+    "16",
+    "15",
+    "15",
+    "15",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2013,
+   "cells": [
+    "8",
+    "20",
+    "12",
+    "10",
+    "14",
+    "12",
+    "12",
+    "13",
+    "14",
+    "13",
+    "14",
+    "14",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2014,
+   "cells": [
+    "33",
+    "14",
+    "10",
+    "15",
+    "13",
+    "13",
+    "13",
+    "15",
+    "14",
+    "15",
+    "14",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2015,
+   "cells": [
+    "-3",
+    "1",
+    "10",
+    "8",
+    "9",
+    "10",
+    "13",
+    "12",
+    "13",
+    "12",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2016,
+   "cells": [
+    "4",
+    "17",
+    "12",
+    "13",
+    "13",
+    "15",
+    "14",
+    "15",
+    "14",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2017,
+   "cells": [
+    "30",
+    "17",
+    "16",
+    "16",
+    "18",
+    "16",
+    "16",
+    "16",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2018,
+   "cells": [
+    "5",
+    "9",
+    "11",
+    "15",
+    "13",
+    "14",
+    "14",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2019,
+   "cells": [
+    "13",
+    "15",
+    "18",
+    "15",
+    "16",
+    "15",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2020,
+   "cells": [
+    "16",
+    "21",
+    "16",
+    "17",
+    "16",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2021,
+   "cells": [
+    "26",
+    "15",
+    "17",
+    "15",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2022,
+   "cells": [
+    "6",
+    "13",
+    "12",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2023,
+   "cells": [
+    "21",
+    "16",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "year": 2024,
+   "cells": [
+    "10",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "landscape": [
+  {
+   "vehicle": "Mutual funds",
+   "buckets": [
+    [
+     "Large cap",
+     "10–12%"
+    ],
+    [
+     "Flexi cap",
+     "12–14%"
+    ],
+    [
+     "Mid & small cap",
+     "13–15%"
+    ],
+    [
+     "Thematic",
+     "13–15%"
+    ]
+   ]
+  },
+  {
+   "vehicle": "PMS",
+   "buckets": [
+    [
+     "Large cap",
+     "11–13%"
+    ],
+    [
+     "Flexi cap",
+     "12–14%"
+    ],
+    [
+     "Mid & small cap",
+     "14–16%"
+    ],
+    [
+     "Micro cap",
+     "15–17%"
+    ]
+   ]
+  },
+  {
+   "vehicle": "AIF",
+   "buckets": [
+    [
+     "Flexi cap",
+     "13–15%"
+    ],
+    [
+     "Mid & small cap",
+     "14–16%"
+    ],
+    [
+     "Long short",
+     "11–13%"
+    ],
+    [
+     "Micro cap",
+     "15–17%"
+    ]
+   ]
+  },
+  {
+   "vehicle": "Direct equity",
+   "buckets": [
+    [
+     "Discretionary",
+     "13–15%"
+    ],
+    [
+     "Self directed",
+     "—"
+    ]
+   ]
+  }
+ ],
+ "hv": {
+  "edition": "Q2FY27",
+  "asOf": "30 Jun 2026",
+  "headline": "Sharp rally backed by solid foundations; expect large caps to participate in the rally now. Maintain mid-teens return expectations over an 18–24 month period.",
+  "stance": [
+   {
+    "bucket": "Large cap",
+    "role": "core beta",
+    "stance": "OW",
+    "change": "=",
+    "ret": "10–12%",
+    "note": "Funds with a low tracking error vs the index"
+   },
+   {
+    "bucket": "Flexi cap",
+    "role": "core alpha",
+    "stance": "OW",
+    "change": "=",
+    "ret": "13–14%",
+    "note": "Consistent alpha, mainly large cap biased; includes global equities"
+   },
+   {
+    "bucket": "Mid & small cap",
+    "role": "satellite",
+    "stance": "N",
+    "change": "=",
+    "ret": "15–16%",
+    "note": "Disproportionate alpha in favourable markets"
+   }
+  ],
+  "history": {
+   "quarters": [
+    "Q1FY25",
+    "Q2FY25",
+    "Q3FY25",
+    "Q4FY25",
+    "Q1FY26",
+    "Q2FY26",
+    "Q3FY26",
+    "Q4FY26",
+    "Q1FY27",
+    "Q2FY27"
+   ],
+   "Large cap": [
+    "OW",
+    "OW",
+    "OW",
+    "OW",
+    "OW",
+    "OW",
+    "OW",
+    "OW",
+    "OW",
+    "OW"
+   ],
+   "Flexi cap": [
+    "N",
+    "N",
+    "N",
+    "N",
+    "OW",
+    "N",
+    "N",
+    "N",
+    "OW",
+    "OW"
+   ],
+   "Mid & small cap": [
+    "UW",
+    "UW",
+    "UW",
+    "UW",
+    "UW",
+    "UW",
+    "UW",
+    "UW",
+    "N",
+    "N"
+   ]
+  },
+  "capOrder": "Large > Small > Mid",
+  "deploy": "Deploy 65% of targeted corpus at current index levels; more if the Nifty 50 slips towards ~23,600.",
+  "recap": {
+   "q": "Q1FY27",
+   "nifty": "6.7%",
+   "bse500": "11.5%",
+   "mid": "17.2%",
+   "small": "23.9%",
+   "dii": "INR 2.19 tn bought",
+   "fii": "INR 1.5 tn sold",
+   "streak": "FIIs net sellers four months running, the longest streak since June 2022"
+  },
+  "valuation": {
+   "niftyFwdPE": 18.3,
+   "avg5y": 19.6,
+   "nse500FwdPE": 20.2,
+   "bond10y": 6.75,
+   "asOf": "30 Jun 2026",
+   "niftyLevel": "23,886"
+  },
+  "factors": [
+   [
+    "Global macro and geopolitics",
+    "West Asia ceasefire holding; crude off its peak. Renewed escalation is the key monitorable.",
+    "amber"
+   ],
+   [
+    "Inflation, rates, commodities",
+    "Repo held at 5.25%; FY27 inflation forecast raised to 5.1% on energy and a possible El Niño.",
+    "amber"
+   ],
+   [
+    "Foreign and domestic liquidity",
+    "FIIs near record bearish positioning; SIP and MF inflows a structural cushion. A reversal in FII selling is the catalyst.",
+    "green"
+   ],
+   [
+    "Corporate earnings",
+    "After two muted years, consensus expects mid-teens growth into FY27. Q1 results set the tone.",
+    "green"
+   ],
+   [
+    "Valuations and global risk appetite",
+    "India at a premium to EMs, but below its own average. A US correction or dollar surge would reopen outflows.",
+    "amber"
+   ]
+  ],
+  "sectors": [
+   [
+    "Nifty Bank",
+    12.4,
+    -10
+   ],
+   [
+    "Nifty Auto",
+    34.7,
+    -5
+   ],
+   [
+    "Nifty Financial Services",
+    14.2,
+    -23
+   ],
+   [
+    "Nifty FMCG",
+    7.5,
+    -16
+   ],
+   [
+    "Nifty IT",
+    12.9,
+    -32
+   ],
+   [
+    "Nifty Metals",
+    19.5,
+    8
+   ],
+   [
+    "Nifty Pharma",
+    9.0,
+    7
+   ],
+   [
+    "Nifty Realty",
+    27.7,
+    -33
+   ],
+   [
+    "BSE Infra",
+    15.4,
+    -1
+   ],
+   [
+    "BSE Oil & Gas",
+    1.3,
+    -5
+   ],
+   [
+    "BSE Industrials",
+    17.5,
+    4
+   ],
+   [
+    "Nifty 50",
+    18.0,
+    -14
+   ]
+  ],
+  "sectorView": "Prefer BFSI, manufacturing and growth-led plays: lenders over non-lenders, private banks over PSBs; selective in auto ancillaries, chemicals, logistics, discretionary, infra and telecom. IT starts FY27 on a weak footing.",
+  "sources": {
+   "deck": "Bloomberg via AWM Listed Equities deck, data to 30 Sep 2025",
+   "hv": "AWM House View Q2FY27, data to 30 Jun 2026",
+   "live": "NSE indices via Yahoo, to 2026-09-11, refreshed nightly",
+   "tri": "Total return indices, monthly, to 30 Jun 2026"
+  }
+ },
+ "sensex": {
+  "cagrSinceInception": "13.5%",
+  "since": "1983",
+  "x5": "2.1x",
+  "x10": "3.1x",
+  "x20": "9.3x",
+  "xInc": "152x",
+  "cagr20": "11.8%",
+  "cagr10": "11.9%",
+  "cagr5": "16.1%"
+ },
+ "india": [
+  [
+   "4th largest economy",
+   "real GDP ~6.5%; fastest-growing major economy"
+  ],
+  [
+   "1.4 bn people, young",
+   "370 mn aged 10–24; working age share rising into the 2030s"
+  ],
+  [
+   "234 companies went 10x",
+   "in ten years, across 80 industries (to Dec 2024)"
+  ],
+  [
+   "RoE ~14%",
+   "for Nifty companies over ten years"
+  ]
+ ],
+ "web": {
+  "sensexCagr1979": "15.4%",
+  "sensexCagrSource": "https://www.finnovate.in/learn/blog/nifty-20-year-cagr-below-10-percent-history",
+  "nifty10yNegative": "none",
+  "niftySource": "https://www.indmoney.com/blog/nifty-50-loss-probability-7-10-years"
+ },
+ "pairs": {
+  "flexi": {
+   "label": "Flexi cap",
+   "A": "quantflexicap",
+   "B": "hdfcflexicap"
+  },
+  "large": {
+   "label": "Large cap",
+   "A": "quantlargecap",
+   "B": "nipponindialargecap"
+  }
+ }
+}

@@ -26,7 +26,7 @@ const $ = (s, r = document) => r.querySelector(s);
 // The page opens on the method rather than on a ranked list. A reader who has
 // not been told how a fund got to the top of a table has no reason to believe
 // the table, and the first tab is where that is answered.
-const state = { mode: 'client', plan: 'direct', view: 'approach', fw: null,
+const state = { mode: 'client', plan: 'direct', view: 'overview', fw: null,
                 meta: null, fund: null, category: null, returnView: null,
                 gloss: {}, picked: [] };
 
@@ -170,8 +170,19 @@ function setView(v) {
   state.view = v;
   $('#tabs').querySelectorAll('button').forEach((b) =>
     b.classList.toggle('on', b.dataset.view === v));
+  placeTabInd();
+  window.scrollTo({ top: 0, behavior: 'auto' });
   render();
 }
+
+/* The red underline slides to the tab that is on rather than switching. */
+function placeTabInd() {
+  const on = $('#tabs .on'), ind = $('#tab-ind');
+  if (!on || !ind) return;
+  ind.style.left = on.offsetLeft + 'px';
+  ind.style.width = on.offsetWidth + 'px';
+}
+addEventListener('resize', placeTabInd);
 
 /* ------------------------------------------------------------- selection */
 
@@ -241,8 +252,11 @@ function drawPickbar() {
     document.body.appendChild(bar);
   }
   const n = state.picked.length;
+  const grew = n > (bar._n || 0);
+  bar._n = n;
   bar.innerHTML = `
-    <span class="pickbar-n"><b>${n}</b> ${n === 1 ? 'fund' : 'funds'} selected</span>
+    <span class="pickbar-n"><b class="${grew ? 'pulse' : ''}">${n}</b> ${
+      n === 1 ? 'fund' : 'funds'} selected</span>
     <button class="pickbar-go" id="pick-compare">Compare</button>
     <button class="pickbar-go" id="pick-portfolio">Build portfolio</button>
     <button class="pickbar-clear" id="pick-clear">Clear</button>`;
@@ -776,7 +790,7 @@ async function renderAll(host) {
                                  'Not scored'].map((c) =>
             `<option${c === filters.band ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>
         </label>
-        <label>Min AUM (₹ cr)
+        <label>Min AUM (INR cr)
           <input id="f-aum" type="number" min="0" step="100" placeholder="any"
                  value="${esc(filters.minAum)}"></label>
         <label>Max downside capture
@@ -1206,7 +1220,8 @@ async function drawPassivePanel() {
 
 const VIEW_LABEL = { shortlist: 'category top funds', all: 'all funds',
                      compare: 'compare', portfolio: 'the portfolio builder',
-                     sectors: 'sectors', approach: 'how we look at funds' };
+                     sectors: 'sectors', approach: 'how we look at funds',
+                     overview: 'the equity overview' };
 
 /* The fund page is a one page snapshot: a card per question, each showing the
    headline and nothing more. The detail behind every card is a click away in a
@@ -2974,6 +2989,7 @@ async function render() {
   host.innerHTML = '<div class="loading">Loading…</div>';
   try {
     if (state.view === 'fund') await renderFundPage(host, mine);
+    else if (state.view === 'overview') await renderOverview(host, mine);
     else if (state.view === 'approach') await renderApproach(host);
     else if (state.view === 'shortlist') await renderShortlists(host, mine);
     else if (state.view === 'all') await renderAll(host);
@@ -2987,6 +3003,10 @@ async function render() {
       <span>${esc(e.message)}</span></div>`;
   }
   if (superseded(mine)) return;
+  // The view arrives with a short rise; the fund page manages its own.
+  if (host.firstElementChild && state.view !== 'fund') {
+    host.firstElementChild.classList.add('view');
+  }
   drawPickbar();          // the selection survives moving between tabs
   drawTabCounts();
 }
@@ -3006,6 +3026,7 @@ async function render() {
   try {
     [state.fw, state.meta] = await Promise.all([get('/framework'), get('/meta')]);
     state.gloss = state.fw.glossary || {};
+    placeTabInd();
     render();
   } catch (e) {
     $('#main').innerHTML = `<div class="error"><strong>Backend unavailable.</strong>

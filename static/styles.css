@@ -32,155 +32,200 @@
 :root {
   color-scheme: light;
 
-  /* Brand primaries */
-  --ink:            #323132;
-  --ink-strong:     #000000;
-  --slate:          #708090;
-  --red:            #cc1919;
+  /* Avendus web design system, as scraped from avendus.com: a navy primary with
+     its tints, warm neutrals, one red kept for the caret, the section tag bar
+     and the arrow tile. The names with underscores are the site's own token
+     names; the hyphenated names below them are the roles this stylesheet was
+     first written against, mapped onto the same palette so every view moves
+     together. */
+  --font_primary:   "Univia Pro", Ubuntu, "Trebuchet MS", system-ui, sans-serif;
+  --font_secondary: "ITC Franklin Gothic Std", "Libre Franklin", system-ui, Arial, sans-serif;
+  --p_dim: #f5f7fb; --p_tint: #e1e8f4; --p_light: #9ab3db; --p: #2c3441;
+  --p_shade: #7e94b6; --p_dark: #46556b; --p_deep: #2e3b51; --p_contrast: #171d25;
+  --s_tint: #f8f9fa; --s: #e7e8ea; --s_shade: #808285; --s_dark: #4d4d4f;
+  --s_contrast: #1f1f1f; --red: #cc1919; --red_light: #f28275;
+  --bg_gradient: linear-gradient(117deg, #2d3440 3.31%, #2e3b51 46.36%,
+    #5676a8 143.33%, #2e3b51 210.57%, #2d3440 255.71%);
+  --gradient_hover: linear-gradient(103deg, #2e3b51 0%, #2e3b51 50%,
+    #5676a8 75%, #2d3440 100%);
+  --up: #2f7d5f; --down: #c00000;
+  --ease: cubic-bezier(.4, 0, .2, 1); --ease_out: cubic-bezier(0, 0, .2, 1);
+  --fast: 120ms; --base: 180ms; --slow: 260ms;
+  --card_border: #d5d9df; --card_radius: 10px;
 
-  /* Surfaces */
+  /* Roles, on the same palette */
+  --ink:            #1f1f1f;
+  --ink-strong:     #171d25;
+  --slate:          #46556b;
+
   --surface-1:      #ffffff;
   --surface-2:      #ffffff;
-  --plane:          #ffffff;
-  --zebra:          #f4f4f4;
-  --wash:           #f0f6fc;
-  --grid:           #ebeaeb;
-  --axis:           #a6a6a6;
-  --border:         #e3e2e3;
-  --border-strong:  #c9c8c9;
+  --plane:          #f8f9fa;
+  --zebra:          #f5f7fb;
+  --wash:           #e1e8f4;
+  --grid:           #e7e8ea;
+  --axis:           #808285;
+  --border:         #d5d9df;
+  --border-strong:  #9ab3db;
 
-  /* Text roles */
-  --text-primary:   #323132;
-  --text-secondary: #708090;
-  --text-muted:     #808083;
+  --text-primary:   #1f1f1f;
+  --text-secondary: #4d4d4f;
+  --text-muted:     #808285;
 
-  /* Sequential ramp: brand blue and slate, light to dark, monotonic lightness */
-  --seq-100: #e8f2fb;
-  --seq-200: #c3dff4;
-  --seq-300: #93b2cc;
-  --seq-450: #708090;
-  --seq-550: #4c5966;
-  --seq-700: #323132;
+  /* Sequential ramp: navy tints, light to dark, monotonic lightness */
+  --seq-100: #f5f7fb;
+  --seq-200: #e1e8f4;
+  --seq-300: #9ab3db;
+  --seq-450: #7e94b6;
+  --seq-550: #46556b;
+  --seq-700: #2c3441;
 
-  /* Categorical, fixed order, never cycled. Used only where the mark carries a
-     direct label, per the note above. */
-  --series-1: #708090;
-  --series-2: #cc1919;
-  --series-3: #93b2cc;
-  --series-4: #a6a6a6;
-  --series-5: #f9a1a3;
+  --series-1: #2c3441;
+  --series-2: #5676a8;
+  --series-3: #9ab3db;
+  --series-4: #808285;
+  --series-5: #f28275;
 
-  /* Status */
-  --good:     #4c5966;
-  /* The one green on the page. It exists for a single job: a figure that is a
-     gain against a benchmark, set opposite --red so the pair reads as a
-     direction and not as decoration. Deep enough to hold its own weight next to
-     the red at the same size rather than reading as the lighter of the two. */
-  --gain:     #15784a;
-  --warning:  #a6b0ba;
-  --serious:  #f9a1a3;
+  --good:     #46556b;
+  --gain:     #2f7d5f;
+  --warning:  #9ab3db;
+  --serious:  #f28275;
   --critical: #cc1919;
-  --good-text: #323132;
+  --good-text: #1f1f1f;
 
-  --radius: 0;
-  --title: "Univia Pro", "Avenir Next", "Century Gothic", "URW Gothic",
-           system-ui, -apple-system, sans-serif;
-  --sans: "Franklin Gothic Book", "Libre Franklin", "Franklin Gothic Medium",
-          "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  --radius: 10px;
+  --title: var(--font_primary);
+  --sans: var(--font_secondary);
+  --mono: var(--font_primary);
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --fast: 0ms; --base: 0ms; --slow: 0ms; }
 }
 
 * { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 body {
   margin: 0; background: var(--plane); color: var(--text-primary);
-  font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
+  font: 14px/1.45 var(--sans); letter-spacing: .5px;
+  -webkit-font-smoothing: antialiased;
 }
 h1, h2, h3 { margin: 0; font-family: var(--title); font-weight: 400;
-  color: var(--text-primary); }
-h4, h5 { margin: 0; font-family: var(--title); font-weight: 500;
-  color: var(--ink-strong); }
+  color: var(--p); letter-spacing: .5px; text-wrap: balance; }
+h4, h5 { margin: 0; font-family: var(--title); font-weight: 400;
+  color: var(--p); }
 a { color: var(--red); }
+.mono { font-variant-numeric: tabular-nums; }
+button { letter-spacing: inherit; }
 
 /* ------------------------------------------------------------- masthead */
-/* Title over sub-title over a hairline with a short red lead segment: the
-   template's slide header, reused as the page header. */
-/* The wordmark, the tabs and the plan switch on one line. The name stacks into
-   the height of the bar rather than sitting above it, which is what lets the
-   tabs come up beside it instead of costing a second row. */
+/* The site's frosted navy bar: wordmark and caret, the product name behind a
+   hairline, the tabs with a red underline that slides between them, and the
+   plan switch as a pill. Sticky, so the tabs are always one click away. */
 #masthead {
-  display: flex; align-items: stretch; gap: 0;
-  padding: 0 34px; background: var(--surface-1);
-  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 20; height: 64px;
+  display: flex; align-items: center; gap: 18px;
+  padding: 0 34px; background: rgba(44, 52, 65, .94); color: #fff;
+  backdrop-filter: blur(55px); -webkit-backdrop-filter: blur(55px);
 }
-.brand {
-  display: flex; flex-direction: column; justify-content: center;
-  margin: 0; padding: 10px 22px 10px 0; font-size: 21px; line-height: 1.02;
-  font-family: var(--title); font-weight: 500; color: var(--ink-strong);
-  letter-spacing: -0.01em; white-space: nowrap;
-}
-/* "The" is the smaller half of the pair and sits back, so the eye lands on the
-   word that names the thing, which carries the one red on the page. */
-.brand span:first-child { font-size: 0.62em; font-weight: 400;
-  color: var(--text-muted); letter-spacing: 0.04em; text-transform: uppercase; }
-.brand span:last-child { color: var(--red); }
-/* The rule the tabs sit against. A border on the brand rather than a separate
-   element, so it is exactly the height of the bar. */
-#masthead .brand { border-right: 1px solid var(--border); }
-.masthead-right { display: flex; align-items: center; gap: 16px;
-  margin-left: auto; padding-left: 22px; }
+.brand { display: flex; align-items: center; gap: 18px; margin: 0;
+  font-family: var(--title); font-weight: 400; font-size: 21px; line-height: 1;
+  color: #fff; white-space: nowrap; }
+.brand .logo b { font-weight: 400; color: var(--red); }
+.brand .prod { font-size: 14.5px; color: var(--p_tint); padding-left: 18px;
+  border-left: 1px solid rgba(255, 255, 255, .18); }
+/* The fund's name condenses into the bar once its band has scrolled away. */
+.brand .crumb { font-size: 14.5px; color: #fff; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; max-width: 0; opacity: 0; padding-left: 0;
+  transition: max-width var(--slow) var(--ease), opacity var(--base) var(--ease),
+    padding var(--slow) var(--ease); }
+#masthead.condensed .crumb { max-width: 320px; opacity: 1; padding-left: 18px;
+  border-left: 1px solid rgba(255, 255, 255, .18); }
+.masthead-right { display: flex; align-items: center; gap: 16px; margin-left: 0; }
 
-.segmented { display: inline-flex; border: 1px solid var(--border-strong); }
+.segmented { display: inline-flex; border: 0.8px solid var(--p_light); border-radius: 50px;
+  overflow: hidden; font-family: var(--title); font-size: 11px; letter-spacing: 1px;
+  text-transform: uppercase; }
 .segmented button {
-  border: 0; background: transparent; color: var(--text-secondary);
-  padding: 6px 18px; font: inherit; font-size: 12.5px; cursor: pointer;
+  border: 0; background: transparent; color: var(--p_tint);
+  padding: 6px 11px; font: inherit; cursor: pointer;
+  transition: background var(--base), color var(--base);
 }
-.segmented button.on { background: var(--red); color: #fff; font-weight: 500; }
-/* A choice that is not available yet reads as one, rather than as a button that
-   does nothing when pressed. */
-.segmented button:disabled { cursor: not-allowed; color: var(--text-muted);
-  opacity: 0.55; }
+.segmented button.on { background: var(--p_tint); color: var(--p_dark); }
+.segmented button:disabled { cursor: not-allowed; opacity: 0.55; }
 .segmented button:disabled.on { opacity: 1; }
 
+/* The same control on the page, in daylight. */
+#main .segmented { border-color: var(--s); background: #fff; }
+#main .segmented button { color: var(--s_dark); padding: 7px 14px; }
+#main .segmented button.on { background: var(--p); color: #fff; }
+
 /* ----------------------------------------------------------------- tabs */
-#tabs { display: flex; padding: 0 0 0 4px; background: none;
-  overflow-x: auto; scrollbar-width: none; }
+#tabs { position: relative; display: flex; gap: 18px; margin-left: auto; height: 100%;
+  align-items: center; padding: 0; background: none;
+  overflow-x: auto; scrollbar-width: none; font-family: var(--title); }
 #tabs::-webkit-scrollbar { display: none; }
 #tabs button {
-  border: 0; background: transparent; color: var(--text-secondary);
-  padding: 11px 17px 9px; font: inherit; font-family: var(--title); font-size: 13.5px;
-  cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap;
+  border: 0; background: transparent; color: rgba(255, 255, 255, .72);
+  padding: 22px 0; font: inherit; font-family: var(--title); font-size: 13.5px;
+  cursor: pointer; white-space: nowrap; transition: color var(--base) var(--ease);
 }
-#tabs button:hover { color: var(--text-primary); }
-#tabs button.on { color: var(--ink-strong); font-weight: 500;
-  border-bottom-color: var(--red); }
-/* How many funds are waiting on that tab. Adding one from a fund page is
-   otherwise an action with no visible result anywhere on the screen. */
+#tabs button:hover, #tabs button.on { color: #fff; }
+#tabs .ind { position: absolute; bottom: 0; height: 2px; background: var(--red);
+  transition: left var(--slow) var(--ease), width var(--slow) var(--ease); }
 .tabcount { display: inline-block; min-width: 17px; padding: 0 4px;
   margin-left: 5px; border-radius: 9px; background: var(--red); color: #fff;
-  font-family: var(--mono); font-size: 10.5px; font-weight: 600;
-  line-height: 16px; text-align: center; vertical-align: 1px; }
+  font-size: 10.5px; line-height: 16px; text-align: center; vertical-align: 1px; }
+.tabcount.pulse { animation: pulse 420ms var(--ease_out); }
+@keyframes pulse { 0% { transform: scale(1); } 35% { transform: scale(1.35); }
+  100% { transform: scale(1); } }
 
-#main { padding: 24px 34px 40px; max-width: 1560px; margin: 0 auto; }
+/* ---------------------------------------------------------------- motion */
+/* A view arrives with a short rise and its cards follow one another; below
+   the fold a row fades up as it comes into view. Colour and opacity only. */
+@keyframes enter { from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; } }
+#main > .view { animation: enter var(--slow) var(--ease_out) both; }
+.stagger > * { animation: enter var(--slow) var(--ease_out) both; }
+.stagger > *:nth-child(2) { animation-delay: 40ms; }
+.stagger > *:nth-child(3) { animation-delay: 80ms; }
+.stagger > *:nth-child(4) { animation-delay: 120ms; }
+.reveal { opacity: 0; transform: translateY(8px);
+  transition: opacity var(--slow) var(--ease_out), transform var(--slow) var(--ease_out); }
+.reveal.in { opacity: 1; transform: none; }
+path.draw { stroke-dasharray: var(--len); stroke-dashoffset: var(--len);
+  animation: draw 700ms var(--ease_out) 120ms forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  #main > .view, .stagger > *, path.draw { animation: none !important;
+    stroke-dashoffset: 0; }
+  .reveal { opacity: 1; transform: none; }
+}
+
+#main { padding: 22px 20px 60px; max-width: 1280px; margin: 0 auto; }
 section { margin-bottom: 32px; }
 
-.section-head { margin-bottom: 18px; position: relative; padding-bottom: 10px; }
-.section-head::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
-  background: linear-gradient(to right, var(--red) 0 46px, var(--border) 46px);
-}
+.section-head { margin-bottom: 14px; position: relative; padding-left: 10px; }
+.section-head::before { content: ""; position: absolute; left: 0; top: 2px; bottom: 2px;
+  width: 2px; background: var(--red); }
 .section-head h2, .prose h2 { font-size: 22px; margin-bottom: 3px; }
+/* The site's section tag: small caps beside a 2px red bar. */
+.tag { position: relative; display: inline-block; padding: 4px 10px;
+  font-family: var(--title); font-size: 11.5px; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--p_dark); }
+.tag::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: var(--red); }
+.tag.ondark { color: var(--p_tint); }
 .prose h3 { font-size: 17px; margin: 30px 0 10px; padding-top: 18px;
   border-top: 1px solid var(--border); color: var(--text-secondary); }
 .prose h3:first-of-type { border-top: 0; padding-top: 0; }
 .lede { color: var(--text-secondary); max-width: 82ch; margin: 0;
   font-family: var(--title); font-size: 15px; }
 .prose p { max-width: 88ch; color: var(--text-primary); }
-.note { font-size: 12.5px; color: var(--text-muted);
-  border-left: 2px solid var(--red); padding-left: 12px; }
+.note { font-size: 12.5px; color: var(--text-muted); }
 
 .cards { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(275px, 1fr)); }
-.card { background: var(--surface-2); border: 1px solid var(--border);
-  border-top: 2px solid var(--red); padding: 13px 16px 15px; }
+.card { background: var(--surface-2); border: 1px solid var(--card_border);
+  border-radius: var(--card_radius); padding: 14px 16px 15px; }
 .card h4 { font-size: 14px; margin-bottom: 5px; }
 .card p { margin: 0; font-size: 13px; color: var(--text-primary); }
 .muted-card { border-top-color: var(--border-strong); }
@@ -194,27 +239,31 @@ section { margin-bottom: 32px; }
 /* --------------------------------------------------------------- tables */
 /* Template table: red rule top and bottom, red underline beneath the heading
    row, zebra body, no outer box, square corners. */
-.grid { width: 100%; border-collapse: collapse; font-size: 13px;
-  background: var(--surface-2); border: 0; border-top: 1.5px solid var(--red);
-  border-bottom: 1.5px solid var(--red); }
-.grid th { text-align: left; font-family: var(--title); font-weight: 500;
-  font-size: 12px; color: var(--ink-strong); padding: 8px 11px;
-  border-bottom: 1px solid var(--red); background: var(--surface-2);
+.grid { width: 100%; border-collapse: collapse; font-size: 13.5px;
+  background: var(--surface-2); border: 0; }
+.grid th { text-align: left; font-family: var(--title); font-weight: 400;
+  font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--p_dark); padding: 8px 11px;
+  border-bottom: 1px solid var(--s); background: var(--p_dim);
   white-space: nowrap; }
-.grid td { padding: 8px 11px; border-bottom: 1px solid var(--grid);
+.grid td { padding: 8px 11px; border-bottom: 1px solid var(--s);
   vertical-align: top; }
 /* `.grid th` sets text-align left and outranks a bare `.r`, which left every
    numeric header sitting over the wrong edge of its column. */
 .grid th.r { text-align: right; }
-.grid tbody tr:nth-child(odd) { background: var(--zebra); }
+.grid tbody tr:nth-child(odd) { background: transparent; }
 .grid tbody tr:last-child td { border-bottom: 0; }
 .grid tbody tr[data-fund] { cursor: pointer; }
-.grid tbody tr[data-fund]:hover { background: var(--wash); }
+.grid tbody tr[data-fund]:hover { background: var(--p_dim); }
+.grid tbody tr[data-fund] td { transition: background var(--fast); }
 .grid.dense td, .grid.dense th { padding: 6px 10px; font-size: 12.5px; }
 .grid tr.sub td { padding-top: 0; }
 .grid tr.sub { background: var(--surface-2) !important; }
 .grid.kv td:first-child { color: var(--text-primary); }
-.tablewrap { overflow-x: auto; }
+.tablewrap { overflow-x: auto; background: #fff; border: 1px solid var(--card_border);
+  border-radius: var(--card_radius); }
+.tablewrap .grid th:first-child { border-top-left-radius: var(--card_radius); }
+.tablewrap .grid th:last-child { border-top-right-radius: var(--card_radius); }
 
 /* A frozen pane, for the one table long enough to need one.
 
@@ -262,15 +311,16 @@ section { margin-bottom: 32px; }
 .sm { font-size: 11.5px; }
 
 .chip { display: inline-flex; gap: 6px; align-items: baseline; font-size: 11px;
-  background: var(--zebra); border: 1px solid var(--border); padding: 2px 8px;
-  margin: 0 5px 5px 0; color: var(--text-primary); }
+  background: var(--p_dim); border: 0.8px solid var(--s); border-radius: 50px;
+  padding: 2px 9px; margin: 0 5px 5px 0; color: var(--text-primary); }
 .chip em { font-style: normal; font-family: var(--mono); color: var(--text-muted); }
 .chip.off { opacity: 0.6; border-style: dashed; }
 
 /* ---------------------------------------------------------------- pills */
-.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px;
-  font-weight: 500; padding: 2px 9px; background: var(--zebra);
-  border: 1px solid var(--border); white-space: nowrap; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11px;
+  font-family: var(--title); letter-spacing: .5px; padding: 2px 9px;
+  background: var(--p_tint); border: 0.8px solid var(--p_light); border-radius: 50px;
+  color: var(--p_dark); white-space: nowrap; }
 .pill .dot { width: 8px; height: 8px; flex: none; }
 .pill.good .dot { background: var(--good); }
 .pill.warning .dot { background: var(--warning); }
@@ -294,7 +344,7 @@ section { margin-bottom: 32px; }
 .flagcard strong { display: block; margin-bottom: 2px; font-family: var(--title); }
 .flagcard span { color: var(--text-primary); }
 
-.caveat { border-left: 3px solid var(--red); background: var(--zebra);
+.caveat { background: var(--p_dim); border-radius: 8px;
   padding: 10px 13px; font-size: 12.5px; color: var(--text-primary);
   margin: 8px 0 14px; }
 
@@ -306,12 +356,13 @@ section { margin-bottom: 32px; }
 @media (max-width: 1180px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 860px)  { .tiles { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 560px)  { .tiles { grid-template-columns: 1fr; } }
-.tile { text-align: left; font: inherit; cursor: pointer; padding: 9px 13px 9px;
-  background: var(--surface-2); border: 1px solid var(--border);
-  border-top: 3px solid var(--border-strong); position: relative;
-  display: flex; flex-direction: column; gap: 7px; }
-.tile:hover { border-color: var(--border-strong); background: var(--zebra); }
-.tile.on { border-top-color: var(--red); background: var(--wash); }
+.tile { text-align: left; font: inherit; cursor: pointer; padding: 11px 14px 11px;
+  background: var(--surface-2); border: 1px solid var(--card_border);
+  border-radius: var(--card_radius); position: relative;
+  display: flex; flex-direction: column; gap: 7px;
+  transition: background var(--base), border-color var(--base); }
+.tile:hover { background: var(--p_dim); }
+.tile.on { border-color: var(--p); background: var(--p_tint); }
 .tile h3 { font-size: 13.5px; font-weight: 500; }
 .tile-open { position: absolute; right: 12px; top: 8px; color: var(--red);
   font-size: 13px; opacity: 0; }
@@ -321,14 +372,15 @@ section { margin-bottom: 32px; }
 .catpanel-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 14px;
   padding-bottom: 9px; margin-bottom: 6px; position: relative; }
 .catpanel-head::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0;
-  height: 1px; background: linear-gradient(to right, var(--red) 0 46px, var(--border) 46px); }
+  height: 1px; background: var(--s); }
 .catpanel-head h3 { font-size: 19px; }
 
 .picks { display: grid; }
 .pick { display: grid; grid-template-columns: 34px 1fr 240px; gap: 16px;
   padding: 14px 0; border-bottom: 1px solid var(--grid); cursor: pointer;
   align-items: start; }
-.pick:hover { background: var(--wash); }
+.pick:hover { background: var(--p_dim); }
+.pick { transition: background var(--fast); }
 .pick:last-child { border-bottom: 0; }
 .pick-rank { font-family: var(--mono); font-size: 13px; color: var(--red);
   font-weight: 500; padding-top: 1px; }
@@ -345,8 +397,8 @@ section { margin-bottom: 32px; }
 
 /* ------------------------------------------------------------- filters */
 .filterbar { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end;
-  background: var(--zebra); border-top: 2px solid var(--red);
-  padding: 12px 14px; margin-bottom: 14px; }
+  background: #fff; border: 1px solid var(--card_border); border-radius: var(--card_radius);
+  padding: 12px 16px 14px; margin-bottom: 15px; }
 .filterbar .spacer { flex: 1 1 auto; }
 .filterbar label { display: flex; flex-direction: column; gap: 3px;
   font-size: 11px; color: var(--text-muted); position: relative;
@@ -358,31 +410,37 @@ section { margin-bottom: 32px; }
 .filterbar input[type="checkbox"] { min-width: 0; width: auto;
   accent-color: var(--red); cursor: pointer; }
 .filterbar input, .filterbar select {
-  font: inherit; font-family: var(--sans); font-size: 13px; padding: 5px 8px;
-  border: 1px solid var(--border-strong); background: var(--surface-2);
-  color: var(--text-primary); min-width: 150px;
+  font: inherit; font-family: var(--sans); font-size: 13px; padding: 6px 12px;
+  border: 0.8px solid var(--s_shade); border-radius: 50px; background: var(--surface-2);
+  color: var(--text-primary); min-width: 150px; outline: none;
+  transition: border-color var(--base), background var(--base);
 }
+.filterbar input:focus, .filterbar select:focus { border-color: var(--p_light);
+  background: var(--p_dim); }
 .filterbar label:first-child input { min-width: 250px; }
 /* The two exposure bounds are two digit numbers, not search fields. */
 #s-lo, #s-hi { min-width: 110px; }
 .suggest { position: absolute; top: 100%; left: 0; z-index: 20;
-  background: var(--surface-2); border: 1px solid var(--border-strong);
-  max-height: 320px; overflow-y: auto; min-width: 330px; }
+  background: var(--surface-2); border: 0.8px solid var(--s); border-radius: 12px;
+  padding: 6px; max-height: 320px; overflow-y: auto; min-width: 330px;
+  animation: enter var(--base) var(--ease_out) both; }
 .opt { display: flex; justify-content: space-between; gap: 10px; align-items: center;
   padding: 7px 11px; font-size: 12.5px; cursor: pointer; }
-.opt:hover { background: var(--wash); }
+.opt { border-radius: 8px; transition: background var(--fast); }
+.opt:hover { background: var(--p_dim); }
 
-button.ghost { font: inherit; font-size: 12px; padding: 6px 14px;
-  border: 1px solid var(--border-strong); background: var(--surface-2);
-  color: var(--text-secondary); cursor: pointer; }
-button.ghost:hover { color: var(--red); border-color: var(--red); }
-button.primary { font: inherit; font-family: var(--title); font-size: 13px;
-  font-weight: 500; padding: 7px 18px; border: 0; background: var(--red);
-  color: #fff; cursor: pointer; }
+button.ghost { font: inherit; font-size: 12.5px; padding: 6px 14px;
+  border: 0.8px solid var(--p_light); border-radius: 50px; background: var(--surface-2);
+  color: var(--p_dark); cursor: pointer; transition: background var(--base), color var(--base); }
+button.ghost:hover { background: var(--p_tint); }
+button.primary { font: inherit; font-family: var(--sans); font-size: 13.5px;
+  padding: 8px 18px; border: 0.8px solid var(--p_dark); border-radius: 4px;
+  background: var(--p); color: #fff; cursor: pointer; transition: background 250ms ease; }
+button.primary:hover { background: var(--gradient_hover); }
 
 /* -------------------------------------------------------- detail card */
 .detail { position: relative; background: var(--surface-2);
-  border-top: 2px solid var(--red); border-bottom: 1px solid var(--border);
+  border: 1px solid var(--card_border); border-radius: var(--card_radius);
   padding: 18px 20px 22px; margin-bottom: 22px; }
 .detail .close { position: absolute; top: 10px; right: 12px; border: 0;
   background: transparent; font-size: 20px; line-height: 1; color: var(--text-muted);
@@ -396,8 +454,8 @@ button.primary { font: inherit; font-family: var(--title); font-size: 13px;
   align-items: flex-end; gap: 3px; }
 .detail-score .big { font-family: var(--mono); font-size: 27px; font-weight: 500;
   line-height: 1.1; }
-.verdict { font-size: 13.5px; background: var(--zebra);
-  border-left: 3px solid var(--red); padding: 10px 14px; margin: 15px 0; }
+.verdict { font-size: 13.5px; background: var(--p_dim); border-radius: 8px;
+  padding: 10px 14px; margin: 15px 0; }
 .detail h4 { font-size: 13px; margin: 20px 0 8px; }
 .two { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
 .panel { min-width: 0; }
@@ -468,8 +526,9 @@ th.sortable.on .arrow { opacity: 1; }
    time. The fund's colour is set once and repeated on its chip, its line and its
    table column, so the eye can carry one fund across all three. */
 .cmp-pickers { display: grid; grid-template-columns: minmax(320px, 1fr) auto;
-  gap: 18px 26px; align-items: start; background: var(--zebra);
-  border-top: 2px solid var(--red); padding: 14px 16px 15px; }
+  gap: 18px 26px; align-items: start; background: #fff;
+  border: 1px solid var(--card_border); border-radius: var(--card_radius);
+  padding: 14px 16px 15px; }
 .cmp-lab { display: block; font-size: 11px; text-transform: uppercase;
   letter-spacing: 0.06em; color: var(--text-secondary); margin-bottom: 6px; }
 .cmp-lab .muted { text-transform: none; letter-spacing: 0; margin-left: 5px; }
@@ -489,12 +548,12 @@ th.sortable.on .arrow { opacity: 1; }
 .cmp-chip button:hover { color: var(--red); }
 
 .cmp-marks { display: flex; flex-wrap: wrap; gap: 5px; }
-.cmp-mark { font: inherit; font-size: 12px; padding: 6px 11px; cursor: pointer;
-  background: var(--surface-1); color: var(--text-secondary);
-  border: 1px solid var(--border-strong); }
-.cmp-mark:hover { color: var(--text-primary); border-color: var(--slate); }
-.cmp-mark.on { background: var(--text-primary); border-color: var(--text-primary);
-  color: var(--surface-1); font-weight: 600; }
+.cmp-mark { font: inherit; font-family: var(--title); font-size: 12px; letter-spacing: .5px;
+  padding: 6px 12px; cursor: pointer; background: var(--surface-2); color: var(--s_dark);
+  border: 0.8px solid var(--s); border-radius: 50px;
+  transition: background var(--base), color var(--base), border-color var(--base); }
+.cmp-mark:hover { background: var(--p_dim); }
+.cmp-mark.on { background: var(--p_tint); border-color: var(--p_light); color: var(--p_dark); }
 
 .cmp-empty { padding: 40px 0; color: var(--text-muted); font-size: 13px; }
 .cmp-chart { margin-top: 14px; cursor: default; }
@@ -511,17 +570,16 @@ th.sortable.on .arrow { opacity: 1; }
 /* ---- portfolio */
 .cmp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .cmp-pfbtns { display: flex; align-items: center; gap: 8px 14px; margin-left: auto; }
-.cmp-ghost { font: inherit; font-size: 12px; padding: 5px 11px; cursor: pointer;
-  background: var(--surface-2); border: 1px solid var(--border-strong);
-  color: var(--text-secondary); }
-.cmp-ghost:hover { color: var(--red); border-color: var(--red); }
-.cmp-ghost.strong { border-color: var(--red); color: var(--red); font-weight: 500; }
-.cmp-ghost.strong:hover { background: var(--red); color: #fff; }
+.cmp-ghost { font: inherit; font-size: 12.5px; padding: 6px 14px; cursor: pointer;
+  background: var(--surface-2); border: 0.8px solid var(--p_light); border-radius: 50px;
+  color: var(--p_dark); transition: background var(--base), color var(--base); }
+.cmp-ghost:hover { background: var(--p_tint); }
+.cmp-ghost.strong { background: var(--p); border-color: var(--p); color: #fff; }
+.cmp-ghost.strong:hover { background: var(--p_deep); }
 /* Already in a selection. It stays a button rather than going flat, because the
    second click is what takes the fund back out. */
-.cmp-ghost.picked { border-color: var(--red); color: var(--red); font-weight: 500;
-  background: var(--wash); }
-.cmp-leadrow td { background: var(--wash); font-weight: 500; }
+.cmp-ghost.picked { border-color: var(--p); color: var(--p); background: var(--p_tint); }
+.cmp-leadrow td { background: var(--p_tint); font-weight: 500; }
 .cmp-leadrow .cmp-name { background: var(--wash); }
 
 /* The builder's top band: the line on the left, and beside it the four things
@@ -687,24 +745,26 @@ th.sortable.on .arrow { opacity: 1; }
 
 /* --------------------------------------------------------------- modal */
 .modal-backdrop { position: fixed; inset: 0; z-index: 200;
-  background: rgba(50, 49, 50, 0.45); display: flex; align-items: flex-start;
-  justify-content: center; padding: 6vh 20px 20px; overflow-y: auto; }
+  background: rgba(23, 29, 37, .42); backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px); display: flex; align-items: flex-start;
+  justify-content: center; padding: 6vh 20px 20px; overflow-y: auto;
+  animation: fade var(--base) var(--ease) both; }
+@keyframes fade { from { opacity: 0; } }
 body.modal-open { overflow: hidden; }
 .modal { position: relative; background: var(--surface-2); width: 100%;
-  max-width: 860px; border-top: 3px solid var(--red);
-  box-shadow: 0 18px 48px rgba(50, 49, 50, 0.28); padding: 22px 26px 26px;
-  outline: none; }
+  max-width: 860px; border-radius: 12px; padding: 22px 26px 26px;
+  outline: none; animation: enter var(--slow) var(--ease_out) both; }
 .modal-close { position: absolute; top: 10px; right: 14px; border: 0;
   background: transparent; font-size: 24px; line-height: 1; color: var(--text-muted);
   cursor: pointer; }
 .modal-close:hover { color: var(--red); }
 .modal .np-head { display: flex; gap: 13px; align-items: baseline; margin-bottom: 10px;
   padding-right: 30px; }
-.modal .np-n { font-family: var(--mono); font-size: 24px; font-weight: 600;
+.modal .np-n { font-family: var(--title); font-size: 24px; font-weight: 300;
   color: var(--red); line-height: 1; }
 .modal .np-head h3 { font-size: 20px; }
-.np-means { font-size: 14px; color: var(--text-primary); margin: 0 0 18px;
-  padding-left: 13px; border-left: 3px solid var(--seq-200); max-width: 78ch; }
+.np-means { font-size: 14px; color: var(--text-secondary); margin: 0 0 18px;
+  max-width: 78ch; }
 .np-grid { display: grid; gap: 26px; grid-template-columns: 1fr 1fr; }
 .np-grid.three { gap: 20px; grid-template-columns: 1fr 1fr 1fr; }
 .np-col h5 { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
@@ -746,9 +806,10 @@ body.modal-open { overflow: hidden; }
 .grid td.fundcell .muted { display: block; }
 
 /* ------------------------------------------------------------ fund page */
-.backlink { font: inherit; font-size: 12.5px; color: var(--text-secondary);
-  background: none; border: 0; padding: 0 0 12px; cursor: pointer; }
-.backlink:hover { color: var(--red); }
+.backlink { font: inherit; font-family: var(--title); font-size: 12.5px;
+  letter-spacing: .5px; color: var(--p_dark); background: none; border: 0;
+  padding: 0 0 12px; cursor: pointer; transition: color var(--base); }
+.backlink:hover { color: var(--p); }
 .detail.fundpage { padding-top: 16px; }
 
 /* ====================================================== fund snapshot ==== */
@@ -950,16 +1011,17 @@ body.modal-open { overflow: hidden; }
   color: var(--seq-550); line-height: 1.1; }
 
 /* period buttons over the growth chart */
-.periodbar { display: flex; flex-wrap: wrap; gap: 3px; margin: 3px 0 4px; }
-.pbtn { font: inherit; font-size: 11px; padding: 3px 9px; cursor: pointer;
-  background: var(--surface-1); color: var(--text-muted);
-  border: 1px solid var(--border); border-radius: 2px; }
-.pbtn:hover { color: var(--text-primary); border-color: var(--slate); }
+.periodbar { display: flex; flex-wrap: wrap; gap: 4px; margin: 3px 0 6px; }
+.pbtn { font: inherit; font-family: var(--title); font-size: 11.5px; letter-spacing: 1px;
+  padding: 4px 10px; cursor: pointer; background: var(--surface-1); color: var(--s_dark);
+  border: 0.8px solid var(--s); border-radius: 50px;
+  transition: background var(--base), color var(--base), border-color var(--base); }
+.pbtn:hover { background: var(--p_dim); }
 /* The selected state inverts against the page rather than being painted a fixed
    dark. A literal white label sat on a light --ink-strong in dark mode and the
    button read as an empty box. */
-.pbtn.on { background: var(--text-primary); border-color: var(--text-primary);
-  color: var(--surface-1); font-weight: 600; }
+.pbtn.on { background: var(--p_tint); border-color: var(--p_light);
+  color: var(--p_dark); }
 .growthkey { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 5px;
   font-size: 11.5px; color: var(--text-muted); }
 .growthkey span { display: inline-flex; align-items: baseline; gap: 6px; }
@@ -1013,8 +1075,8 @@ body.modal-open { overflow: hidden; }
 .loading, .empty { padding: 38px 0; text-align: center; color: var(--text-muted);
   font-size: 13px; }
 .loading.sm { font-size: 12px; padding: 28px 0; }
-.error { padding: 16px; background: var(--zebra); border-left: 3px solid var(--red);
-  display: flex; flex-direction: column; gap: 4px; }
+.error { padding: 16px; background: #fff; border: 1px solid var(--card_border);
+  border-radius: var(--card_radius); display: flex; flex-direction: column; gap: 4px; }
 .error span { color: var(--text-secondary); font-family: var(--mono); font-size: 12px; }
 
 /* ------------------------------------------------------ calendar years */
@@ -1032,7 +1094,8 @@ body.modal-open { overflow: hidden; }
    rule under nothing reads as a stray mark. The tiles below carry their own
    top border, so the row just holds the buttons. */
 .section-head-bare { padding-bottom: 0; margin-bottom: 12px; }
-.section-head-bare::after { display: none; }
+.section-head-bare::after, .section-head-bare::before { display: none; }
+.section-head-bare { padding-left: 0; }
 /* The figures are the content here, not a supporting column, so they are set
    a step up from the dense table default rather than down with it. */
 .heat td.heatcell { border-bottom: 0; padding: 7px 10px; text-align: right;
@@ -1040,7 +1103,7 @@ body.modal-open { overflow: hidden; }
 .heat td.fundcell strong { font-size: 13px; }
 .heat tfoot .bmcell { background: var(--surface-1); color: var(--text-primary);
   font-size: 14px; }
-.heat tfoot td { border-top: 1.5px solid var(--red); }
+.heat tfoot td { border-top: 1px solid var(--p_light); }
 .heat thead th { font-size: 13px; }
 .heat tbody tr:hover td.heatcell { filter: brightness(0.96); }
 .heat .namecell { min-width: 230px; }
@@ -1076,47 +1139,50 @@ body.modal-open { overflow: hidden; }
 .pickbox { accent-color: var(--red); cursor: pointer; width: 14px; height: 14px;
   vertical-align: middle; }
 
-#pickbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px;
+#pickbar { position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
   z-index: 90; display: flex; align-items: center; gap: 14px;
-  background: var(--text-primary); color: var(--surface-2);
-  border-top: 2px solid var(--red); padding: 9px 12px 9px 16px;
-  box-shadow: 0 6px 22px rgba(50, 49, 50, 0.28); font-size: 12.5px; }
-.pickbar-n b { font-family: var(--mono); font-size: 14px; }
-#pickbar button { font: inherit; font-size: 12px; cursor: pointer;
-  padding: 6px 13px; border: 1px solid transparent; }
-.pickbar-go { background: var(--red); color: #fff; }
-.pickbar-go:hover { background: #b31616; }
-.pickbar-clear { background: none; color: var(--surface-2);
-  border-color: rgba(255, 255, 255, 0.35) !important; }
-.pickbar-clear:hover { border-color: var(--surface-2) !important; }
+  background: var(--p_contrast); color: #fff; border-radius: 50px;
+  padding: 10px 12px 10px 18px; font-family: var(--title); font-size: 14px;
+  white-space: nowrap; animation: rise var(--slow) var(--ease_out) both; }
+@keyframes rise { from { transform: translate(-50%, calc(100% + 30px)); } }
+.pickbar-n b { display: inline-grid; place-items: center; min-width: 24px; height: 24px;
+  border-radius: 12px; background: var(--red); font-size: 12.5px; margin-right: 4px;
+  font-weight: 400; }
+.pickbar-n b.pulse { animation: pulse 420ms var(--ease_out); }
+#pickbar button { font: inherit; font-size: 13px; cursor: pointer;
+  padding: 7px 14px; border: 0.8px solid rgba(255, 255, 255, .28);
+  border-radius: 50px; background: none; color: #fff;
+  transition: background var(--base), border-color var(--base), color var(--base); }
+.pickbar-go { background: #fff !important; color: var(--p) !important; border-color: #fff !important; }
+.pickbar-go:hover { background: var(--p_tint) !important; }
+.pickbar-clear:hover { border-color: #fff !important; }
 
 /* ------------------------------------------------------------- tooltip */
 /* Fixed, above everything, and transparent to the pointer: the box follows the
    cursor, so a tooltip that could be hovered would chase itself off the screen. */
 #tooltip {
   position: fixed; z-index: 100; pointer-events: none; opacity: 0;
-  transition: opacity 0.1s; background: var(--surface-2); color: var(--text-primary);
-  border: 1px solid var(--border-strong); border-top: 2px solid var(--red);
-  padding: 8px 11px; font-size: 12px; max-width: 300px;
-  box-shadow: 0 4px 16px rgba(50, 49, 50, 0.14);
+  transition: opacity var(--fast); background: var(--p_contrast); color: #fff;
+  border: 0; border-radius: 6px;
+  padding: 7px 10px; font-size: 12px; max-width: 300px;
 }
 #tooltip .tt-row { display: flex; justify-content: space-between; gap: 16px; }
 #tooltip .tt-row span:last-child { font-family: var(--mono); }
 /* Two short points rather than a paragraph: a definition nobody finishes reading
    is not disclosure either. Small, tight, with the load bearing words in bold. */
-#tooltip .tt-note { color: var(--text-secondary); margin: 5px 0 0;
+#tooltip .tt-note { color: rgba(255, 255, 255, .8); margin: 5px 0 0;
   padding-left: 0; list-style: none; font-size: 11.5px; line-height: 1.45; }
 #tooltip .tt-note li { position: relative; padding-left: 10px; }
 #tooltip .tt-note li + li { margin-top: 3px; }
 #tooltip .tt-note li::before { content: ""; position: absolute; left: 0; top: 7px;
   width: 3px; height: 3px; background: var(--red); }
-#tooltip .tt-note b { color: var(--text-primary); font-weight: 600; }
+#tooltip .tt-note b { color: #fff; font-weight: 500; }
 .snapcard { display: flex; flex-direction: column; gap: 4px; text-align: left;
   font: inherit; cursor: pointer; padding: 8px 11px 8px; width: 100%;
-  background: var(--surface-2); border: 1px solid var(--border);
-  border-top: 2px solid var(--slate); }
-.snapcard:hover, .snapcard:focus-visible { border-top-color: var(--red);
-  background: var(--zebra); outline: none; }
+  background: var(--surface-2); border: 1px solid var(--card_border);
+  border-radius: var(--card_radius); transition: background var(--base); }
+.snapcard:hover, .snapcard:focus-visible { background: var(--p_dim); outline: none; }
 /* Title, then sub-title, with the affordance arrow held to the right edge.
    Grid auto-placement had put the arrow first and pushed the title right. */
 .snapcard-head { display: grid; grid-template-columns: 1fr auto;
@@ -1199,11 +1265,14 @@ body.modal-open { overflow: hidden; }
   /* Below this the wordmark, five tabs and the plan switch will not sit on one
      line, so the bar becomes two: the name and the switch above, the tabs
      underneath, scrolling sideways if they have to. */
-  #masthead { padding: 0 16px; flex-wrap: wrap; align-items: center; }
-  #masthead .brand { border-right: 0; padding: 9px 0; font-size: 19px; }
-  .masthead-right { padding-left: 0; gap: 10px; }
-  #tabs { order: 3; width: 100%; padding: 0;
-    border-top: 1px solid var(--border); }
+  #masthead { padding: 0 16px; height: auto; flex-wrap: wrap; align-items: center;
+    row-gap: 0; }
+  #masthead .brand { padding: 12px 0; font-size: 19px; }
+  .brand .prod { display: none; }
+  .masthead-right { margin-left: auto; gap: 10px; }
+  #tabs { order: 3; width: 100%; padding: 0; gap: 14px;
+    border-top: 1px solid rgba(255, 255, 255, .18); }
+  #tabs button { padding: 12px 0; }
   .pick { grid-template-columns: 26px 1fr; }
   .pick-stats { grid-column: 2; }
   .filterbar label:first-child input { min-width: 190px; }
@@ -1225,8 +1294,8 @@ body.modal-open { overflow: hidden; }
   .backlink, .chart-more, .snapcard-go { display: none !important; }
   #main { padding: 0; max-width: none; }
   .tablewrap.frozen { overflow: visible; max-height: none; min-height: 0; }
-  #masthead .brand { flex-direction: row; align-items: baseline; gap: 5px;
-    border-right: 0; padding: 0; font-size: 15px; }
+  #masthead { position: static; background: #fff; color: #000; height: auto; }
+  #masthead .brand { padding: 0; font-size: 15px; color: #000; }
   .lede { font-size: 11px; }
   .section-head { margin-bottom: 4px; padding-bottom: 2px; }
   .section-head::after { display: none; }

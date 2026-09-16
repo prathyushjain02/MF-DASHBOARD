@@ -295,26 +295,37 @@ manager block and raises a flag. It never removes the fund from the list.
 
 Five views behind a tab bar, plus a fund page reached from any table.
 
-### 5.1 How we look at funds
+### 5.1 Equity overview
 
-**The page opens here.** A reader who has not been told how a fund got to the top
-of a table has no reason to believe the table, so the method is the first thing
-offered rather than something to go looking for behind a ranked list.
+**The page opens here.** Before a ranked list, the reader gets the market and
+the house's reading of it, in five panels shown one at a time behind a pill
+bar: Markets, Holding period, Why equity and why India, How we choose, and the
+quarter's House View.
 
-The six-factor selection process as a **staircase**: three basic requirements
-that a fund has to clear before the discussion starts, then three performance
-drivers that explain whether the record repeats. The treads climb left to right
-through the brand's sequential ramp into red, each with its heading on a dropped
-leader above it.
+*Markets* is the four broad benchmarks read side by side: INR 100 into each,
+with a period switch that redraws the lines and re-sorts a leaderboard; the
+calendar years ranked as a quilt of total return indices; and an underwater
+chart with the three deepest falls lettered A to F on both chart and strip.
+Everything here is computed on request in `mf/overview.py` from the index and
+benchmark series the nightly build already carries.
 
-Every step opens a modal carrying **what the factor means and what it covers**,
-and nothing else. The live figures that used to sit beside it — the median hit
-rate, how many funds sit where size starts to work against the mandate, the
-median Information Ratio — answered a different question. This page is what we
-look for; how many schemes cleared a bar last night is a fact about the universe
-rather than about the method, and it is a tab away in All funds, where somebody
-asking it can also filter it. `/process` still computes them and `statTable`
-still draws them; nothing calls either.
+*Holding period* is the Sensex through six crises, the crisis table and the
+chart bound together so that a click on either follows the same episode, and
+the start-year by years-held grid with a holding period slider and a threshold
+slider. *Why equity, why India* is the long-run figures, a compounding
+calculator and the themes from the House View. *How we choose* is the
+selection funnel, a two-manager pick built from two real funds in the feed with
+their names removed, what we walk away from, and nine hypothetical relook
+episodes. *House view* is the call, the listed equity positioning with its ten
+quarter history, the cycle gauges, the sector scatter and the five factors.
+
+The House View figures, the long Sensex tables and the copy live in
+`data/overview.json` and are hand entered when the edition changes; the page
+says at its foot which figures are live and which are not. Nothing on the
+page carries a score, rank or quartile.
+
+The six-factor staircase that used to open the app is still in `renderApproach`
+and `/framework` still feeds it; nothing routes to it.
 
 ### 5.2 Category top funds
 
