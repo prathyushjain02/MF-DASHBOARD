@@ -297,6 +297,10 @@ Five views behind a tab bar, plus a fund page reached from any table.
 
 ### 5.1 How we look at funds
 
+**The page opens here.** A reader who has not been told how a fund got to the top
+of a table has no reason to believe the table, so the method is the first thing
+offered rather than something to go looking for behind a ranked list.
+
 The six-factor selection process as a **staircase**: three basic requirements
 that a fund has to clear before the discussion starts, then three performance
 drivers that explain whether the record repeats. The treads climb left to right

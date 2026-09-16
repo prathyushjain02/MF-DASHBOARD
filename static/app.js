@@ -23,7 +23,10 @@
 
 const API = '/api/mf';
 const $ = (s, r = document) => r.querySelector(s);
-const state = { mode: 'client', plan: 'direct', view: 'shortlist', fw: null,
+// The page opens on the method rather than on a ranked list. A reader who has
+// not been told how a fund got to the top of a table has no reason to believe
+// the table, and the first tab is where that is answered.
+const state = { mode: 'client', plan: 'direct', view: 'approach', fw: null,
                 meta: null, fund: null, category: null, returnView: null,
                 gloss: {}, picked: [] };
 
