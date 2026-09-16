@@ -540,9 +540,13 @@ function labelForField(f) {
 
 let catData = null;
 
-async function renderShortlists(host) {
+async function renderShortlists(host, token) {
   host.innerHTML = '<div class="loading">Building shortlists…</div>';
   if (!catData) catData = await get('/shortlists');
+  // <main> is still here whatever the reader did, so a view that fetches before
+  // it draws has to ask whether it is still the one being read. Without this it
+  // writes its own page over whichever tab they went to instead.
+  if (superseded(token)) return;
 
   /* The passive category sits alongside the scored ones but is read a different
      way, so it gets a tile and its own panel rather than a place in a table it
@@ -577,12 +581,12 @@ async function renderShortlists(host) {
   host.querySelectorAll('.tile').forEach((el) => el.onclick = () => {
     state.category = el.dataset.cat;
     state.fund = null;
-    renderShortlists(host);
+    renderShortlists(host, renderSeq);
   });
   const cal = $('#cat-modes');
   if (cal) cal.querySelectorAll('button').forEach((b) => b.onclick = () => {
     state.catMode = b.dataset.mode;
-    renderShortlists(host);
+    renderShortlists(host, renderSeq);
   });
   drawCategoryPanel(openCat);
   wireGlossary(host);
@@ -605,6 +609,7 @@ async function drawCategoryPanel(category) {
   if (state.catMode === 'calendar') return drawCalendarPanel(category);
   const c = catData.categories.find((x) => x.category === category);
   const panel = $('#catpanel');
+  if (!panel) return;
   if (!c) { panel.innerHTML = ''; return; }
   const hz = RETURN_COLUMNS();
   panel.innerHTML = `
@@ -849,14 +854,18 @@ async function loadTable() {
 
   const data = await get('/funds?' + p);
   const cols = visibleColumns();
+  // Asked for again on this side of the request: five hundred rows take a
+  // moment, and the reader may have moved to another tab while they loaded.
   const wrap = $('#tablewrap');
+  const meta = $('#tablemeta');
+  if (!wrap || !meta) return;
   const arrow = (c) => filters.sort === c.field
     ? `<span class="arrow">${filters.dir === 'asc' ? '▲' : '▼'}</span>`
     : '<span class="arrow">↕</span>';
 
   // Outside the scroll pane: what the table is showing and what it is sorted by
   // should not scroll away from the table it describes.
-  $('#tablemeta').innerHTML = `${data.funds.length} of ${data.total} shown ·
+  meta.innerHTML = `${data.funds.length} of ${data.total} shown ·
     sorted by ${esc(COLUMNS().find((c) => c.field === filters.sort)?.label || filters.sort)}
     ${filters.dir === 'asc' ? 'ascending' : 'descending'}`;
   wrap.innerHTML = `
@@ -986,10 +995,15 @@ function heatTone(v, scale) {
 }
 
 async function drawCalendarPanel(category) {
-  const panel = $('#catpanel');
+  let panel = $('#catpanel');
   const c = calState();
+  if (!panel) return;
   panel.innerHTML = '<div class="loading sm">Reading the calendar years…</div>';
   const d = await get('/calendar/' + encodeURIComponent(category));
+  // The panel is asked for again: a tab change while this was loading takes it
+  // off the page, and there is nothing left to draw into.
+  panel = $('#catpanel');
+  if (!panel) return;
 
   if (!d.years.length) {
     panel.innerHTML = `<p class="muted sm">No calendar year history is published
@@ -1134,9 +1148,12 @@ const PASSIVE_CAT = 'Smart beta / Passive';
    crosses families, because a Nifty 50 fund against a Nifty Bank fund is two
    market calls rather than two trackers. */
 async function drawPassivePanel() {
-  const panel = $('#catpanel');
+  let panel = $('#catpanel');
+  if (!panel) return;
   panel.innerHTML = '<div class="loading sm">Grouping the trackers…</div>';
   const d = await get('/passive');
+  panel = $('#catpanel');
+  if (!panel) return;
   const bad = d.families.flatMap((g) =>
     g.implausible.map((x) => ({ ...x, index: g.index })));
 
@@ -1197,9 +1214,10 @@ const VIEW_LABEL = { shortlist: 'category top funds', all: 'all funds',
 
 let fundRec = null;
 
-async function renderFundPage(host) {
+async function renderFundPage(host, token) {
   host.innerHTML = '<div class="loading">Scoring…</div>';
   const f = await get('/fund/' + encodeURIComponent(state.fund));
+  if (superseded(token)) return;
   fundRec = f;
   const analyst = isAnalyst();
   const back = state.returnView || 'shortlist';
@@ -2330,9 +2348,10 @@ const SECTOR_COLUMNS = () => [
     gloss: 'aum' },
 ];
 
-async function renderSectors(host) {
+async function renderSectors(host, token) {
   const c = sectorState();
   if (!c.list) c.list = (await get('/sectors')).sectors || [];
+  if (superseded(token)) return;
   if (!c.name && c.list.length) c.name = c.list[0].name;
 
   host.innerHTML = `
@@ -2368,7 +2387,7 @@ async function renderSectors(host) {
     const el = $(id);
     el.oninput = redraw; el.onchange = redraw;
   });
-  $('#s-reset').onclick = () => { c.lo = ''; c.hi = ''; renderSectors(host); };
+  $('#s-reset').onclick = () => { c.lo = ''; c.hi = ''; renderSectors(host, renderSeq); };
 
   await drawSectorTable();
   wireGlossary(host);
@@ -2376,15 +2395,20 @@ async function renderSectors(host) {
 
 async function drawSectorTable() {
   const c = sectorState();
-  const wrap = $('#s-table');
+  let wrap = $('#s-table');
   if (!wrap || !c.name) return;
   const p = new URLSearchParams({ limit: '300' });
   if (c.lo !== '') p.set('min', c.lo);
   if (c.hi !== '') p.set('max', c.hi);
   const d = await get(`/sector/${encodeURIComponent(c.name)}?` + p);
+  // Both are asked for again on this side of the request, for the same reason
+  // the fund table asks: the reader may not be on this tab any more.
+  wrap = $('#s-table');
+  const meta = $('#s-meta');
+  if (!wrap || !meta) return;
 
   const sorted = SECTOR_COLUMNS().find((x) => x.field === c.sort);
-  $('#s-meta').innerHTML = `${d.matched} of ${d.total} funds with a disclosed
+  meta.innerHTML = `${d.matched} of ${d.total} funds with a disclosed
     book hold ${esc(d.sector)}${c.lo !== '' || c.hi !== ''
       ? ` at ${c.lo !== '' ? `${esc(c.lo)}% or more` : 'any weight'}${
           c.hi !== '' ? ` and ${esc(c.hi)}% or less` : ''}` : ''}
@@ -2927,21 +2951,42 @@ async function openOverlapPair(a, b, opener) {
 
 /* ------------------------------------------------------------------- boot */
 
+/* Which render owns the page. A view fetches before it draws, so two can be in
+   flight at once: click a tab while the first is still loading and the second
+   replaces <main> under it. The first then finishes, finds the elements it was
+   going to write into gone, throws, and paints its own failure over the page
+   the reader is now looking at. That is the "Could not load" box that a reload
+   clears, because a reload is the one case where nothing overlaps.
+
+   So each render takes a number, and a render that is no longer the current one
+   stops rather than writing anything. Being superseded is not a failure and
+   does not read as one.
+
+   A view redrawn from inside itself — a category tile, a filter reset — is the
+   page redrawing in place and nothing has superseded it, so an absent number
+   counts as current and an internal redraw is never mistaken for a stale one. */
+let renderSeq = 0;
+const superseded = (token) => token !== undefined && token !== renderSeq;
+
 async function render() {
+  const mine = ++renderSeq;
   const host = $('#main');
   host.innerHTML = '<div class="loading">Loading…</div>';
   try {
-    if (state.view === 'fund') await renderFundPage(host);
+    if (state.view === 'fund') await renderFundPage(host, mine);
     else if (state.view === 'approach') await renderApproach(host);
-    else if (state.view === 'shortlist') await renderShortlists(host);
+    else if (state.view === 'shortlist') await renderShortlists(host, mine);
     else if (state.view === 'all') await renderAll(host);
-    else if (state.view === 'sectors') await renderSectors(host);
+    else if (state.view === 'sectors') await renderSectors(host, mine);
     else if (state.view === 'portfolio') await renderPortfolio(host);
     else await renderCompare(host);
   } catch (e) {
+    // Only the render that still owns the page may report that it failed.
+    if (superseded(mine)) return;
     host.innerHTML = `<div class="error"><strong>Could not load.</strong>
       <span>${esc(e.message)}</span></div>`;
   }
+  if (superseded(mine)) return;
   drawPickbar();          // the selection survives moving between tabs
   drawTabCounts();
 }
