@@ -432,7 +432,11 @@ somebody brings when they already have a view: too much banking, nothing in
 healthcare, a manager who says they avoid metals.
 
 Pick a sector from the dropdown and the funds come back **most exposed first**,
-because that is the order the question is asked in. Two bounds narrow it: *at
+because that is the order the question is asked in. **Every heading sorts**, on
+the same rule the other tables use: one click shows the best of that column, a
+second reverses it, and a fund with no figure sinks to the bottom whichever way
+the column points. The rows are already on the page, so the sort is done on them
+rather than asked for again. Two bounds narrow it: *at
 least* and *at most*. Both halves matter, and they are the same question with the
 range moved — "which funds are in IT" and "which funds are barely in IT" are
 asked by the same reader on different days. Information Technology has 250 funds

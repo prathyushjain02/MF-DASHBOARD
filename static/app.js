@@ -2308,7 +2308,24 @@ async function drawCmpTable() {
    whole of itself than the figure here, and the note under the table says so. */
 
 const sectorState = () => (state.sec = state.sec
-  || { name: null, lo: '', hi: '', list: null });
+  || { name: null, lo: '', hi: '', list: null, sort: 'exposure', dir: 'desc' });
+
+/* The columns, as data, so the header and the body are generated from one list
+   and a sort can never point at a column the table is not drawing. `dir` is the
+   direction that puts "good" first, the same rule All funds uses: one click on
+   any heading shows the best of it. */
+const SECTOR_COLUMNS = () => [
+  { field: 'name', label: 'Fund', dir: 'asc', text: true, cls: 'fundcell namecell',
+    cell: (f) => `<strong>${esc(f.name)}</strong>` },
+  { field: 'category', label: 'Category', dir: 'asc', text: true, cls: 'muted' },
+  { field: 'exposure', label: null, dir: 'desc', d: 1, suffix: '%', cls: 'r mono b' },
+  ...RETURN_COLUMNS().filter((c) => ['1Y', '3Y', '5Y'].includes(c.label))
+    .map((c) => ({ field: c.field, label: c.label, dir: 'desc', d: 1, cls: 'r mono' })),
+  { field: 'maxDrawdown3Y', label: 'Max drawdown', dir: 'desc', d: 1, cls: 'r mono',
+    gloss: 'maximum drawdown' },
+  { field: 'aumCr', label: 'AUM', dir: 'desc', money: true, cls: 'r mono',
+    gloss: 'aum' },
+];
 
 async function renderSectors(host) {
   const c = sectorState();
@@ -2363,42 +2380,70 @@ async function drawSectorTable() {
   if (c.hi !== '') p.set('max', c.hi);
   const d = await get(`/sector/${encodeURIComponent(c.name)}?` + p);
 
+  const sorted = SECTOR_COLUMNS().find((x) => x.field === c.sort);
   $('#s-meta').innerHTML = `${d.matched} of ${d.total} funds with a disclosed
     book hold ${esc(d.sector)}${c.lo !== '' || c.hi !== ''
       ? ` at ${c.lo !== '' ? `${esc(c.lo)}% or more` : 'any weight'}${
           c.hi !== '' ? ` and ${esc(c.hi)}% or less` : ''}` : ''}
-    &middot; most exposed first`;
+    &middot; sorted by ${esc(sorted && sorted.label ? sorted.label : 'exposure')}
+    ${c.dir === 'asc' ? 'ascending' : 'descending'}`;
 
   if (!d.funds.length) {
     wrap.innerHTML = `<div class="cmp-empty">No fund's book sits in that range.</div>`;
     return;
   }
+
+  const cols = SECTOR_COLUMNS();
+  const col = cols.find((x) => x.field === c.sort) || cols[2];
+  /* Three hundred rows are already here, so the sort is done on them rather than
+     asked for again. A fund with no figure for a column has not come last in it,
+     so it sinks to the bottom whichever way the column points. */
+  const rows = [...d.funds].sort((a, b) => {
+    const x = a[col.field], y = b[col.field];
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    const cmp = col.text ? String(x).localeCompare(String(y)) : x - y;
+    return c.dir === 'asc' ? cmp : -cmp;
+  });
+
+  const arrow = (f) => c.sort === f
+    ? `<span class="arrow">${c.dir === 'asc' ? '▲' : '▼'}</span>`
+    : '<span class="arrow">↕</span>';
+
   wrap.innerHTML = `
     <table class="grid dense sticky">
       <thead><tr>
         <th class="pickcell"></th>
-        <th class="namecell">Fund</th>
-        <th>Category</th>
-        <th class="r">In ${esc(d.sector)}</th>
-        <th class="r">1Y</th><th class="r">3Y</th><th class="r">5Y</th>
-        <th class="r">${term('Max drawdown')}</th>
-        <th class="r">${term('AUM')}</th>
+        ${cols.map((x) => `<th class="sortable${x.text ? '' : ' r'}${
+          x.field === 'name' ? ' namecell' : ''}${c.sort === x.field ? ' on' : ''}"
+          data-sort="${esc(x.field)}" title="Sort by ${
+            esc(x.label || d.sector)}">${
+          x.label === null ? `In ${esc(d.sector)}`
+            : term(x.label, null, x.gloss)}${arrow(x.field)}</th>`).join('')}
       </tr></thead>
-      <tbody>${d.funds.map((f) => `
+      <tbody>${rows.map((f) => `
         <tr data-fund="${esc(f.key)}" tabindex="0">
           <td class="pickcell">${pickBox(f.key)}</td>
-          <td class="fundcell namecell"><strong>${esc(f.name)}</strong></td>
-          <td class="muted">${esc(f.category)}</td>
-          <td class="r mono b">${num(f.exposure, 1)}%</td>
-          <td class="r mono">${num(f.return1Y, 1)}</td>
-          <td class="r mono">${num(f.return3Y, 1)}</td>
-          <td class="r mono">${num(f.return5Y, 1)}</td>
-          <td class="r mono">${num(f.maxDrawdown3Y, 1)}</td>
-          <td class="r mono">${cr(f.aumCr)}</td>
+          ${cols.map((x) => `<td class="${x.cls}">${
+            x.cell ? x.cell(f)
+              : x.money ? cr(f[x.field])
+              : x.text ? esc(f[x.field] || '—')
+              : num(f[x.field], x.d ?? 1) + (x.suffix || '')}</td>`).join('')}
         </tr>`).join('')}
       </tbody>
     </table>`;
+
   wrap.onclick = (e) => {
+    const th = e.target.closest('th[data-sort]');
+    if (th) {
+      // The same column again reverses it; a new one opens on its own best first.
+      const f = th.dataset.sort;
+      const next = cols.find((x) => x.field === f);
+      c.dir = c.sort === f ? (c.dir === 'asc' ? 'desc' : 'asc') : (next.dir || 'desc');
+      c.sort = f;
+      return drawSectorTable();
+    }
     if (e.target.closest('.pickcell')) return;
     const tr = e.target.closest('[data-fund]');
     if (tr) openFund(tr.dataset.fund);
