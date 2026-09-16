@@ -241,3 +241,275 @@ def build_remark(fund):
         "whatToWatch": what_to_watch(fund),
         "movers": score_movers(fund),
     }
+
+
+# ---------------------------------------------------------------------------
+# The fund page: key points and recently
+# ---------------------------------------------------------------------------
+
+# Two short lists open the fund page. "Key points" are standing facts about the
+# record: how it has done against its benchmark, how it behaves in a fall, what
+# shape the book is, who has run it and for how long. "Recently" is what has
+# happened to it lately: the last quarter, the current drawdown, the last
+# calendar year, the money coming in or going out. No fact appears in both.
+#
+# Every item leads with the figure, then a short heading, then one complete
+# sentence that quotes the number. Nothing here mentions a score, a band, a rank
+# or a decile: a client reads this page and those are not for a client.
+
+_MON = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def _sign(v, dp=1):
+    f = _f(v)
+    return "n/a" if f is None else f"{'+' if f > 0 else ''}{f:,.{dp}f}"
+
+
+def _mon_year(iso):
+    if not iso:
+        return None
+    try:
+        y, m = int(iso[:4]), int(iso[5:7])
+        return f"{_MON[m - 1]} {y}"
+    except (ValueError, IndexError):
+        return None
+
+
+def _feed_date(raw):
+    """The feed writes 02-Dec-22. Month and year of that, or None."""
+    if not raw:
+        return None
+    parts = str(raw).strip().split("-")
+    if len(parts) != 3:
+        return None
+    mon = parts[1][:3].title()
+    if mon not in _MON:
+        return None
+    y = parts[2]
+    try:
+        y = int(y) + 2000 if len(y) == 2 else int(y)
+    except ValueError:
+        return None
+    return f"{mon} {y}"
+
+
+def _years_since(raw):
+    """Years since a feed date written 02-Dec-22, or None."""
+    from datetime import date
+    if not raw:
+        return None
+    parts = str(raw).strip().split("-")
+    if len(parts) != 3 or parts[1][:3].title() not in _MON:
+        return None
+    try:
+        y = int(parts[2])
+        y = y + 2000 if y < 100 else y
+        d = date(y, _MON.index(parts[1][:3].title()) + 1, int(parts[0]))
+    except ValueError:
+        return None
+    return round((date.today() - d).days / 365.25, 1)
+
+
+def _short_bench(name):
+    """'Nifty 50 TRI' reads as 'Nifty 50' in a sentence; the table names the
+    full series."""
+    return (name or "the benchmark").replace(" TRI", "").strip()
+
+
+def _row(rec, label):
+    for r in (rec.get("returns") or {}).get("rows") or []:
+        if r.get("label") == label:
+            return r
+    return None
+
+
+def _item(fig, tone, head, text):
+    return {"fig": fig, "tone": tone or "", "head": head, "text": text}
+
+
+def key_points(fund, rec, limit=5):
+    """Standing facts about the record, figure first."""
+    out = []
+    bench = _short_bench((rec.get("returns") or {}).get("benchmark"))
+
+    # 1. Return against the benchmark over the longest of 5Y, 3Y, 1Y with a figure.
+    for label, word in (("5Y", "five years"), ("3Y", "three years"), ("1Y", "a year")):
+        r = _row(rec, label)
+        p = (r or {}).get("p2p") or {}
+        if p.get("fund") is not None and p.get("bench") is not None:
+            a = p["fund"] - p["bench"]
+            rate = " a year" if label != "1Y" else ""
+            hit, wins = _f(fund.get("rollingHitRate3Y")), fund.get("rollingWindows3Y")
+            tail = ""
+            if label != "1Y" and hit is not None and wins and int(wins) >= 2:
+                tail = (f" It was ahead in {n0(hit)}% of the {int(wins)} three year "
+                        f"windows so far.")
+            out.append(_item(_sign(a), "good" if a >= 0 else "bad",
+                             f"{'Ahead of' if a >= 0 else 'Behind'} the {bench} over {word}",
+                             f"{n(p['fund'])}%{rate} against {n(p['bench'])}%{rate} "
+                             f"for the {bench} TRI over {word}.{tail}"))
+            break
+
+    # 2. Capture: how it moves for every 100 the index moves.
+    dn, up = _f(fund.get("downsideCapture3Y")), _f(fund.get("upsideCapture3Y"))
+    if dn is not None and up is not None:
+        if dn < 100 <= up:
+            head, tone = "Falls less, rises more", "good"
+        elif dn < 100 and up < 100:
+            head, tone = "Falls less, rises less", ""
+        elif dn >= 100 and up >= 100:
+            head, tone = "Moves more than the index both ways", ""
+        else:
+            head, tone = "Falls harder than it rises", "bad"
+        out.append(_item(n0(dn), tone, head,
+                         f"For every 100 the {bench} moved over three years it took "
+                         f"{n0(dn)} of the falls and {n0(up)} of the rises."))
+
+    # 3. The worst fall over three years, against the index over the same window.
+    mdd, imdd = _f(fund.get("maxDrawdown3Y")), _f(rec.get("indexMaxDrawdown3Y"))
+    if mdd is not None:
+        if imdd is not None:
+            cmp_ = ("less than" if abs(mdd) < abs(imdd) - 0.05
+                    else "more than" if abs(mdd) > abs(imdd) + 0.05 else "about the same as")
+            text = (f"Fell {n(abs(mdd))}% at worst over three years, {cmp_} the "
+                    f"{n(abs(imdd))}% the {bench} fell over the same window.")
+            tone = "good" if cmp_ == "less than" else "bad" if cmp_ == "more than" else ""
+        else:
+            text = f"Fell {n(abs(mdd))}% at worst over three years."
+            tone = ""
+        out.append(_item(f"{n(mdd)}%", tone, "Worst fall in three years", text))
+
+    # 4. Shape of the book.
+    top10, names = _f(fund.get("top10")), fund.get("holdingCount")
+    sectors = rec.get("sectors") or []
+    if top10 is not None and names:
+        lead = sectors[0] if sectors else None
+        sec = (f" {lead['sector']} is {n0(lead['weight'])}% of the equity book."
+               if lead else "")
+        head = ("High conviction" if top10 >= 50 else
+                "Concentrated" if top10 >= 40 else f"Spread across {names} names")
+        out.append(_item(f"{n0(top10)}%", "", head,
+                         f"The ten largest positions are {n0(top10)}% of the book, "
+                         f"across {names} names in all.{sec}"))
+
+    # 5. Age and hands.
+    since = _feed_date(fund.get("inceptionDate"))
+    age = _f(fund.get("vintageYears"))
+    mgrs = [m for m in (fund.get("managers") or []) if m.get("sinceBasis")]
+    mgrs.sort(key=lambda m: -(m.get("tenureYears") or 0))
+    lead = mgrs[0] if mgrs else None
+    if since or lead:
+        bits = []
+        if since:
+            bits.append(f"Launched {since}")
+        if lead:
+            bits.append(f"{'lead' if len(mgrs) > 1 else 'the'} manager "
+                        f"{lead['name']} has run it since {_mon_year(lead['sinceBasis'])}")
+        text = "; ".join(bits) + "."
+        if age is not None and age < 5:
+            text += " A short record, and it is read as one."
+            head, fig = "Young fund", f"{n(age)} yrs"
+        elif lead and lead.get("tenureYears") is not None:
+            head, fig = "Who has run it", f"{n(lead['tenureYears'])} yrs"
+        else:
+            yrs = _years_since(fund.get("inceptionDate"))
+            head, fig = "Since launch", f"{n(yrs)} yrs" if yrs is not None else (since or "n/a")
+        out.append(_item(fig, "", head, text))
+
+    if not out:
+        out.append(_item("n/a", "", "Too little on file",
+                         "The feed carries too little of this fund's record to "
+                         "state its standing facts."))
+    return out[:limit]
+
+
+def recently(fund, rec, limit=5):
+    """What has happened to it lately, figure first. Nothing here repeats a
+    key point."""
+    out = []
+    bench = _short_bench((rec.get("returns") or {}).get("benchmark"))
+    dd = rec.get("drawdowns") or {}
+
+    # 1. The last quarter and the year so far, against the benchmark.
+    r3m, ytd = _row(rec, "3M"), _row(rec, "YTD")
+    a3 = ((r3m or {}).get("p2p") or {}).get("alpha")
+    ay = ((ytd or {}).get("p2p") or {}).get("alpha")
+    if a3 is not None:
+        tail = (f" and {_sign(ay)} so far this year" if ay is not None else "")
+        out.append(_item(_sign(a3), "good" if a3 >= 0 else "bad",
+                         f"{'Ahead' if a3 >= 0 else 'Behind'} over the last three months",
+                         f"Its return was {n(r3m['p2p']['fund'])}% against "
+                         f"{n(r3m['p2p']['bench'])}% for the {bench}, a gap of "
+                         f"{_sign(a3)}{tail}."))
+
+    # 2. Where it stands against its own high.
+    cur = _f(dd.get("current"))
+    worst = dd.get("worst") or []
+    open_ = next((w for w in worst if not w.get("recovered")), None)
+    if cur is not None:
+        if dd.get("inDrawdown"):
+            text = f"It is {n(abs(cur))}% below its high"
+            if open_:
+                text += f" of {_mon_year(open_['peak'])} and has not yet recovered"
+                # The depth is a key point when this fall is also the three year
+                # maximum drawdown, so it is not quoted twice.
+                depth, mdd = _f(open_.get("depth")), _f(fund.get("maxDrawdown3Y"))
+                if depth is not None and (mdd is None or abs(abs(depth) - abs(mdd)) > 0.2):
+                    text += f"; the fall reached {n(abs(depth))}%"
+                text += "."
+                if open_.get("indexFall") is not None:
+                    text += (f" The {dd.get('indexName') or bench} fell "
+                             f"{n(abs(_f(open_['indexFall'])))}% over the same stretch.")
+            else:
+                text += ", a dip rather than one of its larger falls."
+            out.append(_item(f"{n(abs(cur))}%", "bad", "Below its high", text))
+        else:
+            out.append(_item("high", "good", "At a new high",
+                             "It is at a new high water mark on the latest NAV."))
+
+    # 3. Money in or out over the year.
+    flow, aum, aum0 = (_f(fund.get("netFlow1YPct")), _f(fund.get("aumCr")),
+                       _f(fund.get("aum1YAgoCr")))
+    if flow is not None and aum is not None:
+        if aum0 is not None:
+            moved = aum - aum0
+            text = (f"Net {'inflows' if moved >= 0 else 'outflows'} of INR "
+                    f"{n(abs(moved), 0)} cr over the year, on a fund that started it "
+                    f"at INR {n(aum0, 0)} cr and now holds INR {n(aum, 0)} cr.")
+        else:
+            text = f"Net flow of {_sign(flow, 0)}% of assets over the year."
+        out.append(_item(f"{_sign(flow, 0)}%", "good" if flow >= 0 else "bad",
+                         "Inflows this year" if flow >= 0 else "Outflows this year", text))
+
+    # 4. The last calendar year, and the one before it.
+    cy, bcy = rec.get("cy") or [], rec.get("benchCY") or {}
+    done = [(y, k) for y, k in cy
+            if _f(fund.get(k)) is not None and _f(bcy.get(k)) is not None]
+    if done:
+        y, k = done[0]
+        fv, bv = _f(fund[k]), _f(bcy[k])
+        a = fv - bv
+        text = f"Calendar {y}: {_sign(fv)}% against {_sign(bv)}% for the {bench}"
+        if len(done) > 1:
+            y2, k2 = done[1]
+            a2 = _f(fund[k2]) - _f(bcy[k2])
+            text += (f", after {'beating' if a2 >= 0 else 'trailing'} it by "
+                     f"{n(abs(a2))} in {y2}")
+        out.append(_item(f"{n(fv)}%", "good" if a >= 0 else "bad",
+                         f"{'Ahead' if a >= 0 else 'Lagged'} in {y}", text + "."))
+
+    # 5. The last twelve months, where there is still room.
+    r1y = _row(rec, "1Y")
+    p1 = (r1y or {}).get("p2p") or {}
+    if p1.get("fund") is not None and p1.get("bench") is not None and len(out) < limit:
+        a1 = p1["fund"] - p1["bench"]
+        out.append(_item(f"{n(p1['fund'])}%", "good" if a1 >= 0 else "bad",
+                         "The last twelve months",
+                         f"{n(p1['fund'])}% over one year against {n(p1['bench'])}% "
+                         f"for the {bench}."))
+
+    if not out:
+        out.append(_item("n/a", "", "Nothing recent on file",
+                         "The feed carries no recent return or flow for this fund."))
+    return out[:limit]

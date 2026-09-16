@@ -1,0 +1,322 @@
+/* The fund page. Every rule is scoped under .fundpage, or under an fp- prefixed
+   class for the modal that lives outside it, so nothing here reaches another
+   view. The tokens (--font_primary, --p, --s, --up, --ease and the rest) are
+   defined on :root in styles.css. */
+
+
+.fundpage { max-width: 1280px; margin: 0 auto; color: #000;
+  font-family: var(--font_secondary); font-size: 15px; line-height: 1.4; letter-spacing: .5px;
+  -webkit-font-smoothing: antialiased; padding-bottom: 40px; }
+.fundpage * { box-sizing: border-box; }
+.fundpage h1, .fundpage h2, .fundpage h3 { margin: 0; font-family: var(--font_primary);
+  font-weight: 400; letter-spacing: .5px; text-wrap: balance; }
+.fundpage .num { font-variant-numeric: tabular-nums; }
+.fundpage button { font: inherit; letter-spacing: inherit; }
+.fundpage section { margin-bottom: 0; }
+.fundpage .fp-back { margin-bottom: 4px; }
+.fundpage .fp-empty { margin: 6px 0; font-size: 13px; color: var(--s_shade); }
+.fundpage .loading.sm { padding: 60px 0; }
+
+/* ---- band ---- */
+.fundpage .fp-band { position: relative; background: var(--p); background-image: var(--bg_gradient);
+  color: #fff; margin-top: 12px; border-radius: 12px; padding: 26px 28px 22px; display: grid;
+  grid-template-columns: 1fr auto; gap: 18px 40px; align-items: end; }
+.fundpage .fp-tag { position: relative; display: inline-block; padding: 4px 10px;
+  font-family: var(--font_primary); font-size: 11.5px; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--p_dark); }
+.fundpage .fp-tag::before, .fp-modal .fp-tag::before { content: ""; position: absolute; left: 0; top: 0;
+  bottom: 0; width: 2px; background: var(--red); }
+.fundpage .fp-tag.ondark { color: var(--p_tint); }
+.fundpage .fp-band h1 { font-size: clamp(26px, 3vw, 36px); line-height: 1.12; color: var(--p_light);
+  margin-top: 8px; padding-right: 48px; }
+.fundpage .fp-keystats { display: grid; grid-template-columns: repeat(4, auto); gap: 10px 30px; }
+.fundpage .fp-keystats .k { font-family: var(--font_primary); font-size: 11px; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--p_tint); display: block; }
+.fundpage .fp-keystats .v { font-family: var(--font_primary); font-weight: 300; font-size: 28px;
+  line-height: 1.1; color: #fff; white-space: nowrap; }
+.fundpage .fp-keystats .v small { font-size: 13px; color: var(--p_tint); margin-left: 4px; }
+.fundpage .fp-actions { grid-column: 1 / -1; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.fundpage .fp-btn_cta { position: relative; display: inline-flex; align-items: center; height: 40px;
+  padding: 0 16px 0 54px; background: var(--p); color: #fff; border: 0.8px solid var(--p_dark);
+  border-radius: 4px; font-family: var(--font_secondary); font-size: 14.5px; cursor: pointer;
+  transition: background 250ms ease, border-color var(--base), padding var(--base); }
+.fundpage .fp-btn_cta .arrow { position: absolute; left: 4px; top: 4px; width: 38px; height: 30px;
+  display: grid; place-items: center; background: var(--red); border-radius: 4px;
+  transition: opacity var(--base); }
+.fundpage .fp-btn_cta:hover { background: var(--gradient_hover); }
+.fundpage .fp-btn_cta.ghost, .fundpage .fp-btn_cta:has(.picked) { background: transparent;
+  border-color: var(--p_light); padding-left: 16px; }
+.fundpage .fp-btn_cta.ghost .arrow, .fundpage .fp-btn_cta:has(.picked) .arrow { opacity: 0; }
+.fundpage .fp-btn_cta:focus-visible { outline: 2px solid var(--p_light); outline-offset: 2px; }
+.fundpage .fp-pdf { position: absolute; top: 16px; right: 16px; width: 38px; height: 38px; border-radius: 8px;
+  border: 0.8px solid rgba(255, 255, 255, .28); background: rgba(255, 255, 255, .06); display: grid;
+  place-items: center; cursor: pointer; color: #fff; padding: 0;
+  transition: background var(--base), border-color var(--base); }
+.fundpage .fp-pdf:hover { background: rgba(255, 255, 255, .14); border-color: var(--p_light); }
+.fundpage .fp-pdf svg { width: 18px; height: 18px; }
+@media (max-width: 800px) {
+  .fundpage .fp-band { grid-template-columns: 1fr; }
+  .fundpage .fp-keystats { grid-template-columns: 1fr 1fr; }
+}
+
+/* ---- the grid: rows, not stacks, so bottoms align ---- */
+.fundpage .fp-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 15px; margin-top: 15px;
+  align-items: stretch; }
+.fundpage .fp-c12 { grid-column: span 12; }
+.fundpage .fp-c8 { grid-column: span 8; } .fundpage .fp-c4 { grid-column: span 4; }
+.fundpage .fp-c7 { grid-column: span 7; } .fundpage .fp-c5 { grid-column: span 5; }
+.fundpage .fp-c6 { grid-column: span 6; }
+@media (max-width: 1000px) {
+  .fundpage .fp-c8, .fundpage .fp-c4, .fundpage .fp-c7, .fundpage .fp-c5, .fundpage .fp-c6 { grid-column: span 12; }
+}
+.fundpage .fp-stack { display: grid; gap: 15px; align-content: stretch; grid-template-rows: auto 1fr; }
+.fundpage .fp-card { position: relative; background: #fff; border: 1px solid #d5d9df; border-radius: 10px;
+  padding: 18px 18px 16px; overflow: hidden; display: flex; flex-direction: column; min-width: 0;
+  box-shadow: none; }
+.fundpage .fp-card .eye { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--s); }
+.fundpage .fp-card .eye .fp-tag { margin-left: -10px; }
+.fundpage .fp-card .note { font-size: 12px; color: var(--s_shade); line-height: 1.35; text-align: right; }
+.fundpage .fp-card .foot { font-size: 12px; color: var(--s_shade); padding-top: 10px; }
+.fundpage .fp-scroll { overflow-x: auto; }
+.fundpage .fp-chart { width: 100%; height: auto; display: block; }
+
+/* ---- returns table ---- */
+.fundpage table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.fundpage th, .fundpage td { text-align: right; padding: 7px 7px; border-bottom: 1px solid var(--s);
+  vertical-align: middle; white-space: nowrap; }
+.fundpage th { font-family: var(--font_primary); font-weight: 400; font-size: 11px; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--p_dark); background: var(--p_dim); }
+.fundpage th:first-child, .fundpage td:first-child { text-align: left; font-family: var(--font_primary);
+  color: var(--p); }
+.fundpage tr.grp th { background: #fff; color: var(--s_dark); border-bottom: 0; padding-bottom: 2px;
+  text-align: left; font-size: 10.5px; }
+.fundpage tr.grp th + th { border-left: 1px solid var(--s); }
+.fundpage th.sep, .fundpage td.sep { border-left: 1px solid var(--s); }
+.fundpage tr.alpha td { font-weight: 500; }
+.fundpage td.up { color: var(--up); } .fundpage td.down { color: var(--down); }
+.fundpage td.na, .fundpage .na { color: var(--s_shade); }
+.fundpage td.dim { color: var(--s_dark); }
+.fundpage tbody tr:last-child td { border-bottom: 0; }
+.fundpage .fp-rettable { table-layout: fixed; min-width: 720px; }
+.fundpage .fp-rettable th, .fundpage .fp-rettable td { padding: 8px 4px; text-align: center; }
+.fundpage .fp-rettable th:first-child, .fundpage .fp-rettable td:first-child { text-align: left; width: 88px; }
+.fundpage .fp-rettable tr.grp th { text-align: center; }
+.fundpage .fp-rettable tr.grp th:first-child { text-align: left; }
+
+/* ---- growth over drawdown, one timeline ---- */
+.fundpage .fp-periods { display: inline-flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+.fundpage .fp-periods span { font-family: var(--font_primary); font-size: 11.5px; letter-spacing: 1px;
+  padding: 4px 10px; border-radius: 50px; border: 0.8px solid var(--s); color: var(--s_dark); cursor: pointer;
+  transition: background var(--base), color var(--base); }
+.fundpage .fp-periods span:hover { background: var(--p_dim); }
+.fundpage .fp-periods span.on { background: var(--p_tint); border-color: var(--p_light); color: var(--p_dark); }
+.fundpage .fp-combo { display: grid; gap: 0; }
+.fundpage .fp-combo .lab { font-family: var(--font_primary); font-size: 11px; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--s_shade); margin: 10px 0 4px; padding-top: 10px;
+  border-top: 1px solid var(--s); }
+.fundpage .fp-combo .lab .lab-plain { text-transform: none; letter-spacing: .3px; }
+.fundpage .fp-key { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; padding-top: 8px;
+  border-top: 1px solid var(--s); font-size: 13px; color: var(--s_dark); }
+.fundpage .fp-key i { display: inline-block; width: 12px; height: 2px; vertical-align: middle; margin-right: 7px; }
+.fundpage .fp-key b { font-family: var(--font_primary); font-weight: 400; color: var(--p); margin-left: 6px; }
+.fundpage .fp-episodes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px;
+  padding-top: 10px; border-top: 1px solid var(--s); }
+.fundpage .ep { background: var(--s_tint); border-radius: 8px; padding: 10px 12px; font-size: 12.5px;
+  color: var(--s_dark); line-height: 1.45; display: grid; gap: 3px; align-content: start; }
+.fundpage .ep .ep-h { font-family: var(--font_primary); color: var(--p); font-size: 11.5px; letter-spacing: .8px;
+  text-transform: uppercase; }
+.fundpage .ep p { margin: 0; }
+.fundpage .ep b { display: block; font-family: var(--font_primary); font-weight: 300; font-size: 20px;
+  color: var(--down); line-height: 1.1; }
+@media (max-width: 700px) { .fundpage .fp-episodes { grid-template-columns: 1fr; } }
+/* draw-on: the fund's line is revealed left to right as the chart lands */
+.fundpage path.draw { stroke-dasharray: var(--len); stroke-dashoffset: var(--len);
+  animation: fp-draw 700ms var(--ease_out) 120ms forwards; }
+@keyframes fp-draw { to { stroke-dashoffset: 0; } }
+.fundpage .fp-hit { cursor: crosshair; }
+
+/* ---- stats, bars, key-value ---- */
+.fundpage .fp-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; background: var(--s_tint);
+  padding: 10px; border-radius: 12px; }
+.fundpage .fp-stats.four { gap: 6px; }
+.fundpage .stat { background: #fff; border-radius: 8px; padding: 9px 8px 8px; }
+.fundpage .stat .n { font-family: var(--font_primary); font-weight: 300; font-size: 20px; line-height: 1.1;
+  color: var(--p); }
+.fundpage .stat .d { font-size: 11px; color: var(--s_dark); line-height: 1.3; margin-top: 2px; }
+.fundpage .fp-bars { display: grid; gap: 9px; }
+.fundpage #fp-capture { margin-top: 12px; }
+.fundpage .bar { display: grid; grid-template-columns: 132px 1fr 40px; gap: 9px; align-items: center;
+  font-size: 13px; }
+.fundpage .bar .l { color: var(--s_dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fundpage .bar .t { height: 8px; background: var(--s_tint); border-radius: 4px; overflow: hidden;
+  position: relative; }
+.fundpage .bar .f { display: block; height: 100%; background: var(--p_shade); border-radius: 4px;
+  transform-origin: left; animation: fp-grow var(--slow) var(--ease_out) both; }
+.fundpage .bar .f.lead { background: var(--p); }
+.fundpage .bar .hund { position: absolute; top: -3px; bottom: -3px; width: 1px; background: #46556b; }
+.fundpage .bar .v { font-family: var(--font_primary); color: var(--p); text-align: right; }
+@keyframes fp-grow { from { transform: scaleX(0); } }
+.fundpage .fp-kv, .fp-modal .fp-kv { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px;
+  font-size: 13.5px; margin: 10px 0 0; }
+.fundpage .fp-kv dt, .fp-modal .fp-kv dt { color: var(--s_dark); }
+.fundpage .fp-kv dd, .fp-modal .fp-kv dd { margin: 0; font-family: var(--font_primary); color: var(--p);
+  text-align: right; }
+.fundpage .fp-kv .fp-kv-note { grid-column: 1 / -1; font-size: 12px; color: var(--s_shade); padding-top: 2px; }
+
+/* ---- the book ---- */
+.fundpage .fp-holds { display: grid; grid-template-columns: auto 1fr; gap: 14px 18px; align-items: start; }
+.fundpage .fp-holds .ring { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.fundpage .fp-donut { position: relative; width: 104px; height: 104px; }
+.fundpage .fp-donut .donut-mid { position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; pointer-events: none; }
+.fundpage .fp-donut .donut-mid b { font-family: var(--font_primary); font-weight: 300; font-size: 20px;
+  color: var(--p); line-height: 1; }
+.fundpage .fp-donut .donut-mid span { font-size: 8.5px; color: var(--s_shade); }
+.fundpage .fp-donutkey { display: grid; gap: 4px; font-size: 12.5px; color: var(--s_dark); width: 100%; }
+.fundpage .fp-donutkey span { display: flex; align-items: center; gap: 8px; }
+.fundpage .fp-donutkey i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+.fundpage .fp-donutkey b { font-family: var(--font_primary); font-weight: 400; color: var(--p);
+  margin-left: auto; padding-left: 10px; }
+.fundpage .fp-shape4 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.fundpage .fp-shape4 div { background: var(--s_tint); border-radius: 8px; padding: 8px 10px; }
+.fundpage .fp-shape4 .n { font-family: var(--font_primary); font-weight: 300; font-size: 20px; color: var(--p);
+  line-height: 1.1; }
+.fundpage .fp-shape4 .d { font-size: 11.5px; color: var(--s_dark); }
+@media (max-width: 700px) { .fundpage .fp-holds { grid-template-columns: 1fr; } }
+
+/* ---- holdings table ---- */
+.fundpage .fp-htable th, .fundpage .fp-htable td { font-size: 13px; padding: 6px 6px; }
+.fundpage .fp-htable td:first-child { font-family: var(--font_primary); color: var(--s_shade); width: 22px; }
+.fundpage .fp-htable td:nth-child(2), .fundpage .fp-htable th.left { text-align: left;
+  font-family: var(--font_primary); color: var(--p); white-space: normal; }
+.fundpage .fp-htable small { display: block; font-family: var(--font_secondary); font-size: 11px;
+  color: var(--s_shade); }
+.fundpage .fp-htable .mid { text-align: center; }
+.fundpage .fp-htable .n50 { display: inline-block; padding: 0 6px; border-radius: 50px; background: var(--p_tint);
+  color: var(--p_dark); font-size: 10px; letter-spacing: .5px; vertical-align: middle;
+  font-family: var(--font_primary); }
+
+/* ---- managers ---- */
+.fundpage .fp-mtable td:first-child { font-family: var(--font_primary); color: var(--p); white-space: normal;
+  min-width: 130px; }
+.fundpage .fp-mtable th, .fundpage .fp-mtable td { font-size: 12.5px; padding: 6px 6px; }
+.fundpage .fp-mtable th { font-size: 10.5px; white-space: normal; line-height: 1.2; }
+.fundpage .fp-mtable td:last-child { white-space: nowrap; }
+.fundpage .fp-mtable td small { display: block; font-family: var(--font_secondary); font-size: 11.5px;
+  color: var(--s_shade); }
+.fundpage .fp-mtable td small.pa { display: inline; margin-left: 4px; }
+.fundpage .fp-mtable .strong { font-weight: 500; }
+.fundpage .fp-mtable .up { color: var(--up); } .fundpage .fp-mtable .down { color: var(--down); }
+.fundpage .fp-mtable td.also { color: var(--s_shade); font-family: var(--font_secondary); font-size: 12px;
+  white-space: normal; }
+.fundpage .fp-pill { display: inline-flex; align-items: center; padding: 1px 8px; background: var(--p_tint);
+  border: 0.8px solid var(--p_light); border-radius: 50px; font-family: var(--font_primary); font-size: 10.5px;
+  color: var(--p_dark); letter-spacing: .5px; vertical-align: middle; }
+
+/* ---- key points and recently ---- */
+.fundpage .fp-pts2 { display: grid; gap: 0; }
+.fundpage .fp-pts2 div { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: baseline;
+  padding: 8px 0; border-bottom: 1px solid var(--s); }
+.fundpage .fp-pts2 div:last-child { border-bottom: 0; }
+.fundpage .fp-pts2 .fig { font-family: var(--font_primary); font-weight: 300; font-size: 22px; line-height: 1;
+  color: var(--p); min-width: 64px; white-space: nowrap; }
+.fundpage .fp-pts2 .fig.good { color: var(--up); } .fundpage .fp-pts2 .fig.bad { color: var(--down); }
+.fundpage .fp-pts2 .txt { font-size: 13.5px; line-height: 1.4; color: #1f1f1f; }
+.fundpage .fp-pts2 .txt b { font-weight: 500; font-family: var(--font_primary); color: var(--p); display: block;
+  font-size: 14px; }
+.fundpage .fp-pts2.tight div { padding: 6px 0; gap: 10px; }
+.fundpage .fp-pts2.tight .fig { font-size: 19px; min-width: 56px; }
+.fundpage .fp-pts2.tight .txt { font-size: 13px; line-height: 1.35; }
+.fundpage .fp-pts2.tight .txt b { font-size: 13.5px; display: inline; margin-right: 4px; }
+.fundpage .fp-pts2.tight .txt b::after { content: ' ·'; color: var(--s_shade); font-weight: 400; }
+
+/* ---- motion ---- */
+@keyframes fp-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.fundpage .fp-stagger > * { animation: fp-enter var(--slow) var(--ease_out) both; }
+.fundpage .fp-stagger > *:nth-child(2) { animation-delay: 40ms; }
+.fundpage .fp-stagger > *:nth-child(3) { animation-delay: 80ms; }
+.fundpage .fp-reveal { opacity: 0; transform: translateY(8px);
+  transition: opacity var(--slow) var(--ease_out), transform var(--slow) var(--ease_out); }
+.fundpage .fp-reveal.in { opacity: 1; transform: none; }
+
+/* ---- cards that open ---- */
+.fundpage .fp-card.opens { cursor: pointer; padding-bottom: 30px; }
+.fundpage .fp-kv dd { white-space: normal; }
+.fundpage .fp-card.opens:focus-visible { outline: 2px solid var(--p_light); outline-offset: 2px; }
+.fundpage .fp-card.opens .corner { position: absolute; right: 0; bottom: 0; width: 48px; height: 36px;
+  background: var(--p_dim); clip-path: polygon(28% 0, 100% 0, 100% 100%, 0 100%);
+  transition: background var(--base); }
+.fundpage .fp-card.opens .corner::after { content: "→"; position: absolute; right: 12px; bottom: 6px;
+  color: var(--p); font-family: var(--font_primary); font-size: 17px; transition: transform var(--base); }
+.fundpage .fp-card.opens:hover .corner { background: var(--p_tint); }
+.fundpage .fp-card.opens:hover .corner::after { transform: translateX(3px); }
+
+/* ---- the modal that opens from its card (FLIP) ---- */
+.fp-backdrop { position: fixed; inset: 0; z-index: 210; background: rgba(23, 29, 37, .42);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: grid; place-items: center;
+  padding: 20px; opacity: 0; pointer-events: none; transition: opacity var(--base) var(--ease); }
+.fp-backdrop.on { opacity: 1; pointer-events: auto; }
+body.fp-modal-open { overflow: hidden; }
+.fp-modal { width: min(760px, 100%); max-height: 88vh; overflow: auto; background: #fff; border-radius: 12px;
+  border: 1px solid #d5d9df; padding: 24px 26px; transform-origin: top left; opacity: 0;
+  font-family: var(--font_secondary); font-size: 14px; letter-spacing: .5px; color: #000;
+  transition: transform var(--slow) var(--ease_out), opacity var(--base) var(--ease); }
+.fp-backdrop.on .fp-modal { opacity: 1; transform: none !important; }
+.fp-backdrop.closing, .fp-backdrop.closing .fp-modal { transition-duration: var(--fast); }
+.fp-modal .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
+  margin-bottom: 12px; }
+.fp-modal .fp-tag { position: relative; display: inline-block; padding: 4px 10px; margin-left: -10px;
+  font-family: var(--font_primary); font-size: 11.5px; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--p_dark); }
+.fp-modal h2 { margin: 4px 0 0; font-family: var(--font_primary); font-weight: 400; font-size: 21px;
+  color: var(--p); letter-spacing: .5px; }
+.fp-modal .x { background: none; border: 0; font: inherit; font-size: 22px; line-height: 1; color: var(--s_shade);
+  cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+.fp-modal .x:hover, .fp-modal .x:focus-visible { color: var(--p); background: var(--p_dim); outline: none; }
+.fp-modal .fp-modnote { margin: 12px 0 0; font-size: 12.5px; color: var(--s_shade); line-height: 1.45; }
+.fp-modal .fp-modtable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fp-modal .fp-modtable th, .fp-modal .fp-modtable td { text-align: right; padding: 6px 7px;
+  border-bottom: 1px solid var(--s); white-space: nowrap; vertical-align: middle; }
+.fp-modal .fp-modtable th { font-family: var(--font_primary); font-weight: 400; font-size: 11px;
+  letter-spacing: 1px; text-transform: uppercase; color: var(--p_dark); background: var(--p_dim); }
+.fp-modal .fp-modtable th:first-child, .fp-modal .fp-modtable td:first-child { text-align: left;
+  font-family: var(--font_primary); color: var(--p); }
+.fp-modal .fp-modtable .left { text-align: left; white-space: normal; }
+.fp-modal .fp-modtable .idx { color: var(--s_shade); width: 22px; }
+.fp-modal .fp-modtable .dim { color: var(--s_dark); }
+.fp-modal .fp-modtable .na, .fp-modal .na { color: var(--s_shade); }
+.fp-modal .up { color: var(--up); } .fp-modal .down { color: var(--down); }
+.fp-modal .num { font-variant-numeric: tabular-nums; }
+.fp-modal tbody tr:last-child td { border-bottom: 0; }
+
+/* ---- the fund's name in the header once its band has scrolled away ---- */
+.fp-crumb { display: flex; align-items: center; font-family: var(--font_primary); font-size: 14px;
+  color: var(--p); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 0;
+  opacity: 0; padding-left: 0; transition: max-width var(--slow) var(--ease), opacity var(--base) var(--ease),
+  padding var(--base) var(--ease); }
+.fp-crumb.on { max-width: 320px; opacity: 1; padding-left: 18px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fundpage .fp-stagger > *, .fundpage .bar .f, .fundpage path.draw { animation: none !important; }
+  .fundpage path.draw { stroke-dashoffset: 0; }
+  .fundpage .fp-reveal { opacity: 1; transform: none; transition: none; }
+  .fp-modal, .fp-backdrop, .fp-crumb { transition: none; }
+}
+
+/* ---- print: one sheet, the page itself ---- */
+@media print {
+  .fundpage { max-width: none; font-size: 11px; padding-bottom: 0; }
+  .fundpage .fp-back, .fundpage .fp-actions, .fundpage .fp-periods, .fundpage .fp-pdf,
+  .fundpage .fp-card.opens .corner, .fp-backdrop, .fp-crumb { display: none !important; }
+  .fundpage .fp-band { background: #fff !important; background-image: none !important; color: #000;
+    border: 1px solid #cfcfd0; border-radius: 0; padding: 12px 14px; margin-top: 0; }
+  .fundpage .fp-band h1, .fundpage .fp-keystats .v { color: #000; }
+  .fundpage .fp-keystats .k, .fundpage .fp-tag.ondark, .fundpage .fp-keystats .v small { color: #4d4d4f; }
+  .fundpage .fp-card { border: 1px solid #e7e8ea; border-radius: 0; break-inside: avoid; padding: 10px 12px; }
+  .fundpage .fp-grid { gap: 8px; }
+  .fundpage .fp-reveal { opacity: 1; transform: none; }
+  .fundpage .fp-stagger > * { animation: none; }
+  .fundpage path.draw { animation: none; stroke-dashoffset: 0; }
+  .fundpage .fp-rettable { min-width: 0; }
+}

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import re as _re
 import threading
 from collections import defaultdict
 from datetime import date as _date, timedelta as _timedelta
@@ -189,7 +190,215 @@ def detail(fund, state=None):
     rec["drawdowns"] = drawdowns(fund, state)
     rec["sectors"] = top_sectors(fund, limit=8)
     rec["topFive"] = top_weight(fund, 5)
+    # The fund page: calendar years against the benchmark, the book read
+    # against the category's other books, the managers' own record on the
+    # scheme, and the two lists of plain sentences that open the page.
+    rec["cy"] = calendar_columns()
+    rec["benchCY"] = bench_calendar(rec["returns"]["benchmark"], rec["cy"], state)
+    rec["holdings"] = holdings_with_peers(fund, rec["holdings"], state)
+    rec["peerCount"] = peer_count(fund.get("category"), state)
+    rec["managerExtra"] = manager_extra(fund, rec["drawdowns"], state)
+    rec["indexMaxDrawdown3Y"] = index_max_drawdown(fund, 3 * 365, state)
+    rec["about"] = narrative.key_points(fund, rec)
+    rec["recent"] = narrative.recently(fund, rec)
     return rec
+
+
+# ---------------------------------------------------------------------------
+# Fund page: calendar years, peers, managers
+# ---------------------------------------------------------------------------
+
+# How many calendar years the returns table shows. Five is a full row on a
+# laptop screen and reaches back past one whole market cycle.
+CY_YEARS = 5
+
+
+def calendar_columns(limit=CY_YEARS):
+    """The last `limit` calendar years the feed carries, newest first, as
+    [year, field] pairs. Years the fund has no figure for are kept, so a young
+    fund's row shows where its record starts rather than pretending it is
+    longer."""
+    return [[year, field] for field, year in _calendar_fields()
+            if field != "returnCYTD"][:limit]
+
+
+def _year_return_from_series(series, year):
+    """A calendar year's return read off a series: the last value on or before
+    31 December against the last value on or before the previous 31 December.
+    None where the series does not reach the start of the year."""
+    if not series:
+        return None
+    d, v = series.get("d") or [], series.get("v") or []
+    if not d or d[0] > f"{int(year) - 1}-12-31":
+        return None
+    a = _series_at_or_before(d, v, f"{int(year) - 1}-12-31")
+    b = _series_at_or_before(d, v, f"{year}-12-31")
+    # The year has to be over for the figure to be one: a series that ends in
+    # June has no calendar year yet.
+    if not a or not b or d[-1] < f"{year}-12-31":
+        return None
+    return round(100.0 * (b / a - 1.0), 2)
+
+
+def bench_calendar(bench_name, columns, state=None):
+    """The benchmark's calendar year returns for the table's columns. Read off
+    the benchmark record where the feed carries them, and off its monthly total
+    return series where it does not."""
+    state = state or load()
+    bm = (state.get("benchmarks") or {}).get(bench_name or "") or {}
+    series = ((state.get("navs") or {}).get("benchmarks") or {}).get(bench_name or "")
+    out = {}
+    for year, field in columns:
+        v = bm.get(field)
+        out[field] = v if v is not None else _year_return_from_series(series, year)
+    return out
+
+
+def _peer_books(category, state):
+    """Every stock held by any fund in the category, with the sum of its weights
+    and the number of books holding it. Built once per category and kept."""
+    cache = state.setdefault("_peerBooks", {})
+    if category in cache:
+        return cache[category]
+    agg = {}
+    count = 0
+    for f in state["byCategory"].get(category, []):
+        book = f.get("_book")
+        if not book:
+            continue
+        count += 1
+        for b in book:
+            s, c = agg.get(b["name"], (0.0, 0))
+            agg[b["name"]] = (s + b["weight"], c + 1)
+    cache[category] = {"weights": agg, "count": count}
+    return cache[category]
+
+
+def peer_count(category, state=None):
+    state = state or load()
+    return _peer_books(category, state)["count"]
+
+
+def _nifty50_names(state):
+    """The Nifty 50 constituents, read off the disclosed book of a Nifty 50
+    index fund. None when no such book is on file, so the page shows a dash
+    rather than asserting that nothing is in the index."""
+    if "_nifty50" in state:
+        return state["_nifty50"]
+    names = None
+    for f in state["funds"]:
+        if f.get("_book") and _re.search(r"nifty\s*50\s*index", f.get("name") or "", _re.I):
+            names = {b["name"].strip().lower() for b in f["_book"]}
+            break
+    state["_nifty50"] = names
+    return names
+
+
+def holdings_with_peers(fund, rows, state=None):
+    """The fund's holdings with what the category's other books hold of each
+    name, and whether the name is in the Nifty 50."""
+    state = state or load()
+    peers = _peer_books(fund.get("category"), state)["weights"]
+    n50 = _nifty50_names(state)
+    out = []
+    for r in rows:
+        s, c = peers.get(r["name"], (0.0, 0))
+        # The fund's own book is inside the average, so a name only it holds
+        # averages to its own weight rather than reading as a peer position.
+        out.append({**r,
+                    "peerWeight": round(s / c, 2) if c else None,
+                    "peerHolders": c,
+                    "inNifty50": (r["name"].strip().lower() in n50) if n50 is not None else None})
+    return out
+
+
+def _market_series_for(fund, start_iso, state):
+    """The market line the growth chart would draw from `start_iso`: the daily
+    index where it reaches back that far, the monthly total return benchmark
+    where only that does. (label, series) or (None, None)."""
+    navs = state.get("navs") or {}
+    cat = fund.get("category")
+    idx = (navs.get("indices") or {}).get((navs.get("indexByCategory") or {}).get(cat) or "")
+    bm = (navs.get("benchmarks") or {}).get((navs.get("benchmarkByCategory") or {}).get(cat) or "")
+    limit = _shift(start_iso, _START_SLACK_DAYS)
+    if idx and idx["d"][0] <= limit:
+        return idx["label"], idx
+    if bm and bm["d"][0] <= limit:
+        return bm["label"], bm
+    return None, None
+
+
+def _return_between(series, start_iso, end_iso):
+    """Total return from the last value on or before `start_iso` to the last on
+    or before `end_iso`, annualised past a year. (pct, annualised) or None."""
+    if not series:
+        return None
+    d, v = series.get("d") or [], series.get("v") or []
+    # A start a few days before the first published NAV is the start of the
+    # series: the usual gap between a date and the next traded day.
+    if not d or _shift(start_iso, _START_SLACK_DAYS) < d[0]:
+        return None
+    a = _series_at_or_before(d, v, start_iso) or v[0]
+    b = _series_at_or_before(d, v, end_iso)
+    if not a or not b:
+        return None
+    days = (_date.fromisoformat(end_iso) - _date.fromisoformat(start_iso)).days
+    if days <= 0:
+        return None
+    growth_ = b / a
+    if days > 365:
+        return round(100.0 * (growth_ ** (365.25 / days) - 1.0), 2), True
+    return round(100.0 * (growth_ - 1.0), 2), False
+
+
+def manager_extra(fund, dd, state=None):
+    """For each named manager: the fund's return since they joined against the
+    market over the same stretch, and which of the three worst falls they were
+    on the fund for. A manager without a dated start gets neither, and the
+    page lists them by name only."""
+    state = state or load()
+    own = ((state.get("navs") or {}).get("funds") or {}).get(fund["key"])
+    worst = (dd or {}).get("worst") or []
+    out = []
+    for m in fund.get("managers") or []:
+        since = m.get("sinceBasis")
+        entry = {"name": m["name"], "dated": bool(since), "record": None,
+                 "through": [None] * len(worst)}
+        if since and own and own.get("d"):
+            end = own["d"][-1]
+            f_r = _return_between(own, since, end)
+            label, market = _market_series_for(fund, since, state)
+            m_r = _return_between(market, since, end) if market else None
+            if f_r:
+                entry["record"] = {"fund": f_r[0], "index": m_r[0] if m_r else None,
+                                   "indexName": label, "annualised": f_r[1],
+                                   "from": since, "to": end,
+                                   "years": round((_date.fromisoformat(end)
+                                                   - _date.fromisoformat(since)).days
+                                                  / 365.25, 1)}
+            # On the fund through a fall means there before it began.
+            entry["through"] = [since <= w["peak"] for w in worst]
+        out.append(entry)
+    return out
+
+
+def index_max_drawdown(fund, window_days, state=None):
+    """The deepest fall in the category's index over the fund's last
+    `window_days`, so the fund's own figure can be read against it."""
+    state = state or load()
+    navs = state.get("navs") or {}
+    own = (navs.get("funds") or {}).get(fund["key"])
+    if not own or not own.get("d"):
+        return None
+    end = own["d"][-1]
+    start = max(own["d"][0], _shift(end, -window_days))
+    _label, series = _market_series_for(fund, start, state)
+    if not series:
+        return None
+    days, vals = _slice_from(series, start)
+    if len(vals) < 2:
+        return None
+    return round(min(_underwater(days, vals)), 2)
 
 
 def top_weight(fund, n):
