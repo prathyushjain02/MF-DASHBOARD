@@ -98,9 +98,15 @@
 .fundpage td.na, .fundpage .na { color: var(--s_shade); }
 .fundpage td.dim { color: var(--s_dark); }
 .fundpage tbody tr:last-child td { border-bottom: 0; }
-.fundpage .fp-rettable { table-layout: fixed; min-width: 720px; }
+.fundpage .fp-rettable { table-layout: fixed; min-width: 780px; }
 .fundpage .fp-rettable th, .fundpage .fp-rettable td { padding: 8px 4px; text-align: center; }
-.fundpage .fp-rettable th:first-child, .fundpage .fp-rettable td:first-child { text-align: left; width: 88px; }
+/* Wide enough for the longest benchmark name on one line ("BSE MidSmallCap
+   TRI" overran an 88px column into 1M), and allowed to wrap if a longer one
+   ever arrives. It stays put while a phone scrolls the figures under it. */
+.fundpage .fp-rettable th:first-child, .fundpage .fp-rettable td:first-child { text-align: left; width: 176px;
+  white-space: normal; line-height: 1.25; padding-right: 10px; position: sticky; left: 0; z-index: 1;
+  background: #fff; }
+.fundpage .fp-rettable thead tr:not(.grp) th:first-child { background: var(--p_dim); }
 .fundpage .fp-rettable tr.grp th { text-align: center; }
 .fundpage .fp-rettable tr.grp th:first-child { text-align: left; }
 
