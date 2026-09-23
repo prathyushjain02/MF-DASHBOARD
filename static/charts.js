@@ -8,6 +8,10 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 
 const Chart = (() => {
   const tip = () => document.getElementById('tooltip');
+  // Names arrive raw and are written into markup, so they are escaped here:
+  // a scheme or index name with an ampersand or angle bracket is still text.
+  const h = (v) => String(v ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   function el(name, attrs = {}, text) {
     const node = document.createElementNS(SVG_NS, name);
@@ -112,7 +116,7 @@ const Chart = (() => {
           x, y: height * (1 - pct), width: Math.max(0, segW - 2), height: height * pct,
           rx: 4, fill: seqColor(pct),
         });
-        hoverable(mark, `<strong>${b.name}</strong>
+        hoverable(mark, `<strong>${h(b.name)}</strong>
           <div class="tt-row"><span>Block score</span><span>${fmt(b.score, 0)} / 100</span></div>
           <div class="tt-row"><span>Weight</span><span>${b.weight}%</span></div>
           <div class="tt-row"><span>Coverage</span><span>${fmt(b.coverage, 0)}%</span></div>`);
@@ -120,7 +124,7 @@ const Chart = (() => {
       } else {
         const miss = el('rect', { x, y: 0, width: Math.max(0, segW - 2), height,
                                   rx: 4, fill: 'url(#hatch)' });
-        hoverable(miss, `<strong>${b.name}</strong>
+        hoverable(miss, `<strong>${h(b.name)}</strong>
           <div class="tt-row"><span>Not scored</span><span>no data</span></div>
           <div class="tt-row"><span>Weight</span><span>${b.weight}%</span></div>`);
         svg.appendChild(miss);
@@ -276,7 +280,7 @@ const Chart = (() => {
         dots[i].setAttribute('cy', y);
         dots[i].setAttribute('opacity', 1);
         rows.push(`<div class="tt-row"><span><i class="swatch" style="background:${
-          inkOf(s)}"></i>${s.label}</span><span>${
+          inkOf(s)}"></i>${h(s.label)}</span><span>${
           (s.values[j] >= 0 ? '+' : '') + fmt(s.values[j], 1)}%</span></div>`);
       });
       if (shownX === null) return;
@@ -339,10 +343,10 @@ const Chart = (() => {
       });
     if (!rows.length) return '';
     return `<table class="alphatab">
-      <caption>Alpha over ${ref.label}<span>${rPa === null
+      <caption>Alpha over ${h(ref.label)}<span>${rPa === null
         ? 'over this window' : 'a year'}</span></caption>
       ${rows.map((r) => `<tr>
-        <td><i style="background:${r.ink}"></i>${r.label}</td>
+        <td><i style="background:${r.ink}"></i>${h(r.label)}</td>
         <td class="${r.a >= 0 ? 'up' : 'down'}">${sign(r.a)}</td>
       </tr>`).join('')}
     </table>`;
@@ -473,7 +477,7 @@ const Chart = (() => {
         'fill-opacity': p.highlight ? 1 : 0.6,
         stroke: 'var(--surface-1)', 'stroke-width': 2,
       });
-      hoverable(c, `<strong>${p.label}</strong>
+      hoverable(c, `<strong>${h(p.label)}</strong>
         <div class="tt-row"><span>${xLabel}</span><span>${fmt(p.x, 2)}</span></div>
         <div class="tt-row"><span>${yLabel}</span><span>${fmt(p.y, 2)}</span></div>
         ${p.extra || ''}`);
@@ -602,7 +606,7 @@ const Chart = (() => {
         x: px(s.p25), y: y - 6, width: Math.max(2, px(s.p75) - px(s.p25)), height: 12,
         rx: 4, fill: 'var(--seq-200)',
       });
-      hoverable(box, `<strong>${r.label}</strong>
+      hoverable(box, `<strong>${h(r.label)}</strong>
         <div class="tt-row"><span>Min</span><span>${fmt(s.min, decimals)}</span></div>
         <div class="tt-row"><span>P25</span><span>${fmt(s.p25, decimals)}</span></div>
         <div class="tt-row"><span>Median</span><span>${fmt(s.median, decimals)}</span></div>
@@ -621,7 +625,7 @@ const Chart = (() => {
           stroke: 'var(--surface-1)', 'stroke-width': 2,
         });
         hoverable(dot, `<strong>${r.fundName || 'This fund'}</strong>
-          <div class="tt-row"><span>${r.label}</span><span>${fmt(r.value, decimals)}${suffix}</span></div>`);
+          <div class="tt-row"><span>${h(r.label)}</span><span>${fmt(r.value, decimals)}${suffix}</span></div>`);
         svg.appendChild(dot);
         svg.appendChild(el('text', {
           x: w - 4, y: y + 4, class: 'value-label', 'text-anchor': 'end',
@@ -638,13 +642,13 @@ const Chart = (() => {
     stages.forEach((s, i) => {
       const row = document.createElement('div');
       row.className = 'barrow';
-      row.innerHTML = `<div class="lab">${s.label}</div>
+      row.innerHTML = `<div class="lab">${h(s.label)}</div>
         <div class="track"><div class="fill"></div></div>
         <div class="val">${s.value}</div>`;
       const fill = row.querySelector('.fill');
       fill.style.width = ((s.value / top) * 100) + '%';
       fill.style.background = `var(--seq-${[700, 550, 450, 300, 200][Math.min(i, 4)]})`;
-      if (s.note) hoverable(row, `<strong>${s.label}</strong>${s.note}`);
+      if (s.note) hoverable(row, `<strong>${h(s.label)}</strong>${s.note}`);
       host.appendChild(row);
     });
   }
@@ -684,7 +688,7 @@ const Chart = (() => {
                 A ${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1
                   ${c + r * Math.cos(a1)} ${c + r * Math.sin(a1)}`,
             fill: 'none', stroke: s.ink, 'stroke-width': thickness });
-      hoverable(node, `<strong>${s.label}</strong>
+      hoverable(node, `<strong>${h(s.label)}</strong>
         <div class="tt-row"><span>of the fund</span><span>${fmt(s.value, 1)}%</span></div>`);
       svg.appendChild(node);
       a0 = a1;

@@ -26,7 +26,7 @@
   color: var(--p_dark); }
 .fundpage .fp-tag::before, .fp-modal .fp-tag::before { content: ""; position: absolute; left: 0; top: 0;
   bottom: 0; width: 2px; background: var(--red); }
-.fundpage .fp-tag.ondark { color: var(--p_tint); }
+.fundpage .fp-tag.ondark { color: var(--p_tint); margin-right: 48px; }
 .fundpage .fp-band h1 { font-size: clamp(26px, 3vw, 36px); line-height: 1.12; color: var(--p_light);
   margin-top: 8px; padding-right: 48px; }
 .fundpage .fp-keystats { display: grid; grid-template-columns: repeat(4, auto); gap: 10px 30px; }
@@ -119,7 +119,8 @@
 .fundpage .fp-key { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; padding-top: 8px;
   border-top: 1px solid var(--s); font-size: 13px; color: var(--s_dark); }
 .fundpage .fp-key i { display: inline-block; width: 12px; height: 2px; vertical-align: middle; margin-right: 7px; }
-.fundpage .fp-key b { font-family: var(--font_primary); font-weight: 400; color: var(--p); margin-left: 6px; }
+.fundpage .fp-key b { font-family: var(--font_primary); font-weight: 400; color: var(--p); margin-left: 6px;
+  white-space: nowrap; }
 .fundpage .fp-episodes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px;
   padding-top: 10px; border-top: 1px solid var(--s); }
 .fundpage .ep { background: var(--s_tint); border-radius: 8px; padding: 10px 12px; font-size: 12.5px;
@@ -149,6 +150,8 @@
 .fundpage .bar { display: grid; grid-template-columns: 132px 1fr 40px; gap: 9px; align-items: center;
   font-size: 13px; }
 .fundpage .bar .l { color: var(--s_dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fundpage .fp-secbars .bar { grid-template-columns: minmax(132px, 38%) 1fr 40px; }
+.fundpage .fp-secbars .bar .l { white-space: normal; line-height: 1.25; overflow: visible; }
 .fundpage .bar .t { height: 8px; background: var(--s_tint); border-radius: 4px; overflow: hidden;
   position: relative; }
 .fundpage .bar .f { display: block; height: 100%; background: var(--p_shade); border-radius: 4px;
@@ -165,7 +168,9 @@
 .fundpage .fp-kv .fp-kv-note { grid-column: 1 / -1; font-size: 12px; color: var(--s_shade); padding-top: 2px; }
 
 /* ---- the book ---- */
-.fundpage .fp-holds { display: grid; grid-template-columns: auto 1fr; gap: 14px 18px; align-items: start; }
+.fundpage .fp-holds { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 14px 18px;
+  align-items: start; }
+.fundpage .fp-card[data-fpmodal="holds"] { container-type: inline-size; }
 .fundpage .fp-holds .ring { display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .fundpage .fp-donut { position: relative; width: 104px; height: 104px; }
 .fundpage .fp-donut .donut-mid { position: absolute; inset: 0; display: flex; flex-direction: column;
@@ -174,16 +179,25 @@
   color: var(--p); line-height: 1; }
 .fundpage .fp-donut .donut-mid span { font-size: 8.5px; color: var(--s_shade); }
 .fundpage .fp-donutkey { display: grid; gap: 4px; font-size: 12.5px; color: var(--s_dark); width: 100%; }
-.fundpage .fp-donutkey span { display: flex; align-items: center; gap: 8px; }
+.fundpage .fp-donutkey span { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .fundpage .fp-donutkey i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
 .fundpage .fp-donutkey b { font-family: var(--font_primary); font-weight: 400; color: var(--p);
   margin-left: auto; padding-left: 10px; }
 .fundpage .fp-shape4 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.fundpage .fp-shape4 div { background: var(--s_tint); border-radius: 8px; padding: 8px 10px; }
+.fundpage .fp-shape4 div { background: var(--s_tint); border-radius: 8px; padding: 8px 10px; min-width: 0; }
 .fundpage .fp-shape4 .n { font-family: var(--font_primary); font-weight: 300; font-size: 20px; color: var(--p);
   line-height: 1.1; }
 .fundpage .fp-shape4 .d { font-size: 11.5px; color: var(--s_dark); }
 @media (max-width: 700px) { .fundpage .fp-holds { grid-template-columns: 1fr; } }
+/* A narrow card (the right hand column between 1000px and 1280px, or a phone)
+   has no room for the legend beside four tiles: the donut and its legend take
+   one row and the four tiles the next. */
+@container (max-width: 360px) {
+  .fundpage .fp-holds { grid-template-columns: 1fr; }
+  .fundpage .fp-holds .ring { flex-direction: row; justify-content: flex-start; gap: 18px; }
+  .fundpage .fp-donutkey { width: auto; }
+  .fundpage .fp-shape4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
 
 /* ---- holdings table ---- */
 .fundpage .fp-htable th, .fundpage .fp-htable td { font-size: 13px; padding: 6px 6px; }
@@ -215,9 +229,13 @@
   color: var(--p_dark); letter-spacing: .5px; vertical-align: middle; }
 
 /* ---- key points and recently ---- */
-.fundpage .fp-pts2 { display: grid; gap: 0; }
-.fundpage .fp-pts2 div { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: baseline;
-  padding: 8px 0; border-bottom: 1px solid var(--s); }
+.fundpage .fp-pts2 { display: grid; gap: 0; grid-template-columns: max-content 1fr; column-gap: 12px; }
+/* Each row sits on the list's own two columns, so the text starts at one edge
+   however wide the figure beside it is: "-14.0%" pushed its sentence right of
+   the "+4.2" above it when every row sized its own column. */
+.fundpage .fp-pts2 div { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
+  align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--s); }
+.fundpage .fp-pts2 > .fp-empty { grid-column: 1 / -1; }
 .fundpage .fp-pts2 div:last-child { border-bottom: 0; }
 .fundpage .fp-pts2 .fig { font-family: var(--font_primary); font-weight: 300; font-size: 22px; line-height: 1;
   color: var(--p); min-width: 64px; white-space: nowrap; }
@@ -225,7 +243,8 @@
 .fundpage .fp-pts2 .txt { font-size: 13.5px; line-height: 1.4; color: #1f1f1f; }
 .fundpage .fp-pts2 .txt b { font-weight: 500; font-family: var(--font_primary); color: var(--p); display: block;
   font-size: 14px; }
-.fundpage .fp-pts2.tight div { padding: 6px 0; gap: 10px; }
+.fundpage .fp-pts2.tight { column-gap: 12px; }
+.fundpage .fp-pts2.tight div { padding: 6px 0; }
 .fundpage .fp-pts2.tight .fig { font-size: 19px; min-width: 56px; }
 .fundpage .fp-pts2.tight .txt { font-size: 13px; line-height: 1.35; }
 .fundpage .fp-pts2.tight .txt b { font-size: 13.5px; display: inline; margin-right: 4px; }
@@ -241,7 +260,7 @@
 .fundpage .fp-reveal.in { opacity: 1; transform: none; }
 
 /* ---- cards that open ---- */
-.fundpage .fp-card.opens { cursor: pointer; padding-bottom: 30px; }
+.fundpage .fp-card.opens { cursor: pointer; padding-bottom: 44px; }
 .fundpage .fp-kv dd { white-space: normal; }
 .fundpage .fp-card.opens:focus-visible { outline: 2px solid var(--p_light); outline-offset: 2px; }
 .fundpage .fp-card.opens .corner { position: absolute; right: 0; bottom: 0; width: 48px; height: 36px;

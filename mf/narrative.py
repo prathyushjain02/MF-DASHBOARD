@@ -314,7 +314,7 @@ def _years_since(raw):
 def _short_bench(name):
     """'Nifty 50 TRI' reads as 'Nifty 50' in a sentence; the table names the
     full series."""
-    return (name or "the benchmark").replace(" TRI", "").strip()
+    return (name or "benchmark").replace(" TRI", "").strip()
 
 
 def _row(rec, label):
@@ -354,7 +354,11 @@ def key_points(fund, rec, limit=5):
     # 2. Capture: how it moves for every 100 the index moves.
     dn, up = _f(fund.get("downsideCapture3Y")), _f(fund.get("upsideCapture3Y"))
     if dn is not None and up is not None:
-        if dn < 100 <= up:
+        # An index fund takes 100 of each to a rounding; calling 100.4 against
+        # 99.8 "falls harder than it rises" reads a tracking error as a trait.
+        if abs(dn - 100) < 2 and abs(up - 100) < 2:
+            head, tone = "Moves with the index", ""
+        elif dn < 100 <= up:
             head, tone = "Falls less, rises more", "good"
         elif dn < 100 and up < 100:
             head, tone = "Falls less, rises less", ""

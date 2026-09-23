@@ -21,8 +21,10 @@ const FP_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
 const FP_INK = { fund: '#2c3441', index: '#9ab3db', category: '#cc1919' };
 const FP_DASH = { category: '4 3' };
 
+/* Signed, and signed as printed: -0.04 at one decimal is 0.0, not -0.0. */
+const fpRound = (v, d = 1) => Math.round(v * 10 ** d) / 10 ** d || 0;
 const fpSign = (v, d = 1) => v == null || Number.isNaN(v) ? '—'
-  : (v > 0 ? '+' : '') + num(v, d);
+  : (fpRound(v, d) > 0 ? '+' : '') + num(fpRound(v, d), d);
 const fpPct = (v, d = 1) => v == null || Number.isNaN(v) ? '—' : num(v, d) + '%';
 const fpMonY = (iso) => {
   if (!iso) return '—';
@@ -30,9 +32,13 @@ const fpMonY = (iso) => {
   return `${FP_MON[d.getMonth()]} ${d.getFullYear()}`;
 };
 /* "Nifty 50 TRI" is the series; "Nifty 50" is how a sentence names it. */
-const fpShort = (name) => String(name || 'the benchmark').replace(/\s*TRI$/, '');
+const fpShort = (name) => String(name || 'benchmark').replace(/\s*TRI$/, '');
 /* The letter for an episode's start (A, C, E) or end (B, D, F). */
 const fpLetter = (i, end) => String.fromCharCode(65 + i * 2 + (end ? 1 : 0));
+
+/* The width a chart is drawn at is the width it is shown at. A fixed 820 wide
+   drawing shrunk to a phone took its 11px labels down to 5px with it. */
+const fpChartWidth = (host) => Math.round(Math.min(820, Math.max(300, host.clientWidth || 820)));
 
 const fpSvgText = (x, y, t, anchor = 'start', size = 11) =>
   `<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="${size}" fill="#808285" `
@@ -161,7 +167,7 @@ async function renderFundPage(host, token) {
       <div class="fp-c5 fp-stack">
         <section class="fp-card">
           <div class="eye"><span class="fp-tag">Largest sectors</span><span class="note">of the equity book</span></div>
-          <div class="fp-bars">${fpSectorBars(f)}</div>
+          <div class="fp-bars fp-secbars">${fpSectorBars(f)}</div>
         </section>
         <section class="fp-card opens" tabindex="0" data-fpmodal="who">
           <div class="eye"><span class="fp-tag">Who runs it</span>
@@ -197,10 +203,7 @@ async function renderFundPage(host, token) {
   $('#fp-pdf').onclick = () => window.print();
   const pick = $('#fp-pick');
   paintPickButton(pick.querySelector('[data-picklabel]'), isPicked(f.key));
-  pick.onclick = () => {
-    togglePick(f.key);
-    pick.classList.toggle('ghost', isPicked(f.key));
-  };
+  pick.onclick = () => togglePick(f.key);
   host.querySelectorAll('[data-fpmodal]').forEach((c) => {
     c.onclick = (e) => {
       if (e.target.closest('.term, a, button')) return;
@@ -334,7 +337,7 @@ function fpGrowthSvg(host, g, bench) {
   const live = g.series.filter((s) => s.days && s.days.length > 1);
   const f = live.find((s) => s.code === 'fund');
   if (!f) { host.innerHTML = '<div class="fp-empty">No NAV history</div>'; return; }
-  const W = 820, H = 250, m = { l: 44, r: 14 }, mt = 12, mb = 8;
+  const W = fpChartWidth(host), H = W < 600 ? 200 : 250, m = { l: 44, r: 14 }, mt = 12, mb = 8;
   const t0 = Date.parse(f.days[0]), t1 = Date.parse(f.days[f.days.length - 1]);
   const sx = (d) => m.l + (Date.parse(d) - t0) / ((t1 - t0) || 1) * (W - m.l - m.r);
   const all = live.flatMap((s) => s.values);
@@ -426,7 +429,7 @@ function fpUnderwater(f) {
     return;
   }
   const days = D.days, vals = D.values, worst = D.worst || [];
-  const W = 820, H = 118, m = { l: 44, r: 14 }, mt = 8, mb = 20;
+  const W = fpChartWidth(host), H = 118, m = { l: 44, r: 14 }, mt = 8, mb = 20;
   const T0 = Date.parse(days[0]), T1 = Date.parse(days[days.length - 1]);
   const ux = (d) => m.l + (Date.parse(d) - T0) / ((T1 - T0) || 1) * (W - m.l - m.r);
   const lo = Math.min(-1, ...vals);
@@ -440,31 +443,43 @@ function fpUnderwater(f) {
     svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${sy(v)}" y2="${sy(v)}" stroke="#eceef1"/>`
       + fpSvgText(m.l - 7, sy(v) + 3.5, `${Math.round(v)}%`, 'end');
   });
-  const p = vals.map((v, i) => `${i ? 'L' : 'M'}${ux(days[i]).toFixed(1)},${sy(v).toFixed(1)}`).join('');
-  svg += `<path d="${p} L${ux(days[days.length - 1])},${sy(0)} L${ux(days[0])},${sy(0)} Z" fill="#cc1919" opacity=".1"/>`
-    + `<path d="${p}" fill="none" stroke="#cc1919" stroke-width="1.2"/>`;
-  worst.forEach((w, i) => {
-    const x0 = ux(w.peak), x1 = ux(w.recovered || days[days.length - 1]);
-    const mark = (x, t, open) =>
-      `<line x1="${x}" x2="${x}" y1="${mt}" y2="${H - mb}" stroke="#2c3441" stroke-width="1" ${open ? 'stroke-dasharray="2 3"' : ''}/>`
-      + `<rect x="${x - 7}" y="${mt - 1}" width="14" height="14" rx="3" fill="${open ? '#fff' : '#2c3441'}" stroke="#2c3441"/>`
-      + `<text x="${x}" y="${mt + 10}" text-anchor="middle" font-size="9.5" font-weight="500" fill="${
-        open ? '#2c3441' : '#fff'}" font-family="var(--font_primary)">${t}</text>`;
-    svg += mark(x0, fpLetter(i, false), false) + mark(x1, fpLetter(i, true), !w.recovered);
-  });
+  // Year lines go down under the line and the letters, so a fall that begins
+  // in January keeps its letter on top. A year too close to "today" to print
+  // beside it is left off.
   svg += fpSvgText(m.l, H - 5, fpMonY(days[0]));
   for (let y = new Date(T0).getFullYear() + 1; y <= new Date(T1).getFullYear(); y++) {
     const x = ux(`${y}-01-01`);
-    if (x - m.l < 70 || W - m.r - x < 50) continue;
+    if (x - m.l < 70 || W - m.r - x < 72) continue;
     svg += `<line x1="${x}" x2="${x}" y1="${mt}" y2="${H - mb}" stroke="#eceef1"/>` + fpSvgText(x + 3, H - 5, y);
   }
+  const p = vals.map((v, i) => `${i ? 'L' : 'M'}${ux(days[i]).toFixed(1)},${sy(v).toFixed(1)}`).join('');
+  svg += `<path d="${p} L${ux(days[days.length - 1])},${sy(0)} L${ux(days[0])},${sy(0)} Z" fill="#cc1919" opacity=".1"/>`
+    + `<path d="${p}" fill="none" stroke="#cc1919" stroke-width="1.2"/>`;
+  /* One fall can end a few weeks before the next begins (D and E), which put
+     their two letters on top of each other. A letter that would touch the one
+     before it drops a row instead. */
+  const marks = worst.flatMap((w, i) => [
+    { x: ux(w.peak), t: fpLetter(i, false), open: false },
+    { x: ux(w.recovered || days[days.length - 1]), t: fpLetter(i, true), open: !w.recovered },
+  ]).sort((a, b) => a.x - b.x);
+  marks.forEach((k, i) => {
+    const prev = marks[i - 1];
+    k.row = prev && !prev.row && k.x - prev.x < 20 ? 1 : 0;
+  });
+  marks.forEach(({ x, t, open, row }) => {
+    const y = mt - 1 + row * 16;
+    svg += `<line x1="${x}" x2="${x}" y1="${mt}" y2="${H - mb}" stroke="#2c3441" stroke-width="1" ${open ? 'stroke-dasharray="2 3"' : ''}/>`
+      + `<rect x="${x - 7}" y="${y}" width="14" height="14" rx="3" fill="${open ? '#fff' : '#2c3441'}" stroke="#2c3441"/>`
+      + `<text x="${x}" y="${y + 11}" text-anchor="middle" font-size="9.5" font-weight="500" fill="${
+        open ? '#2c3441' : '#fff'}" font-family="var(--font_primary)">${t}</text>`;
+  });
   svg += fpSvgText(W - m.r, H - 5, 'today', 'end') + '</svg>';
   host.innerHTML = svg;
 
   lab.innerHTML = `Time below its previous high, whole record since ${fpMonY(days[0])}${
     worst.length ? ` · <span class="lab-plain">each shaded stretch is one of the ${
       worst.length === 1 ? 'worst fall' : worst.length + ' worst falls'}: from the letter where it began to the letter where it was back at its high; a dotted end is a fall still open</span>` : ''}`;
-  const idxName = fpShort(D.indexName || 'the index');
+  const idxName = fpShort(D.indexName || 'index');
   eps.innerHTML = worst.length ? worst.map((w, i) => {
     const back = w.recovered
       ? `was back at its previous high ${num(w.toRecover, 0)} months later`
@@ -521,18 +536,21 @@ function fpSectorBars(f) {
 function fpHoldingsTable(f) {
   const h = (f.holdings || []).slice(0, 10);
   if (!h.length) return '<p class="fp-empty">No security level holdings are collected for this scheme.</p>';
+  // Membership is read off a Nifty 50 index fund's book. Without one on file
+  // every row would be a dash, so the column is left off rather than drawn empty.
+  const hasN50 = h.some((x) => x.inNifty50 != null);
   const n50 = (x) => x.inNifty50 == null ? '<span class="na">—</span>'
     : x.inNifty50 ? '<span class="n50">Nifty 50</span>' : '<span class="na">no</span>';
   return `<table class="fp-htable"><thead><tr><th>#</th><th class="left">Holding</th><th>Fund</th>
-      <th>${esc(f.category)} peers</th><th>Difference</th><th>In Nifty 50</th></tr></thead>
+      <th>${esc(f.category)} peers</th><th>Difference</th>${hasN50 ? '<th>In Nifty 50</th>' : ''}</tr></thead>
     <tbody>${h.map((x, i) => {
-      const d = x.peerWeight == null ? null : x.weight - x.peerWeight;
+      const d = x.peerWeight == null ? null : fpRound(x.weight - x.peerWeight, 1);
       return `<tr><td class="num idx">${i + 1}</td>
         <td>${esc(x.name)}<small>${esc(x.sector || '')}</small></td>
         <td class="num">${num(x.weight, 1)}%</td>
         <td class="num dim">${x.peerWeight == null ? '—' : num(x.peerWeight, 1) + '%'}</td>
-        <td class="num ${d == null ? 'na' : d >= 0 ? 'up' : 'down'}">${d == null ? '—' : fpSign(d, 1)}</td>
-        <td class="mid">${n50(x)}</td></tr>`; }).join('')}</tbody></table>`;
+        <td class="num ${d == null ? 'na' : d > 0 ? 'up' : d < 0 ? 'down' : 'dim'}">${d == null ? '—' : fpSign(d, 1)}</td>
+        ${hasN50 ? `<td class="mid">${n50(x)}</td>` : ''}</tr>`; }).join('')}</tbody></table>`;
 }
 
 /* ------------------------------------------------------------ managers */

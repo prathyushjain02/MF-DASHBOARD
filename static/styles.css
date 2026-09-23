@@ -230,11 +230,6 @@ section { margin-bottom: 32px; }
 .card p { margin: 0; font-size: 13px; color: var(--text-primary); }
 .muted-card { border-top-color: var(--border-strong); }
 
-.ticks { padding-left: 0; list-style: none; max-width: 88ch; }
-.ticks li { position: relative; padding-left: 20px; margin-bottom: 8px;
-  color: var(--text-primary); }
-.ticks li::before { content: "o"; position: absolute; left: 2px; color: var(--red);
-  font-size: 11px; top: 1px; }
 
 /* --------------------------------------------------------------- tables */
 /* Template table: red rule top and bottom, red underline beneath the heading
@@ -714,35 +709,6 @@ th.sortable.on .arrow { opacity: 1; }
   .cmp-name, .cmp-namehead { position: static; min-width: 150px; }
 }
 
-/* ==================================================== selection process ==== */
-/* The staircase: one tread per factor, climbing left to right, each with its
-   heading standing above it on a dropped leader. Drawn as one SVG so the whole
-   diagram scales as a unit, with the captions in foreignObject so they wrap and
-   hyphenate like real text rather than being hand-broken into tspans. */
-.stairs { margin-top: 16px; }
-.stairs-svg { width: 100%; height: auto; display: block; }
-.step { cursor: pointer; }
-.step:focus { outline: none; }
-.step:hover path, .step:focus path, .step:hover rect, .step:focus rect {
-  filter: brightness(1.06); }
-.step:hover .stepcap b, .step:focus .stepcap b { color: var(--red); }
-
-/* Top aligned, not bottom: bottom alignment let a two line heading push its body
-   text down while a one line heading sat higher, so no two captions started on
-   the same line. */
-.stepcap { display: flex; flex-direction: column; gap: 3px; height: 100%;
-  justify-content: flex-start; font-family: var(--sans); }
-.stepcap b { font-family: var(--title); font-size: 13.5px; font-weight: 500;
-  color: var(--text-primary); line-height: 1.25; }
-.stepcap span { font-size: 11.5px; color: var(--text-muted); line-height: 1.4; }
-
-@media (max-width: 900px) {
-  /* Six treads across will not survive a phone, so the diagram becomes a list
-     of the same six steps, keeping the colour that carries the climb. */
-  .stairs-svg { display: none; }
-  .stairs { display: flex; flex-direction: column; gap: 7px; }
-}
-
 /* --------------------------------------------------------------- modal */
 .modal-backdrop { position: fixed; inset: 0; z-index: 200;
   background: rgba(23, 29, 37, .42); backdrop-filter: blur(6px);
@@ -758,38 +724,9 @@ body.modal-open { overflow: hidden; }
   background: transparent; font-size: 24px; line-height: 1; color: var(--text-muted);
   cursor: pointer; }
 .modal-close:hover { color: var(--red); }
-.modal .np-head { display: flex; gap: 13px; align-items: baseline; margin-bottom: 10px;
-  padding-right: 30px; }
-.modal .np-n { font-family: var(--title); font-size: 24px; font-weight: 300;
-  color: var(--red); line-height: 1; }
-.modal .np-head h3 { font-size: 20px; }
-.np-means { font-size: 14px; color: var(--text-secondary); margin: 0 0 18px;
-  max-width: 78ch; }
-.np-grid { display: grid; gap: 26px; grid-template-columns: 1fr 1fr; }
-.np-grid.three { gap: 20px; grid-template-columns: 1fr 1fr 1fr; }
-.np-col h5 { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
-.np-col .ticks li { font-size: 13px; margin-bottom: 5px; }
-.np-blocks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.np-total { font-size: 11.5px; color: var(--text-muted); font-family: var(--mono); }
-.np-live .np-headline { font-family: var(--mono); font-size: 36px; font-weight: 600;
-  color: var(--seq-550); line-height: 1; }
-.np-live .np-caption { font-size: 12.5px; color: var(--text-muted); margin: 4px 0 12px;
-  max-width: 36ch; }
-.np-live .grid.kv { table-layout: fixed; }
-.np-live .np-k { width: 60%; }
-.np-live .np-v { white-space: normal; word-break: break-word; }
-
 @media (max-width: 980px) {
-  .np-grid { grid-template-columns: 1fr; }
   .modal { padding: 18px 16px 20px; }
 }
-
-/* .grid.dense td.mono sets nowrap for the fund table, which is right there and
-   wrong in a narrow modal column. Matched at equal specificity to override. */
-.np-live .grid.dense td.np-v { white-space: normal; overflow-wrap: anywhere; }
-.np-live .np-k { width: 48%; }
-.np-caption.lead { font-size: 14px; color: var(--text-primary); max-width: 40ch;
-  margin-top: 0; }
 
 /* ------------------------------------------------- category fund table */
 .grid th.grouped { text-align: center; border-bottom: 1px solid var(--border);
@@ -1157,6 +1094,19 @@ body.modal-open { overflow: hidden; }
 .pickbar-go { background: #fff !important; color: var(--p) !important; border-color: #fff !important; }
 .pickbar-go:hover { background: var(--p_tint) !important; }
 .pickbar-clear:hover { border-color: #fff !important; }
+/* A phone is narrower than the bar's natural width, which pushed the count off
+   one edge and Clear off the other. Pinned to both edges instead of centred. */
+@media (max-width: 560px) {
+  #pickbar { left: 10px; right: 10px; transform: none; justify-content: space-between;
+    gap: 6px; padding: 7px 7px 7px 10px; font-size: 13px; animation-name: rise-edge; }
+  #pickbar button { font-size: 12.5px; padding: 6px 10px; }
+  .pickbar-word { display: none; }
+  .pickbar-n b { margin-right: 2px; }
+}
+@keyframes rise-edge { from { transform: translateY(calc(100% + 30px)); } }
+/* Room under the last row for the bar, so it never sits on the row a reader
+   scrolled down to reach. */
+@media screen { body:has(#pickbar) #main { padding-bottom: 90px; } }
 
 /* ------------------------------------------------------------- tooltip */
 /* Fixed, above everything, and transparent to the pointer: the box follows the
