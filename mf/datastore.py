@@ -886,6 +886,82 @@ def sector_funds(sector, lo=None, hi=None, limit=200, state=None):
 
 
 # ---------------------------------------------------------------------------
+# Stocks
+# ---------------------------------------------------------------------------
+
+# A stock two books hold is a coincidence of disclosure, not a question anyone
+# comes to a screener with, and a list of every one of them buries the ones
+# that are.
+MIN_STOCK_FUNDS = 3
+
+
+def stock_index(state=None):
+    """Every fund's weight in every stock, by stock, keyed on ISIN.
+
+    The ISIN rather than the name, because it is what the disclosure files agree
+    on; one book can list a stock twice (two share classes, a partly paid line)
+    and the two are one position here. Built once per loaded dataset and kept
+    on it, for the same reason as the sector index.
+    """
+    state = state or load()
+    idx = state.get("_stockIndex")
+    if idx is not None:
+        return idx
+
+    idx = {}
+    for f in state["funds"]:
+        agg = defaultdict(float)
+        for b in (f.get("_book") or []):
+            k = b.get("isin") or b["name"]
+            agg[k] += b["weight"]
+            if k not in idx:
+                idx[k] = {"isin": b.get("isin"), "name": b["name"],
+                          "sector": b.get("sector"), "cap": b.get("cap"), "rows": []}
+        for k, w in agg.items():
+            idx[k]["rows"].append((f["key"], round(w, 2)))
+    for v in idx.values():
+        v["rows"].sort(key=lambda r: -r[1])
+    idx = {k: v for k, v in idx.items() if len(v["rows"]) >= MIN_STOCK_FUNDS}
+    state["_stockIndex"] = idx
+    return idx
+
+
+def stock_list(state=None):
+    """The stocks worth offering, most widely held first."""
+    state = state or load()
+    out = []
+    for key, v in stock_index(state).items():
+        ws = [w for _, w in v["rows"]]
+        out.append({"key": key, "name": v["name"], "sector": v["sector"],
+                    "cap": v["cap"], "funds": len(ws),
+                    "max": ws[0], "median": ws[len(ws) // 2]})
+    out.sort(key=lambda r: (-r["funds"], r["name"]))
+    return out
+
+
+def stock_funds(key, lo=None, hi=None, limit=200, state=None):
+    """Funds ranked by how much of their book is one stock, within optional
+    bounds: the sector question asked of a single name."""
+    state = state or load()
+    v = stock_index(state).get(key)
+    if v is None:
+        return None
+    hits = [(k, w) for k, w in v["rows"]
+            if (lo is None or w >= lo) and (hi is None or w <= hi)]
+    by_key = state["byKey"]
+    return {
+        "key": key,
+        "stock": v["name"],
+        "sector": v["sector"],
+        "cap": v["cap"],
+        "matched": len(hits),
+        "total": len(v["rows"]),
+        "funds": [{**list_row(by_key[k]), "exposure": w}
+                  for k, w in hits[:limit] if k in by_key],
+    }
+
+
+# ---------------------------------------------------------------------------
 # Calendar years
 # ---------------------------------------------------------------------------
 

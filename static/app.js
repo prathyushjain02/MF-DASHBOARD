@@ -1080,7 +1080,7 @@ async function drawPassivePanel() {
 
 const VIEW_LABEL = { shortlist: 'category top funds', all: 'all funds',
                      compare: 'compare', portfolio: 'the portfolio builder',
-                     sectors: 'sectors', overview: 'the equity overview' };
+                     sectors: 'sectors', stocks: 'stocks', overview: 'the equity overview' };
 
 /* The fund page itself is drawn by fund.js. What is left here is shared with
    it: the record it has open, and the date and tenure helpers. */
@@ -1546,14 +1546,31 @@ async function drawCmpTable() {
    disclosed holdings sum to. A fund a third in cash reads lower against the
    whole of itself than the figure here, and the note under the table says so. */
 
-const sectorState = () => (state.sec = state.sec
+/* Stocks ask the same thing of one name: which funds hold HDFC Bank, and how
+   much of their book it is. Both views run on one set of code, configured
+   below, so a bound, a sort or a click behaves the same way on either tab. */
+const EXPOSURE = {
+  sector: {
+    slot: 'sec', p: 's', noun: 'sector', listUrl: '/sectors', listKey: 'sectors',
+    url: (k) => `/sector/${encodeURIComponent(k)}`,
+    title: (d) => d.sector, head: (d) => `In ${esc(d.sector)}`,
+  },
+  stock: {
+    slot: 'stk', p: 'k', noun: 'stock', listUrl: '/stocks', listKey: 'stocks',
+    url: (k) => `/stock/${encodeURIComponent(k)}`,
+    title: (d) => d.stock, head: () => 'Weight',
+  },
+};
+
+const exposureState = (kind) => (state[EXPOSURE[kind].slot] = state[EXPOSURE[kind].slot]
   || { name: null, lo: '', hi: '', list: null, sort: 'exposure', dir: 'desc' });
+const sectorState = () => exposureState('sector');
 
 /* The columns, as data, so the header and the body are generated from one list
    and a sort can never point at a column the table is not drawing. `dir` is the
    direction that puts "good" first, the same rule All funds uses: one click on
    any heading shows the best of it. */
-const SECTOR_COLUMNS = () => [
+const EXPOSURE_COLUMNS = () => [
   { field: 'name', label: 'Fund', dir: 'asc', text: true, cls: 'fundcell namecell',
     cell: (f) => `<strong>${esc(f.name)}</strong>` },
   { field: 'category', label: 'Category', dir: 'asc', text: true, cls: 'muted' },
@@ -1566,73 +1583,113 @@ const SECTOR_COLUMNS = () => [
     gloss: 'aum' },
 ];
 
-async function renderSectors(host, token) {
-  const c = sectorState();
-  if (!c.list) c.list = (await get('/sectors')).sectors || [];
+/* The picker is the only part that differs. Some thirty sectors fit a
+   dropdown; several hundred stocks need typing, so the stock tab searches,
+   most widely held first, and the list says how many funds hold each. */
+function exposurePicker(kind, c) {
+  const p = EXPOSURE[kind].p;
+  if (kind === 'sector') return `
+    <label>Sector
+      <select id="${p}-pick">${c.list.map((x) => `
+        <option${x.name === c.name ? ' selected' : ''} value="${esc(x.name)}"
+          >${esc(x.name)}</option>`).join('')}</select>
+    </label>`;
+  const cur = c.list.find((x) => x.key === c.name);
+  return `
+    <label>Stock
+      <input id="${p}-pick" type="search" list="${p}-names" autocomplete="off"
+             spellcheck="false" placeholder="Type a company name"
+             value="${esc(cur ? cur.name : '')}">
+      <datalist id="${p}-names">${c.list.map((x) => `
+        <option value="${esc(x.name)}" label="${x.funds} funds · ${
+          esc(x.sector || '')}"></option>`).join('')}</datalist>
+    </label>`;
+}
+
+/* The picked value as the key the API wants: a sector is its name, a stock its
+   ISIN. A half-typed stock name is not a choice yet, so it answers null and the
+   table stays on the last stock rather than emptying under the reader. */
+function exposurePicked(kind, c) {
+  const v = $(`#${EXPOSURE[kind].p}-pick`).value;
+  if (kind === 'sector') return v;
+  const want = v.trim().toLowerCase();
+  const hit = c.list.find((x) => x.name.toLowerCase() === want);
+  return hit ? hit.key : null;
+}
+
+const renderSectors = (host, token) => renderExposure('sector', host, token);
+const renderStocks = (host, token) => renderExposure('stock', host, token);
+
+async function renderExposure(kind, host, token) {
+  const k = EXPOSURE[kind], p = k.p;
+  const c = exposureState(kind);
+  if (!c.list) c.list = (await get(k.listUrl))[k.listKey] || [];
   if (superseded(token)) return;
-  if (!c.name && c.list.length) c.name = c.list[0].name;
+  if (!c.name && c.list.length) c.name = kind === 'sector' ? c.list[0].name : c.list[0].key;
 
   host.innerHTML = `
     <section>
       <div class="filterbar">
-        <label>Sector
-          <select id="s-sector">${c.list.map((x) => `
-            <option${x.name === c.name ? ' selected' : ''} value="${esc(x.name)}"
-              >${esc(x.name)}</option>`).join('')}</select>
-        </label>
+        ${exposurePicker(kind, c)}
         <!-- The label is a column flex, so its text has to be one element:
              a bare text node beside the glossary span becomes a second row. -->
-        <label><span>${term('Exposure')} at least</span>
-          <input id="s-lo" type="number" min="0" max="100" step="1"
+        <label><span>${kind === 'stock' ? 'Weight' : term('Exposure')} at least</span>
+          <input id="${p}-lo" type="number" min="0" max="100" step="${kind === 'stock' ? '0.5' : '1'}"
                  placeholder="any" value="${esc(c.lo)}"></label>
         <label><span>and at most</span>
-          <input id="s-hi" type="number" min="0" max="100" step="1"
+          <input id="${p}-hi" type="number" min="0" max="100" step="${kind === 'stock' ? '0.5' : '1'}"
                  placeholder="any" value="${esc(c.hi)}"></label>
         <span class="spacer"></span>
-        <button id="s-reset" class="ghost">Reset</button>
+        <button id="${p}-reset" class="ghost">Reset</button>
       </div>
-      <div class="tablemeta" id="s-meta"></div>
-      <div id="s-table" class="tablewrap frozen"></div>
+      <div class="tablemeta" id="${p}-meta"></div>
+      <div id="${p}-table" class="tablewrap frozen"></div>
     </section>`;
 
   const redraw = debounce(() => {
-    c.name = $('#s-sector').value;
-    c.lo = $('#s-lo').value;
-    c.hi = $('#s-hi').value;
-    drawSectorTable();
+    const picked = exposurePicked(kind, c);
+    if (picked) c.name = picked;
+    c.lo = $(`#${p}-lo`).value;
+    c.hi = $(`#${p}-hi`).value;
+    drawExposureTable(kind);
   }, 220);
-  ['#s-sector', '#s-lo', '#s-hi'].forEach((id) => {
+  [`#${p}-pick`, `#${p}-lo`, `#${p}-hi`].forEach((id) => {
     const el = $(id);
     el.oninput = redraw; el.onchange = redraw;
   });
-  $('#s-reset').onclick = () => { c.lo = ''; c.hi = ''; renderSectors(host, renderSeq); };
+  $(`#${p}-reset`).onclick = () => { c.lo = ''; c.hi = ''; renderExposure(kind, host, renderSeq); };
 
-  await drawSectorTable();
+  await drawExposureTable(kind);
   wireGlossary(host);
 }
 
-async function drawSectorTable() {
-  const current = ticket('sector');
-  const c = sectorState();
-  let wrap = $('#s-table');
+async function drawExposureTable(kind) {
+  const k = EXPOSURE[kind], p = k.p;
+  const current = ticket(kind);
+  const c = exposureState(kind);
+  let wrap = $(`#${p}-table`);
   if (!wrap || !c.name) return;
-  const p = new URLSearchParams({ limit: '300' });
-  if (c.lo !== '') p.set('min', c.lo);
-  if (c.hi !== '') p.set('max', c.hi);
-  const d = await get(`/sector/${encodeURIComponent(c.name)}?` + p);
+  const q = new URLSearchParams({ limit: '300' });
+  if (c.lo !== '') q.set('min', c.lo);
+  if (c.hi !== '') q.set('max', c.hi);
+  const d = await get(k.url(c.name) + '?' + q);
   if (!current()) return;
   // Both are asked for again on this side of the request, for the same reason
   // the fund table asks: the reader may not be on this tab any more.
-  wrap = $('#s-table');
-  const meta = $('#s-meta');
+  wrap = $(`#${p}-table`);
+  const meta = $(`#${p}-meta`);
   if (!wrap || !meta) return;
 
-  const sorted = SECTOR_COLUMNS().find((x) => x.field === c.sort);
+  const name = k.title(d);
+  const sorted = EXPOSURE_COLUMNS().find((x) => x.field === c.sort);
   meta.innerHTML = `${d.matched} of ${d.total} funds with a disclosed
-    book hold ${esc(d.sector)}${c.lo !== '' || c.hi !== ''
+    book hold ${esc(name)}${kind === 'stock' && d.sector
+      ? ` <span class="muted">(${esc(d.sector)}${d.cap ? `, ${esc(d.cap)} cap` : ''})</span>` : ''}${
+      c.lo !== '' || c.hi !== ''
       ? ` at ${c.lo !== '' ? `${esc(c.lo)}% or more` : 'any weight'}${
           c.hi !== '' ? ` and ${esc(c.hi)}% or less` : ''}` : ''}
-    &middot; sorted by ${esc(sorted && sorted.label ? sorted.label : 'exposure')}
+    &middot; sorted by ${esc(sorted && sorted.label ? sorted.label
+      : (kind === 'stock' ? 'weight' : 'exposure'))}
     ${c.dir === 'asc' ? 'ascending' : 'descending'}`;
 
   if (!d.funds.length) {
@@ -1640,7 +1697,7 @@ async function drawSectorTable() {
     return;
   }
 
-  const cols = SECTOR_COLUMNS();
+  const cols = EXPOSURE_COLUMNS();
   const col = cols.find((x) => x.field === c.sort) || cols[2];
   /* Three hundred rows are already here, so the sort is done on them rather than
      asked for again. A fund with no figure for a column has not come last in it,
@@ -1665,8 +1722,8 @@ async function drawSectorTable() {
         ${cols.map((x) => `<th class="sortable${x.text ? '' : ' r'}${
           x.field === 'name' ? ' namecell' : ''}${c.sort === x.field ? ' on' : ''}"
           data-sort="${esc(x.field)}" title="Sort by ${
-            esc(x.label || d.sector)}">${
-          x.label === null ? `In ${esc(d.sector)}`
+            esc(x.label || (kind === 'stock' ? `weight in ${name}` : name))}">${
+          x.label === null ? k.head(d)
             : term(x.label, null, x.gloss)}${arrow(x.field)}</th>`).join('')}
       </tr></thead>
       <tbody>${rows.map((f) => `
@@ -1689,7 +1746,7 @@ async function drawSectorTable() {
       const next = cols.find((x) => x.field === f);
       c.dir = c.sort === f ? (c.dir === 'asc' ? 'desc' : 'asc') : (next.dir || 'desc');
       c.sort = f;
-      return drawSectorTable();
+      return drawExposureTable(kind);
     }
     if (e.target.closest('.pickcell')) return;
     const tr = e.target.closest('[data-fund]');
@@ -2202,6 +2259,7 @@ async function render() {
     else if (state.view === 'shortlist') await renderShortlists(host, mine);
     else if (state.view === 'all') await renderAll(host);
     else if (state.view === 'sectors') await renderSectors(host, mine);
+    else if (state.view === 'stocks') await renderStocks(host, mine);
     else if (state.view === 'portfolio') await renderPortfolio(host);
     else await renderCompare(host);
   } catch (e) {

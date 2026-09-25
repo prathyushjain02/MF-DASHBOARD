@@ -230,6 +230,23 @@ def sector(name):
     return jsonify(out)
 
 
+@bp.get("/stocks")
+def stocks():
+    """Every stock at least a few disclosed books hold, most widely held first."""
+    return jsonify({"stocks": ds.stock_list()})
+
+
+@bp.get("/stock/<path:key>")
+def stock(key):
+    """Funds ranked by their weight in one stock (by ISIN), within optional bounds."""
+    out = ds.stock_funds(key, _f(request.args.get("min")),
+                         _f(request.args.get("max")),
+                         int(request.args.get("limit") or 200))
+    if out is None:
+        return jsonify({"error": "unknown stock", "stock": key}), 404
+    return jsonify(out)
+
+
 @bp.get("/calendar/<path:name>")
 def calendar(name):
     """One category's leading funds, year by year."""
