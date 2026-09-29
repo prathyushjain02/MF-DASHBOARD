@@ -5,3 +5,8 @@ etl/cache/
 
 # agent worktrees
 .claude/worktrees/
+
+# secrets: never committed
+.env
+.env.*
+!.env.example
