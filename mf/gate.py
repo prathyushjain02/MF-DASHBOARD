@@ -58,6 +58,9 @@ LOGIN_PAGE = """<!doctype html>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600&family=Ubuntu:wght@300;400;500&display=swap">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23fff' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23cc1919' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 16 4, auto; }
+  button { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23fff' stroke-width='8.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23a81212' stroke-width='4.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 16 4, pointer; }
+  input { cursor: text; }
   body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
     font-family: "Libre Franklin", system-ui, sans-serif; color: #2c3441;
     background: linear-gradient(117deg, #2d3440 3.31%, #2e3b51 46.36%, #3b4d6b 100%); }
@@ -73,7 +76,7 @@ LOGIN_PAGE = """<!doctype html>
     border: 1px solid #c9d0da; border-radius: 8px; outline: none; }
   input:focus { border-color: #2e3b51; box-shadow: 0 0 0 3px rgba(46, 59, 81, .15); }
   button { width: 100%; margin-top: 16px; font: inherit; font-weight: 600; font-size: 15px; color: #fff;
-    background: #cc1919; border: 0; border-radius: 8px; padding: 12px; cursor: pointer; }
+    background: #cc1919; border: 0; border-radius: 8px; padding: 12px; }
   button:hover { background: #b01515; }
   .err { color: #c00000; font-size: 13px; margin-top: 12px; min-height: 1em; }
 </style></head>

@@ -32,6 +32,12 @@
 :root {
   color-scheme: light;
 
+  /* The pointer is the caret from the Avendus mark, with a white halo so it
+     reads on the navy masthead as well as on white. Over anything clickable it
+     turns bolder and deeper; the tip (16, 4) is the hotspot. */
+  --cur: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23fff' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23cc1919' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 16 4, auto;
+  --cur-pointer: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23fff' stroke-width='8.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23a81212' stroke-width='4.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 16 4, pointer;
+
   /* Avendus web design system, as scraped from avendus.com: a navy primary with
      its tints, warm neutrals, one red kept for the caret, the section tag bar
      and the arrow tile. The names with underscores are the site's own token
@@ -103,7 +109,11 @@
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; cursor: var(--cur); }
+a[href], button:not(:disabled), select, summary, label[for], [role="tab"], [role="button"],
+input[type="checkbox"], input[type="radio"] { cursor: var(--cur-pointer); }
+input:not([type]), input[type="text"], input[type="search"], input[type="number"],
+input[type="password"], textarea { cursor: text; }
 body {
   margin: 0; background: var(--plane); color: var(--text-primary);
   font: 14px/1.45 var(--sans); letter-spacing: .5px;
@@ -147,7 +157,7 @@ button { letter-spacing: inherit; }
   text-transform: uppercase; }
 .segmented button {
   border: 0; background: transparent; color: var(--p_tint);
-  padding: 6px 11px; font: inherit; cursor: pointer;
+  padding: 6px 11px; font: inherit; cursor: var(--cur-pointer);
   transition: background var(--base), color var(--base);
 }
 .segmented button.on { background: var(--p_tint); color: var(--p_dark); }
@@ -167,7 +177,7 @@ button { letter-spacing: inherit; }
 #tabs button {
   border: 0; background: transparent; color: rgba(255, 255, 255, .72);
   padding: 22px 0; font: inherit; font-family: var(--title); font-size: 13.5px;
-  cursor: pointer; white-space: nowrap; transition: color var(--base) var(--ease);
+  cursor: var(--cur-pointer); white-space: nowrap; transition: color var(--base) var(--ease);
 }
 #tabs button:hover, #tabs button.on { color: #fff; }
 #tabs .ind { position: absolute; bottom: 0; height: 2px; background: var(--red);
@@ -248,7 +258,7 @@ section { margin-bottom: 32px; }
 .grid th.r { text-align: right; }
 .grid tbody tr:nth-child(odd) { background: transparent; }
 .grid tbody tr:last-child td { border-bottom: 0; }
-.grid tbody tr[data-fund] { cursor: pointer; }
+.grid tbody tr[data-fund] { cursor: var(--cur-pointer); }
 .grid tbody tr[data-fund]:hover { background: var(--p_dim); }
 .grid tbody tr[data-fund] td { transition: background var(--fast); }
 .grid.dense td, .grid.dense th { padding: 6px 10px; font-size: 12.5px; }
@@ -351,7 +361,7 @@ section { margin-bottom: 32px; }
 @media (max-width: 1180px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 860px)  { .tiles { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 560px)  { .tiles { grid-template-columns: 1fr; } }
-.tile { text-align: left; font: inherit; cursor: pointer; padding: 11px 14px 11px;
+.tile { text-align: left; font: inherit; cursor: var(--cur-pointer); padding: 11px 14px 11px;
   background: var(--surface-2); border: 1px solid var(--card_border);
   border-radius: var(--card_radius); position: relative;
   display: flex; flex-direction: column; gap: 7px;
@@ -372,7 +382,7 @@ section { margin-bottom: 32px; }
 
 .picks { display: grid; }
 .pick { display: grid; grid-template-columns: 34px 1fr 240px; gap: 16px;
-  padding: 14px 0; border-bottom: 1px solid var(--grid); cursor: pointer;
+  padding: 14px 0; border-bottom: 1px solid var(--grid); cursor: var(--cur-pointer);
   align-items: start; }
 .pick:hover { background: var(--p_dim); }
 .pick { transition: background var(--fast); }
@@ -403,7 +413,7 @@ section { margin-bottom: 32px; }
 /* The minimum width below is meant for the text and select boxes. Applied to a
    checkbox it made a 150px wide box with the label stranded at the far end. */
 .filterbar input[type="checkbox"] { min-width: 0; width: auto;
-  accent-color: var(--red); cursor: pointer; }
+  accent-color: var(--red); cursor: var(--cur-pointer); }
 .filterbar input, .filterbar select {
   font: inherit; font-family: var(--sans); font-size: 13px; padding: 6px 12px;
   border: 0.8px solid var(--s_shade); border-radius: 50px; background: var(--surface-2);
@@ -420,17 +430,17 @@ section { margin-bottom: 32px; }
   padding: 6px; max-height: 320px; overflow-y: auto; min-width: 330px;
   animation: enter var(--base) var(--ease_out) both; }
 .opt { display: flex; justify-content: space-between; gap: 10px; align-items: center;
-  padding: 7px 11px; font-size: 12.5px; cursor: pointer; }
+  padding: 7px 11px; font-size: 12.5px; cursor: var(--cur-pointer); }
 .opt { border-radius: 8px; transition: background var(--fast); }
 .opt:hover { background: var(--p_dim); }
 
 button.ghost { font: inherit; font-size: 12.5px; padding: 6px 14px;
   border: 0.8px solid var(--p_light); border-radius: 50px; background: var(--surface-2);
-  color: var(--p_dark); cursor: pointer; transition: background var(--base), color var(--base); }
+  color: var(--p_dark); cursor: var(--cur-pointer); transition: background var(--base), color var(--base); }
 button.ghost:hover { background: var(--p_tint); }
 button.primary { font: inherit; font-family: var(--sans); font-size: 13.5px;
   padding: 8px 18px; border: 0.8px solid var(--p_dark); border-radius: 4px;
-  background: var(--p); color: #fff; cursor: pointer; transition: background 250ms ease; }
+  background: var(--p); color: #fff; cursor: var(--cur-pointer); transition: background 250ms ease; }
 button.primary:hover { background: var(--gradient_hover); }
 
 /* -------------------------------------------------------- detail card */
@@ -439,7 +449,7 @@ button.primary:hover { background: var(--gradient_hover); }
   padding: 18px 20px 22px; margin-bottom: 22px; }
 .detail .close { position: absolute; top: 10px; right: 12px; border: 0;
   background: transparent; font-size: 20px; line-height: 1; color: var(--text-muted);
-  cursor: pointer; }
+  cursor: var(--cur-pointer); }
 .detail .close:hover { color: var(--red); }
 .detail-head { display: flex; justify-content: space-between; gap: 20px;
   flex-wrap: wrap; align-items: flex-start; }
@@ -505,7 +515,7 @@ body[data-mode="client"] .analyst-only { display: none !important; }
 .holdfoot b { font-family: var(--mono); color: var(--text-primary); font-weight: 500; }
 
 /* --------------------------------------------------------- sortable table */
-th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+th.sortable { cursor: var(--cur-pointer); user-select: none; white-space: nowrap; }
 th.sortable:hover { color: var(--red); }
 th.sortable .arrow { opacity: 0.3; margin-left: 3px; }
 th.sortable.on { color: var(--red); }
@@ -538,34 +548,34 @@ th.sortable.on .arrow { opacity: 1; }
   padding: 4px 6px 4px 8px; background: var(--surface-1);
   border: 1px solid var(--border); }
 .cmp-chip i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
-.cmp-chip button { border: 0; background: none; cursor: pointer; font: inherit;
+.cmp-chip button { border: 0; background: none; cursor: var(--cur-pointer); font: inherit;
   font-size: 15px; line-height: 1; color: var(--text-muted); padding: 0 2px; }
 .cmp-chip button:hover { color: var(--red); }
 
 .cmp-marks { display: flex; flex-wrap: wrap; gap: 5px; }
 .cmp-mark { font: inherit; font-family: var(--title); font-size: 12px; letter-spacing: .5px;
-  padding: 6px 12px; cursor: pointer; background: var(--surface-2); color: var(--s_dark);
+  padding: 6px 12px; cursor: var(--cur-pointer); background: var(--surface-2); color: var(--s_dark);
   border: 0.8px solid var(--s); border-radius: 50px;
   transition: background var(--base), color var(--base), border-color var(--base); }
 .cmp-mark:hover { background: var(--p_dim); }
 .cmp-mark.on { background: var(--p_tint); border-color: var(--p_light); color: var(--p_dark); }
 
 .cmp-empty { padding: 40px 0; color: var(--text-muted); font-size: 13px; }
-.cmp-chart { margin-top: 14px; cursor: default; }
+.cmp-chart { margin-top: 14px; cursor: var(--cur); }
 .cmp-chart:hover { background: var(--surface-2); border-top-color: var(--slate); }
 
 .cmp-groupbar { display: flex; flex-wrap: wrap; align-items: center;
   gap: 6px 20px; margin: 16px 0 10px; }
 .cmp-download { font-size: 12px; padding: 6px 12px; font-family: inherit;
   border: 1px solid var(--border); background: var(--surface-2);
-  color: var(--text-secondary); text-decoration: none; cursor: pointer; }
+  color: var(--text-secondary); text-decoration: none; cursor: var(--cur-pointer); }
 .cmp-download:hover { color: var(--red); border-color: var(--red); }
 #cmp-csv { margin-left: auto; }
 
 /* ---- portfolio */
 .cmp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .cmp-pfbtns { display: flex; align-items: center; gap: 8px 14px; margin-left: auto; }
-.cmp-ghost { font: inherit; font-size: 12.5px; padding: 6px 14px; cursor: pointer;
+.cmp-ghost { font: inherit; font-size: 12.5px; padding: 6px 14px; cursor: var(--cur-pointer);
   background: var(--surface-2); border: 0.8px solid var(--p_light); border-radius: 50px;
   color: var(--p_dark); transition: background var(--base), color var(--base); }
 .cmp-ghost:hover { background: var(--p_tint); }
@@ -584,12 +594,12 @@ th.sortable.on .arrow { opacity: 1; }
 .pf-top { display: grid; gap: 8px; grid-template-columns: 1.45fr 1fr;
   align-items: start; margin-top: 14px; }
 .pf-top > * { min-width: 0; }
-.pf-chart { margin: 0; cursor: default; }
+.pf-chart { margin: 0; cursor: var(--cur); }
 .pf-chart:hover { background: var(--surface-2); border-top-color: var(--slate); }
 .pf-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
   align-content: start; }
 .pf-tiles > * { min-width: 0; }
-.pf-tile { cursor: default; }
+.pf-tile { cursor: var(--cur); }
 .pf-tile:hover { background: var(--surface-2); border-top-color: var(--slate); }
 /* A true two by two. The list of names is the tallest of the four and sits in
    the bottom right, which is what brings the block down level with the chart
@@ -597,7 +607,7 @@ th.sortable.on .arrow { opacity: 1; }
 .pf-book .booklist { margin-top: 2px; }
 .pf-missnote { grid-column: 1 / -1; margin: 0; }
 
-.cmp-pfcard { margin-top: 18px; cursor: default; }
+.cmp-pfcard { margin-top: 18px; cursor: var(--cur); }
 .cmp-pfcard:hover { background: var(--surface-2); border-top-color: var(--slate); }
 .pf-stats { display: grid; gap: 10px 26px;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-top: 4px; }
@@ -627,13 +637,13 @@ th.sortable.on .arrow { opacity: 1; }
   border-top: 1px solid var(--grid); }
 .wt-total { font-size: 12px; color: var(--text-secondary); }
 .wt-actions { display: flex; gap: 8px; }
-.wt-create { font: inherit; font-size: 12.5px; padding: 6px 16px; cursor: pointer;
+.wt-create { font: inherit; font-size: 12.5px; padding: 6px 16px; cursor: var(--cur-pointer);
   background: var(--red); color: #fff; border: 1px solid var(--red); }
 .wt-create:disabled { background: var(--zebra); color: var(--text-muted);
   border-color: var(--border); cursor: not-allowed; }
 .cmp-group { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
-  cursor: pointer; }
-.cmp-group input { accent-color: var(--red); cursor: pointer; }
+  cursor: var(--cur-pointer); }
+.cmp-group input { accent-color: var(--red); cursor: var(--cur-pointer); }
 
 /* The fund is the subject, so it holds the row and the metrics run across.
    Every metric column is the same narrow width, which puts each figure directly
@@ -667,7 +677,7 @@ th.sortable.on .arrow { opacity: 1; }
 .cmp-best { font-weight: 700; color: var(--ink-strong); }
 
 /* ---- overlap matrix */
-.cmp-ovcard { margin-top: 18px; cursor: default; }
+.cmp-ovcard { margin-top: 18px; cursor: var(--cur); }
 .cmp-ovcard:hover { background: var(--surface-2); border-top-color: var(--slate); }
 /* A grid of names against names. The columns are held narrow, and the heads
    wrap and clip rather than setting the width, so the matrix reads as a block
@@ -686,7 +696,7 @@ th.sortable.on .arrow { opacity: 1; }
 .ov-blank { color: var(--text-muted); }
 .ov-cell { padding: 0; }
 .ov-btn { font: inherit; font-family: var(--mono); font-size: 12.5px;
-  width: 100%; padding: 6px 10px; text-align: center; border: 0; cursor: pointer;
+  width: 100%; padding: 6px 10px; text-align: center; border: 0; cursor: var(--cur-pointer);
   background: none; color: inherit; }
 .ov-btn:hover { color: var(--red); text-decoration: underline; }
 .ov-heavy { background: rgba(204, 25, 25, 0.16); }
@@ -722,7 +732,7 @@ body.modal-open { overflow: hidden; }
   outline: none; animation: enter var(--slow) var(--ease_out) both; }
 .modal-close { position: absolute; top: 10px; right: 14px; border: 0;
   background: transparent; font-size: 24px; line-height: 1; color: var(--text-muted);
-  cursor: pointer; }
+  cursor: var(--cur-pointer); }
 .modal-close:hover { color: var(--red); }
 @media (max-width: 980px) {
   .modal { padding: 18px 16px 20px; }
@@ -738,14 +748,14 @@ body.modal-open { overflow: hidden; }
   white-space: normal; }
 .fundlink { display: block; font: inherit; font-family: var(--title);
   font-weight: 500; font-size: 13px; color: var(--text-primary); text-align: left;
-  background: none; border: 0; padding: 0; cursor: pointer; }
+  background: none; border: 0; padding: 0; cursor: var(--cur-pointer); }
 .fundlink:hover { color: var(--red); text-decoration: underline; }
 .grid td.fundcell .muted { display: block; }
 
 /* ------------------------------------------------------------ fund page */
 .backlink { font: inherit; font-family: var(--title); font-size: 12.5px;
   letter-spacing: .5px; color: var(--p_dark); background: none; border: 0;
-  padding: 0 0 12px; cursor: pointer; transition: color var(--base); }
+  padding: 0 0 12px; cursor: var(--cur-pointer); transition: color var(--base); }
 .backlink:hover { color: var(--p); }
 .detail.fundpage { padding-top: 16px; }
 
@@ -781,7 +791,7 @@ body.modal-open { overflow: hidden; }
   align-items: start; }
 .snapcol { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .snapcol > * { min-width: 0; }
-.snapcard.chartcard { cursor: default; margin-bottom: 0; }
+.snapcard.chartcard { cursor: var(--cur); margin-bottom: 0; }
 .snapcard.chartcard:hover { background: var(--surface-2);
   border-top-color: var(--slate); }
 /* The score bar is the model's own, not one of the cards, so it runs the full
@@ -935,7 +945,7 @@ body.modal-open { overflow: hidden; }
 /* The returns bar card is gone, so the point-to-point numbers are reached from
    the chart's own header instead. */
 .chart-more { grid-area: go; align-self: center; justify-self: end;
-  font: inherit; font-size: 11px; color: var(--text-muted); cursor: pointer;
+  font: inherit; font-size: 11px; color: var(--text-muted); cursor: var(--cur-pointer);
   background: none; border: 0; padding: 2px 0 2px 8px; white-space: nowrap; }
 .chart-more:hover { color: var(--red); }
 
@@ -950,7 +960,7 @@ body.modal-open { overflow: hidden; }
 /* period buttons over the growth chart */
 .periodbar { display: flex; flex-wrap: wrap; gap: 4px; margin: 3px 0 6px; }
 .pbtn { font: inherit; font-family: var(--title); font-size: 11.5px; letter-spacing: 1px;
-  padding: 4px 10px; cursor: pointer; background: var(--surface-1); color: var(--s_dark);
+  padding: 4px 10px; cursor: var(--cur-pointer); background: var(--surface-1); color: var(--s_dark);
   border: 0.8px solid var(--s); border-radius: 50px;
   transition: background var(--base), color var(--base), border-color var(--base); }
 .pbtn:hover { background: var(--p_dim); }
@@ -1073,7 +1083,7 @@ body.modal-open { overflow: hidden; }
    is ticked. The bar is fixed to the foot because the lists are long and the
    selection has to stay reachable from wherever the reader has scrolled to. */
 .pickcell { width: 34px; padding-right: 0 !important; text-align: center; }
-.pickbox { accent-color: var(--red); cursor: pointer; width: 14px; height: 14px;
+.pickbox { accent-color: var(--red); cursor: var(--cur-pointer); width: 14px; height: 14px;
   vertical-align: middle; }
 
 #pickbar { position: fixed; left: 50%; transform: translateX(-50%);
@@ -1087,7 +1097,7 @@ body.modal-open { overflow: hidden; }
   border-radius: 12px; background: var(--red); font-size: 12.5px; margin-right: 4px;
   font-weight: 400; }
 .pickbar-n b.pulse { animation: pulse 420ms var(--ease_out); }
-#pickbar button { font: inherit; font-size: 13px; cursor: pointer;
+#pickbar button { font: inherit; font-size: 13px; cursor: var(--cur-pointer);
   padding: 7px 14px; border: 0.8px solid rgba(255, 255, 255, .28);
   border-radius: 50px; background: none; color: #fff;
   transition: background var(--base), border-color var(--base), color var(--base); }
@@ -1129,7 +1139,7 @@ body.modal-open { overflow: hidden; }
   width: 3px; height: 3px; background: var(--red); }
 #tooltip .tt-note b { color: #fff; font-weight: 500; }
 .snapcard { display: flex; flex-direction: column; gap: 4px; text-align: left;
-  font: inherit; cursor: pointer; padding: 8px 11px 8px; width: 100%;
+  font: inherit; cursor: var(--cur-pointer); padding: 8px 11px 8px; width: 100%;
   background: var(--surface-2); border: 1px solid var(--card_border);
   border-radius: var(--card_radius); transition: background var(--base); }
 .snapcard:hover, .snapcard:focus-visible { background: var(--p_dim); outline: none; }

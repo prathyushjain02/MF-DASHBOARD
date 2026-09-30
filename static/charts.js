@@ -42,7 +42,7 @@ const Chart = (() => {
   function hoverable(node, html) {
     node.addEventListener('mousemove', (e) => showTip(e, html));
     node.addEventListener('mouseleave', hideTip);
-    node.style.cursor = 'default';
+    node.style.cursor = 'var(--cur)';
   }
 
   const fmt = (v, d = 1) =>
@@ -87,7 +87,7 @@ const Chart = (() => {
       val.textContent = r.display ?? (fmt(r.value, decimals) + suffix);
       row.append(lab, track, val);
       if (tipFor) hoverable(row, tipFor(r));
-      if (onClick) { row.style.cursor = 'pointer'; row.onclick = () => onClick(r); }
+      if (onClick) { row.style.cursor = 'var(--cur-pointer)'; row.onclick = () => onClick(r); }
       host.appendChild(row);
     });
   }

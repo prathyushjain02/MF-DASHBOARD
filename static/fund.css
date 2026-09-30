@@ -38,7 +38,7 @@
 .fundpage .fp-actions { grid-column: 1 / -1; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .fundpage .fp-btn_cta { position: relative; display: inline-flex; align-items: center; height: 40px;
   padding: 0 16px 0 54px; background: var(--p); color: #fff; border: 0.8px solid var(--p_dark);
-  border-radius: 4px; font-family: var(--font_secondary); font-size: 14.5px; cursor: pointer;
+  border-radius: 4px; font-family: var(--font_secondary); font-size: 14.5px; cursor: var(--cur-pointer);
   transition: background 250ms ease, border-color var(--base), padding var(--base); }
 .fundpage .fp-btn_cta .arrow { position: absolute; left: 4px; top: 4px; width: 38px; height: 30px;
   display: grid; place-items: center; background: var(--red); border-radius: 4px;
@@ -50,7 +50,7 @@
 .fundpage .fp-btn_cta:focus-visible { outline: 2px solid var(--p_light); outline-offset: 2px; }
 .fundpage .fp-pdf { position: absolute; top: 16px; right: 16px; width: 38px; height: 38px; border-radius: 8px;
   border: 0.8px solid rgba(255, 255, 255, .28); background: rgba(255, 255, 255, .06); display: grid;
-  place-items: center; cursor: pointer; color: #fff; padding: 0;
+  place-items: center; cursor: var(--cur-pointer); color: #fff; padding: 0;
   transition: background var(--base), border-color var(--base); }
 .fundpage .fp-pdf:hover { background: rgba(255, 255, 255, .14); border-color: var(--p_light); }
 .fundpage .fp-pdf svg { width: 18px; height: 18px; }
@@ -113,7 +113,7 @@
 /* ---- growth over drawdown, one timeline ---- */
 .fundpage .fp-periods { display: inline-flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
 .fundpage .fp-periods span { font-family: var(--font_primary); font-size: 11.5px; letter-spacing: 1px;
-  padding: 4px 10px; border-radius: 50px; border: 0.8px solid var(--s); color: var(--s_dark); cursor: pointer;
+  padding: 4px 10px; border-radius: 50px; border: 0.8px solid var(--s); color: var(--s_dark); cursor: var(--cur-pointer);
   transition: background var(--base), color var(--base); }
 .fundpage .fp-periods span:hover { background: var(--p_dim); }
 .fundpage .fp-periods span.on { background: var(--p_tint); border-color: var(--p_light); color: var(--p_dark); }
@@ -266,7 +266,7 @@
 .fundpage .fp-reveal.in { opacity: 1; transform: none; }
 
 /* ---- cards that open ---- */
-.fundpage .fp-card.opens { cursor: pointer; padding-bottom: 44px; }
+.fundpage .fp-card.opens { cursor: var(--cur-pointer); padding-bottom: 44px; }
 .fundpage .fp-kv dd { white-space: normal; }
 .fundpage .fp-card.opens:focus-visible { outline: 2px solid var(--p_light); outline-offset: 2px; }
 .fundpage .fp-card.opens .corner { position: absolute; right: 0; bottom: 0; width: 48px; height: 36px;
@@ -297,7 +297,7 @@ body.fp-modal-open { overflow: hidden; }
 .fp-modal h2 { margin: 4px 0 0; font-family: var(--font_primary); font-weight: 400; font-size: 21px;
   color: var(--p); letter-spacing: .5px; }
 .fp-modal .x { background: none; border: 0; font: inherit; font-size: 22px; line-height: 1; color: var(--s_shade);
-  cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+  cursor: var(--cur-pointer); padding: 2px 6px; border-radius: 4px; }
 .fp-modal .x:hover, .fp-modal .x:focus-visible { color: var(--p); background: var(--p_dim); outline: none; }
 .fp-modal .fp-modnote { margin: 12px 0 0; font-size: 12.5px; color: var(--s_shade); line-height: 1.45; }
 .fp-modal .fp-modtable { width: 100%; border-collapse: collapse; font-size: 13px; }
