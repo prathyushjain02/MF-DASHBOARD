@@ -58,8 +58,8 @@ LOGIN_PAGE = """<!doctype html>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600&family=Ubuntu:wght@300;400;500&display=swap">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23fff' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23cc1919' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 16 4, auto; }
-  button { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23fff' stroke-width='8.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23a81212' stroke-width='4.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 16 4, pointer; }
+  html { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 32 32'%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23fff' stroke-width='9' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23cc1919' stroke-width='4.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 8 2, auto; }
+  button { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 32 32'%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23fff' stroke-width='10' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23a81212' stroke-width='5.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 8 2, pointer; }
   input { cursor: text; }
   body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
     font-family: "Libre Franklin", system-ui, sans-serif; color: #2c3441;

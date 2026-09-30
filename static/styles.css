@@ -34,9 +34,9 @@
 
   /* The pointer is the caret from the Avendus mark, with a white halo so it
      reads on the navy masthead as well as on white. Over anything clickable it
-     turns bolder and deeper; the tip (16, 4) is the hotspot. */
-  --cur: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23fff' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23cc1919' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 16 4, auto;
-  --cur-pointer: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23fff' stroke-width='8.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23a81212' stroke-width='4.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 16 4, pointer;
+     turns bolder and deeper; the tip (8, 2) is the hotspot. */
+  --cur: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 32 32'%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23fff' stroke-width='9' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23cc1919' stroke-width='4.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 8 2, auto;
+  --cur-pointer: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 32 32'%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23fff' stroke-width='10' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M5 22 16 7l11 15' fill='none' stroke='%23a81212' stroke-width='5.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 8 2, pointer;
 
   /* Avendus web design system, as scraped from avendus.com: a navy primary with
      its tints, warm neutrals, one red kept for the caret, the section tag bar
