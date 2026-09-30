@@ -12,12 +12,14 @@ from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 
 from mf.api import bp as mf_bp
-from mf import datastore
+from mf import datastore, gate
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
 app = Flask(__name__, static_folder=None)
 CORS(app)
+# Everything but /health sits behind the site password (mf/gate.py).
+gate.install(app)
 app.register_blueprint(mf_bp)
 
 # Evaluate the universe at boot rather than on the first request. Under gunicorn

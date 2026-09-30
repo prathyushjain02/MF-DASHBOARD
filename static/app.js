@@ -82,6 +82,11 @@ const BAND_TONE = { A: 'good', B: 'warning', C: 'serious', Review: 'critical',
 
 async function get(path) {
   const r = await fetch(API + path);
+  // The login has run out: back to the password page, then back here.
+  if (r.status === 401) {
+    location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
+    throw new Error('password required');
+  }
   if (!r.ok) throw new Error(`${path} → ${r.status}`);
   return r.json();
 }

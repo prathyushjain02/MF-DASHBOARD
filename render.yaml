@@ -18,3 +18,7 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
+      # The site password: set its value in the Render dashboard. Never committed;
+      # without it the site stays locked.
+      - key: SITE_PASSWORD
+        sync: false
